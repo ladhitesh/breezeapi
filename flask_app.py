@@ -14,6 +14,7 @@ from breezeapi import breezeapi
 from icecream import ic
 import json
 import pandas as pd
+import configapi
 
 
 app = Flask(__name__)
@@ -24,12 +25,9 @@ cors = CORS(app)
 app.config["SESSION_PERMANENT"] = False
 app.config["SESSION_TYPE"] = "filesystem"
 app.config['CORS_HEADERS'] = 'Content-Type'
-#appName=MyTradingApp
-#app.secret_key = "B72753P27w36MC3D80zvc!4819K7#676"
-#app.api_key = "KU6k=m4yJ3448400K094Vi7l3L661a5$"
-#appName=hiteshBreezeApi
-app.api_key = "$6Y56)71761r28t23V2751~dQ7j8o518"
-app.secret_key = "939C6l37E=53245%5i930lJa4)B60u60"
+
+app.api_key = configapi.API_KEY
+app.secret_key = configapi.SECRET_KEY
 
 myapi = breezeapi.MyBreezeApi(app.api_key)
 
