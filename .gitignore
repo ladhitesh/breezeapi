@@ -1,2 +1,3 @@
 bzapisessions/
 __pycache__/
+configapi.py
