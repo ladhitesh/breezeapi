@@ -1,0 +1,271 @@
+<html>
+	<head>
+
+<!--  jQuery v3.0.0-beta1 for dynatable-->
+<!-- <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"></script>-->
+<!-- for date picker -->
+<script src="https://code.jquery.com/jquery-3.6.0.js"></script>
+
+	
+<!-- 	Bootstrap v2.3.2 -->
+<!-- <link rel="stylesheet" media="all" href="https://s3.amazonaws.com/dynatable-docs-assets/css/bootstrap-2.3.2.min.css" /> -->
+<!-- Plugin styles -->
+<!-- <link rel="stylesheet" media="all" href="https://s3.amazonaws.com/dynatable-docs-assets/css/jquery.dynatable.css" /> -->
+<!-- JS Pluging -->
+<!-- <script type='text/javascript' src='https://s3.amazonaws.com/dynatable-docs-assets/js/jquery.dynatable.js'></script> -->
+<link rel="stylesheet" media="all" href="/static/dynatable-docs-assets/css/bootstrap-2.3.2.min.css" />
+<link rel="stylesheet" media="all" href="/static/dynatable-docs-assets/css/jquery.dynatable.css" />
+<link rel="stylesheet" href="//code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css">
+<link href="data:image/x-icon;base64,AAABAAEAEBAAAAEAIABoBAAAFgAAACgAAAAQAAAAIAAAAAEAIAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAD///////////////////////////jy7v/15dL/9efU//bn1f/36tX//fv2//////////////////////////////////////////////////3//v/qzav/6Zku/+yfNv/qoTf/76pB//rr0v/////////////////////////////////+/v7/9vb2//b29v/19fX/5cWu/+CBQP/igkH/44RC/+GGQ//x28r/9/b2//b29v/5+fn/////////////////9PT0/+Dh3//g4d//4eDe/+Ph3//k4OD/4Mq2/+TXy//k4eH/5OLh/+Ti4f/j4uD/4+Pi//z8/P////////////Lz8//axrP/1bWa/9m6nf/fv6D/3bya/+G+mP/kwp3/4MKh/+HDoP/gwJ7/5cek/+TVwf/8/Pz////////////w8vL/zp90/4xWTP+lg5X/y4RI/8ifff/fl03/3plO/9+XTv/emEv/17SP/+mrVP/oxZT/+/v7////////////8PLx/8qbcf82LJz/VVzm/3xiUf89rnz/jrF4/7FvOf/KlW3/tH46/3WugP+/uXH/6sWW//v7+/////////////Dy8f/LmnH/NCqd/1hc5/9uYFX/N7yJ/4CzgP88NZb/T1Le/4JwU/86voj/oc6U/+jHlf/7+/v////////////x8vL/06F0/0Ayof9ZX+j/cWBS/zi8h/99soH/MzGh/1Vd5f96bFj/Or2K/6LQlf/ox5T/+/v7////////////8vLz/9qpef+9hGb/v6So/4xuP/83vYb/griF/zk4o/9XXub/e2xV/zm/iv+h0JX/58eU//v7+/////////////Lz8//Qn3b/enmI/8WVbf+XeED/N72H/5HEkP+aeYD/opS9/5F6TP87v4r/odCU/+nIlv/8/Pz////////////19vb/xry3/0eW4v9OkNH/r6iW/4bLsv+pw6//k5md/9/Kt/+yron/U8eb/63atv/n17///f39//////////////////v8+v/W6Pb/Sprn/0+f5f/P4e7/bafj/z6U5v+IvOv/8fb4/+bs7//8/Pv//f39/////////////////////////////P79/9fp9v9Lm+b/QpPl/0KX5/94tu7/PZTl/1Kd5v/Z7Pn//v/////////////////////////////////////////9/v3/1+j3/1Cf5v+82/b/9fn6/1mg5f8/k+f/v934//3///////////////////////////////////////////////7+/v/y+Pv//f7+//n8+//i7/n/yeL4/9/u+f/+//7/////////////////AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==" rel="icon" type="image/x-icon">
+		
+<script type='text/javascript' src="/static/dynatable-docs-assets/js/jquery.dynatable.js"></script>
+	
+<!-- Tradingview Lightweight Charts -->
+<script type='text/javascript' src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
+
+<!-- Axios -->
+<script type="text/javascript" src="https://unpkg.com/axios/dist/axios.min.js"></script>
+	
+<!-- Socket.io -->
+<script type="text/javascript" src="https://www.unpkg.com/socket.io@4.7.2/client-dist/socket.io.min.js"></script>
+	
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/moment-timezone/0.5.31/moment-timezone-with-data-10-year-range.js"></script>
+	
+	
+<!-- Include jQuery Popup Overlay -->	
+<script type='text/javascript' src="/static/jquery.popupoverlay.js"></script>
+
+<!-- jquery ui for date picker -->
+<script src="https://code.jquery.com/ui/1.13.2/jquery-ui.js"></script>
+
+
+<style>
+body, div, select, caption {
+	font-size:14px;
+}
+caption {
+	font-weight:bold;
+	color:black;
+}
+.dynatable-header {
+	font-size:12px;
+	color:white;
+}
+.table th, .table td {
+	padding:2px !important;
+	font-size:14px;
+}
+	
+input[type=number]::-webkit-inner-spin-button, 
+input[type=number]::-webkit-outer-spin-button {
+  opacity: 1;
+}
+</style>
+	
+
+<script type="text/javascript">
+	 var baseServerUrl = "http://127.0.0.1:5000"
+	 var socket = io("http://127.0.0.1:5000");
+	 socket.on('connect', function() {
+        socket.emit('oneclick', {data: 'I\'m connected!'});
+    });
+    moment().format();
+</script>
+<script>
+$(document).ready(function() {
+	
+	today = moment().format("DD-MMM-YYYY");
+	$($("#fromDatepicker")).val(today);
+	$($("#toDatepicker")).val(today);
+	
+})
+	 
+	 
+	 
+$( function() {
+	$( "#fromDatepicker" ).datepicker({
+		dateFormat: "dd-M-yy"
+	});
+	$( "#toDatepicker" ).datepicker({
+		dateFormat: "dd-M-yy"
+	});
+
+} );
+	
+	
+</script>	
+
+<script type="text/javascript">
+	var apiSession="{{ apiSession }}"
+	var isApiConnected = false;
+</script>
+	</head>
+	<body>
+		<div id="connectStatus" width="100%" style="background-color:red;height:5px">&nbsp;</div>
+		<table style="width:100%;border-color:black;border-top-width:10px !important">
+		<tr>
+			<td colspan="2">
+				<div id="output">
+					{% block body %}					
+						{% autoescape false %}
+							{{ output }}
+						{% endautoescape %}
+					{% endblock %}
+				</div>
+				<div id="userDetails" style="font-weight:bold;color:red;font-size:14;position:fixed;top:10;right:10">
+					{{ apiSession }}-{{ loginMessage }}
+				</div>
+				<script type="text/javascript">
+					if(document.getElementById("userDetails").innerHTML.trim().includes("Not logged in")){
+						var outputObj = document.getElementById("output")
+						var currentMessage = outputObj.innerHTML
+						outputObj.innerHTML=currentMessage+"<BR>Valid breeze session token does not exist. Kindly login"
+						//window.stop();
+						
+					}
+					else{
+						isApiConnected = true;
+						$("#connectStatus").css("background-color", "green");
+					}
+				</script>
+				
+			</td>
+		</tr>
+		<tr>
+			<td>
+				<input type="button" value="Clear Output" onClick='document.getElementById("output").innerText=""'/>
+				<BR/>
+				<div style="display:inline-block;width:100px">Intervals(mins)</div>
+				<button onClick="resetInterval(event,'1minute')">1</button>
+				<button onClick="resetInterval(event,'5minute')">5</button>
+				<button onClick="resetInterval(event,'30minute')">30</button>
+				<div style="display:inline-block;width:100px;text-align:right">Range(Days): </div>
+				<button onClick="setChartRange(0)">0</button>
+				<button onClick="setChartRange(3)">3</button>
+				<button onClick="setChartRange(5)">5</button>
+			</td>
+			<td>
+				<table>
+					<tr>
+						<td colspan = "7">
+							<div style="display:inline;margin-bottom:0px;height:30px">FnO allocated: </div>
+							<div id="fnoAllocated" style="display:inline-block;width:60px;color:gray;">0</div>
+							<div style="display:inline"> FnO blocked: </div>
+							<div id="fnoBlocked" style="display:inline-block;width:60px;color:gray;">0</div>
+							<div style="display:inline;margin-bottom:0px;height:30px"><button onClick="refreshFunds()">Refresh</button></div>
+						</td>
+					</tr>
+					<tr>
+						<td>From :<input type="text" id="fromDatepicker" style="width:100px;margin-bottom:0px;height:30px"></td>
+						<td>To :<input type="text" id="toDatepicker" style="width:100px;margin-bottom:0px;height:30px"></td>
+						<td><input onclick="getRealisedPnl()" type="button" value="Get PnL">
+						<td style="color:purple;font-weight:bold;size:14px">&nbsp;&nbsp;&nbsp;PnL:&nbsp;&nbsp;</td>
+						<td><div id="realisedPnl" style="width:60px;color:gray;font-weight:bold;size:12px">NA</div></td>
+						<td style="color:purple;font-weight:bold;size:14px">&nbsp;&nbsp;&nbsp;PnL(Taxes):&nbsp;&nbsp;</td>
+						<td><div id="realisedPnlWithTaxes" style="width:60px;color:gray;font-weight:bold;size:12px">NA</div></td>
+					</tr>
+				</table>			
+			</td>
+		</tr>
+		<tr>
+		<td width="50%" valign="top" >
+			<div id="chart" align="center"></div>
+		</td>
+		<td valign="top">
+			<table id="openPositions" class="table table-striped table-bordered" cellspacing="0" width="100%">
+				<caption>Open Positions (<a onClick="refreshOpenPositions()">Refresh </a>)</caption>
+				<thead>
+						 <th style="display:none">hiddenColumn</th>
+						 <th>Stock</th>
+						 <th>Type</th>
+						 <th>Qty</th>
+						 <th>Price</th>
+						 <th style="width:60px">Ltp</th>
+						 <th>Pnl</th>
+						 <th>X</th>
+			  </thead>
+				<tbody>
+				</tbody>
+			</table>
+			<BR/>
+			
+			<table id="watchList" class="table table-striped table-bordered" cellspacing="0" width="100%">
+				<caption>WatchList (<a onClick="clearWatchList()">Clear </a>)</caption>
+				<thead>
+						 <th style="display:none">hiddenColumn</th>
+						 <th>Stock</th>
+						 <th style="width:65px">Price</th>
+						 <th>Action</th>
+						 <th>X</th>
+			  </thead>
+				<tbody>
+				</tbody>
+			</table>
+			<BR/>
+			<div width="100%">
+				<input id="seachStock" style="margin-bottom:0px;height:30px" type="text" value="OPT CNXBAN 43000 CE" />
+				<input type="button" onClick="getWatchListStocks()" value="Fetch Stocks" />
+				<BR/>
+				<select id="stock-selection" style="width:300px;margin-bottom:0px;height:30px">
+					<option value="0" selected>(Please select an option)</option>
+				</select>
+				<input type="button" onClick="addToWatchList()" value="Watch" />	
+				<BR/>
+				<BR/>
+				<table border="1" bordercolor="black" class="dynatable-header">
+					<caption id="orderMessages" style="text-align:left;color:red">Select stock from watchlist to place order.</caption>
+					<tr><th>Stock</th><th>B/S</th><th>Qty</th><th>Price</th><th>SL</th><th></th><th></th></tr>
+				<tr>
+					<td style="width:225px">
+						<div style="display:inline;font-size:12px;">
+						<div id="hiddenDataColumnId" style="display:none" ></div>
+						<div id="hiddenOrderId" style="display:none" ></div>
+						<div id="orderStock" style="padding:3px;text-align:center;color:blue;font-size:12px;display:inline"></div>
+					</td>
+					<td style="width:30px">	
+						<div id="orderAction" style="padding:3px;text-align:center;color:black;font-size:12px;display:inline;font-weight:bold"></div>
+					</td>
+					<td>
+						<input id="orderQty" type="number" style="margin-bottom:0px;display:inline;text-align:center;width:70px;height:30px" value="15" step=15 required/>
+					</td>
+					<td>
+						<input id="orderPrice" type="number" style="margin-bottom:0px;text-align:center;width:70px;height:30px" value="0" step=0.05 required/>
+					</td>
+					<td>
+						<input id="orderSl" type="number" style="margin-bottom:0px;text-align:center;width:70px;height:30px" value="0" step=0.05 required/>
+					</td>
+					<td>
+						<input id="orderButton" type="button" onClick="addOrder()" style=";display:inline;text-align:center;height:30px" value="Order"/>
+					</td>
+					<td>
+						<input id="clearButton" type="button" onClick="clearOrder()" style=";display:inline;text-align:center;height:30px" value="Clear"/>
+					</td>
+				</tr>
+				</table>
+			</div>
+			<BR/>
+				<table id="orderList" class="table table-striped table-bordered" cellspacing="0" width="100%">
+				<caption>Order List (<a onClick="refreshOrderList()">Refresh </a>)</caption>
+				<thead>
+					    <th style="display:none">hiddenColumn</th>
+						 <th>id</th>
+						 <th>Stock</th>
+						 <th>Qty</th>
+						 <th>Type</th>
+						 <th>Price</th>
+						 <th>SL</th>
+						 <th>Status</th>
+						 <th>X</th>
+						 <th>Modify</th>
+			  </thead>
+				<tbody>
+				</tbody>
+			</table>
+
+		<BR/><BR/><BR/>
+<script type='text/javascript' src="/static/tables.js"></script>
+<script type='text/javascript' src="/static/charting.js"></script>
+
+	</body>
+</html>
