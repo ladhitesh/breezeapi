@@ -1,1 +1,2 @@
-flask --debug --app flask_app run
+#flask --debug --app tradingApp run
+python -m tradingApp

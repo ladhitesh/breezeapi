@@ -1,3 +1,5 @@
-bzapisessions/
-__pycache__/
-configapi.py
+/configapi.py
+/securityMaster.zip
+/bzapisessions/
+/__pycache__/
+

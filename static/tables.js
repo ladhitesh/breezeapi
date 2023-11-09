@@ -41,14 +41,36 @@ $(document).ready(function() {
 	// Set default `pagecontainer` for all popups (optional, but recommended for screen readers and iOS*)
 	$.fn.popup.defaults.pagecontainer = '#page'
 	
-	if (isApiConnected){
-		//populate existing data
-		populateOpenPositions()
-		populateOrderList()
-		socket.on('order_notification', orderNotification)
-	}
+	
 	
 })
+$(initIfConnected)
+
+async function initIfConnected(){
+	if (isApiConnected){
+		//populate existing data
+		await populateOpenPositions()
+		await populateOrderList()
+		socket.on('order_notification', orderNotification)
+		//attachObservers()
+	}
+	
+}
+
+function attachLtpObservers(){
+	//console.log($("[priceType^='op-']")[0])
+	openPositionLtpObjArr = $("[priceType^='op-']").get()
+	for(elementIndex in openPositionLtpObjArr){
+		openPositionLtpObj = openPositionLtpObjArr[elementIndex];
+		//console.log(openPositionLtpObj)
+		try{
+			let observer = new MutationObserver(calculateLivePnl);
+			observer.observe(openPositionLtpObj, {characterData:true,childList:true,subtree:false});
+			//console.log(openPositionLtpObj)
+			//console.log(observer)
+		}catch(e){console.log("Error in observer.");console.log(e)}
+	}
+}
 
 function myDynaRowWriter(rowIndex, record, columns, cellWriter) {
 	var tr = '';
@@ -58,7 +80,7 @@ function myDynaRowWriter(rowIndex, record, columns, cellWriter) {
 		tr += cellWriter(columns[i], record);
 	}
 
-	return '<tr rowindex="'+rowIndex+'" draggable="true" ondragstart="start()"  ondragover="dragover()" >' + tr + '</tr>';
+	return '<tr rowindex="'+rowIndex+'" draggable="true" ondragstart="hideMarketDepth();start()"  ondragover="dragover()" >' + tr + '</tr>';
 };
 
 
@@ -145,22 +167,36 @@ async function makePositionRecord(hiddenDivObj,stock,action,qty,price){
 	var qty = qty
 	var price = price
 	exitButton = `<img onClick='squareoffStock("${stock}","${hiddenDivObj.id}","${qty}")' src="/static/images/exit.png" width="40" height="20"/>`
-	ltpDiv = `<div priceType='openPosition' id='${hiddenDivObj.dataset.token}-price'>${price}</div>`
+	//ltpDiv = `<div priceType='openPosition' id='${hiddenDivObj.dataset.token}-price'>${price}</div>`
+	ltpDiv = document.createElement('div');
+	ltpDiv.id = hiddenDivObj.dataset.token + '-price'
+	ltpDiv.setAttribute("priceType","op-"+stock)
+	ltpDiv.innerHTML = price
+
 	record = new Object();
 	record.hiddenColumn=hiddenDivObj.outerHTML;
 	record.stock=stock
 	record.type=action
 	record.qty=qty
 	record.price=price
-	record.ltp=ltpDiv
+	record.ltp=ltpDiv.outerHTML;
 	record.pnl=""
 	record.x=exitButton	
 	return record
 }
 
-function calculatePnl(ltpDivObj){
-	console.log("calculating Pnl")
-	console.log(ltpDivObj)
+function calculateLivePnl(mutationRecord){
+	try{
+		//console.log("calculating Pnl")
+		//console.log(mutationRecord[0])
+		ltp = mutationRecord[0].target.innerHTML
+		quantity = mutationRecord[0].target.parentElement.previousSibling.previousSibling.innerHTML;
+		cost = mutationRecord[0].target.parentElement.previousSibling.innerHTML;
+		pnlObj = mutationRecord[0].target.parentElement.nextSibling
+		pnl = (quantity*ltp) - (quantity*cost);
+		pnl = Math.round(pnl * 100) / 100
+		pnlObj.innerHTML = pnl
+	}catch(e){console.log(e)}
 }
 
 async function getStockToken(hiddenDivObj){
@@ -255,6 +291,7 @@ async function populateOpenPositions(){
 	var openPositionsTable = $('#openPositions').data('dynatable');
 	openPositionsTable.records.updateFromJson(obj)
 	openPositionsTable.dom.update();
+	attachLtpObservers();
 		
 }
 
@@ -320,51 +357,7 @@ async function populateOrderList(){
 	var orderListTable = $('#orderList').data('dynatable');
 	orderListTable.records.updateFromJson(obj)
 	orderListTable.dom.update();
-		
-	/*
-	    {
-    "Error": null,
-    "Status": 200,
-    "Success": [
-        {
-            "LTP": null,
-            "SLTP_price": null,
-            "action": "Buy",
-            "average_price": "0",
-            "cancelled_quantity": "15",
-            "cutoff_price": null,
-            "disclosed_quantity": "0",
-            "exchange_acknowledge_number": null,
-            "exchange_acknowledgement_date": null,
-            "exchange_code": "NFO",
-            "exchange_order_id": "1500000215309443",
-            "expiry_date": "26-Oct-2023",
-            "initial_limit": null,
-            "intial_sltp": null,
-            "limit_offset": null,
-            "mbc_flag": null,
-            "modification_number": null,
-            "order_datetime": "25-Oct-2023 14:19:02",
-            "order_id": "202310251500031281",
-            "order_type": "Limit",
-            "parent_order_id": "",
-            "pending_quantity": "15",
-            "price": "1",
-            "product_type": "Options",
-            "quantity": "15",
-            "right": "Call",
-            "status": "Cancelled",
-            "stock_code": "CNXBAN",
-            "stoploss": "0",
-            "strike_price": 43000,
-            "user_remark": null,
-            "validity": "Day",
-            "validity_date": null
-        },
 
-	
-	
-	*/
 }
 
 
@@ -433,8 +426,6 @@ async function modifyOrder(){
 		}
 	}
 	orderTime = moment().format("DD-MM-YYYY HH:mm:ss")
-	
-	//modifyBtn = "<button id='modifyOrdBtn-"+orderId+"' onClick='populateModifyOrder(this,\""+action+"\",\""+qty+"\",\""+price+"\",\""+orderSl+"\")'>Modify</button>"
 	
 	modifyBtn = `<img id='modifyOrdBtn-${orderId}' onClick='populateModifyOrder(this,"${action}","${qty}","${price}","${orderSl}")' src='/static/images/modify.png' width='20' height='20' />`
 	cancelBtn = `<img id='cancelOrdBtn-${orderId}' onClick='cancelOrder("${orderId}")' src='/static/images/cancel.png' width='20' height='20'/>`
@@ -540,8 +531,6 @@ async function addOrder(){
 	}
 	
 	orderTime = moment().format("DD-MM-YYYY HH:mm:ss")
-	
-	//modifyBtn = "<button id='modifyOrdBtn-"+orderId+"' onClick='populateModifyOrder(this,\""+action+"\",\""+qty+"\",\""+price+"\",\""+orderSl+"\")'>Modify</button>"
 	
 	modifyBtn = `<img id='modifyOrdBtn-${orderId}' onClick='populateModifyOrder(this,"${action}","${qty}","${price}","${orderSl}")' src='/static/images/modify.png' width='20' height='20' />`
 	cancelBtn = `<img id='cancelOrdBtn-${orderId}' onClick='cancelOrder("${orderId}")' src='/static/images/cancel.png' width='20' height='20'/>`
@@ -694,19 +683,19 @@ function addToWatchList() {
 	}
 	
 	hiddenDivObj.setAttribute("id",hiddenDivId)
-	
-	//buyAction = `<button onClick='buyStock("${stockName}","${hiddenDivId}")'>Buy</button> `
-	//sellAction = `<button onClick='sellStock("${stockName}","${hiddenDivId}")'>Sell</button> `
-	//remove = "<button onClick='removeFromWatchList(this)'>X</button>"
+
 	buyAction = `<img width='40' height='25' src="/static/images/buy1.png" alt="Buy" onClick='buyStock("${stockName}","${hiddenDivId}")'/> `
 	sellAction = `<img width='40' height='25' src="/static/images/sell1.png" alt="Sell" onClick='sellStock("${stockName}","${hiddenDivId}")'/> `
 	remove = "<img width='20' height='18' src='/static/images/bin.png' alt='Remove' onClick='removeFromWatchList(this)'/>"
 	
-	showChart = "&nbsp;<img onClick='loadOptionsData(\""+hiddenDivId+"\")' src='/static/images/chart.png' width='18' height='18' alt='Show Chart'>"
+	var showChart = "&nbsp;<img onClick='loadOptionsData(\""+hiddenDivId+"\")' src='/static/images/chart.png' width='18' height='18' alt='Show Chart' style='display:inline'>"
 	
+	var showMarketDepth = `&nbsp;<img  style='display:inline' onClick='showMarketDepth(this,"${hiddenDivId}")' src='/static/images/bidask.png' width='18' height='18' alt='Show Market Depth' />`
+	
+	var marketDepthTable = `<div id='marketDepth-${hiddenDivId}'></div>`
 	myRecords = [new Object()];
 	myRecords[0].hiddenColumn=hiddenDivObj.outerHTML
-	myRecords[0].stock=stockName + showChart
+	myRecords[0].stock=stockName + showMarketDepth + showChart + marketDepthTable
 	myRecords[0].price = "<div id='"+token+"-price'></div>"
 	myRecords[0].action = buyAction + sellAction
 	myRecords[0].x = remove	
@@ -785,7 +774,6 @@ function subscribeQuotesFeed(token){
 		}
 	});
 	
-	
 }
 
 
@@ -818,7 +806,7 @@ async function getRealisedPnl(){
 			'toDate' : toDateStr
 		})
 	var realisedPnlUrl = baseServerUrl + '/getRealisedPnL?' + realisedPnlParams
-	console.log(realisedPnlUrl)
+	//console.log(realisedPnlUrl)
 	await callApi(realisedPnlUrl).then(result => {pnlResultJsonArr=result});
 	//console.log(pnlResultJsonArr)
 	errorStatus = pnlResultJsonArr["Error"]
@@ -861,4 +849,58 @@ async function refreshFunds(){
 	$("#fnoAllocated")[0].innerHTML=allocatedFnoFunds;
 	$("#fnoBlocked")[0].innerHTML=blockedFnoFunds;
 	
+}
+
+function hideMarketDepth(){
+	//alert("hiding MD")
+	MDTableDivArr = $("[id^='marketDepth']")
+	for(elementIndex in MDTableDivArr){
+			MDTableDivArr[elementIndex].innerHTML = ""
+	}
+}
+
+function showMarketDepth(divObj,hiddenDivId){
+	MDTableDiv = $("#marketDepth-"+hiddenDivId)[0]
+	if(MDTableDiv.innerHTML != ""){
+		MDTableDiv.innerHTML = ""
+		unsubscribeMarketDepth(hiddenDivObj.dataset.token)
+		return;
+	}
+	hiddenDivObj = $("#"+hiddenDivId)[0]
+	MDTableStart = `<table class='marketDepth-${hiddenDivObj.dataset.token}' width='100%'><thead><tr><th>Bid</th><th>Orders</th><th>Qty</th><th>Ask</th><th>Orders</th><th>Qty</th></tr></thead><tbody>`
+	MDTableEnd = "</tbody></table>"
+	MDTableDiv.innerHTML=MDTableStart+MDTableEnd
+	console.log('calling to subscribe MD:'+hiddenDivObj.dataset.token)
+	subscribeMarketDepth(hiddenDivObj.dataset.token)
+}
+
+function subscribeMarketDepth(token){
+	//alert("subscribing to quotes feed for token: "+token)
+	response = socket.emit('subscribeMarketDepth', token)
+	console.log('subscribing MD:'+token)
+	const inputToken = token
+	socket.on(inputToken, function (mdData){
+		//console.log(mdData)
+		mdDataDict = JSON.parse(mdData);
+		mdDataDict = mdDataDict["depth"]
+		//console.log(mdDataDict)
+		var mdTBody = $(".marketDepth-"+inputToken+" tbody")
+		mdTBody.empty();
+		row = ""
+		for (i=0;i<5;i++){
+			//console.log(mdDataDict[i])
+			j = i+1;
+			row = row+`<tr><td>${mdDataDict[i]["BestBuyRate-"+j]}</td><td>${mdDataDict[i]["BuyNoOfOrders-"+j]}</td><td>${mdDataDict[i]["BestBuyQty-"+j]}</td><td>${mdDataDict[i]["BestSellRate-"+j]}</td><td>${mdDataDict[i]["SellNoOfOrders-"+j]}</td><td>${mdDataDict[i]["BestSellQty-"+j]}</td></tr>`
+			
+		}
+		console.log(row)
+		mdTBody.append(row)	
+		
+	});
+	
+}
+
+function unsubscribeMarketDepth(token){
+	//alert("subscribing to quotes feed for token: "+token)
+	response = socket.emit('unsubscribeMarketDepth', this.token)
 }

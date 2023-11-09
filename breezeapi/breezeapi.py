@@ -220,7 +220,7 @@ class  MyBreezeApi():
     
 	def getTradesList(self,fromDate,toDate,exchangeCode,productCode="",action="",stockCode=""):
 		fromStr = fromDate.strftime('%Y-%m-%dT06:00:00.000Z')
-		toStr = toDate.strftime('%Y-%m-%dT23:00:00.000Z')
+		toStr = toDate.strftime('%Y-%m-%dT18:00:00.000Z')
 		exchangeCode = "NFO"
 
 		tradesList = self.api.get_trade_list(from_date=fromStr,

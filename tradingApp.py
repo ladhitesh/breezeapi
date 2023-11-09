@@ -38,8 +38,6 @@ myapi = breezeapi.MyBreezeApi(app.api_key)
     # Other headers can be added here if needed
 #    return response
 
-if __name__ == '__main__':
-	socketio.run(debug = True)
 
 @app.route('/static/<path:path>')
 @cross_origin()
@@ -62,7 +60,21 @@ def unsubscribeQuotes(token,interval):
 	print("unsubscribe-->"+token+"-"+interval)
 	print(unsubscribeQuotesFeed(token,interval))
 
-
+@socketio.event
+def subscribeMarketDepth(token):
+	print("Subscribe MD-->"+token)
+	print(subscribeMarketDepth(token))
+	existingSubs = session.get("md-"+request.sid,"")
+	newSub = token
+	if(existingSubs != ""):
+		newSub = ";"+newSub
+	session["md-"+request.sid] = existingSubs + newSub
+	
+@socketio.event
+def unsubscribeMarketDepth(token):
+	print("unsubscribe MD-->"+token)
+	print(unsubscribeMarketDepth(token))
+	
 @socketio.event
 def spoofTicks(data,count,interval):
 	ic(type(data))
@@ -81,6 +93,12 @@ def disconnect():
 			token = tokenIntervalPair[0]
 			interval = tokenIntervalPair[1]
 			unsubscribeQuotes(token,interval)
+	clientMDSubs = session.get("md-"+request.sid,"")
+	print("unsubscribing md from "+clientMDSubs)
+	subsMDPair = clientMDSubs.split(";")
+	for subs in subsMDPair:
+		print(unsubscribeMarketDepth(subs))
+			
 		
 
 @app.route('/connect', methods=['GET', 'POST'])
@@ -165,6 +183,7 @@ def clearSessionFiles():
 
 def getCustomerDetails(apiSession):
     customerDetailsJsonDict = myapi.getCustomerDetails(apiSession)
+    print(customerDetailsJsonDict)
     userId = customerDetailsJsonDict["Success"]["idirect_userid"]
     userName = customerDetailsJsonDict["Success"]["idirect_user_name"]
     lastLogin = customerDetailsJsonDict["Success"]["idirect_lastlogin_time"]
@@ -313,14 +332,31 @@ def getRealisedPnL():
 	tradesListDf["average_cost"] = tradesListDf["average_cost"].astype(float)
 	tradesListDf["total_taxes"] = tradesListDf["total_taxes"].astype(float)
 	tradesListDf["total_cost"] = tradesListDf["quantity"] * tradesListDf["average_cost"]
-	print(tradesListDf)
+	#print(tradesListDf)
 	groupbyTradesListDf = tradesListDf.groupby(["stock_code", "action"], as_index=False)\
     .agg(quantity=("quantity","sum"),sum_total_cost=("total_cost","sum"),sum_total_taxes=("total_taxes","sum"))
 	groupbyTradesListDf = groupbyTradesListDf.apply(costCalculator,axis=1)
 	groupbyTradesListDf = groupbyTradesListDf.apply(pnlMultiplier,axis=1)
 	#print(groupbyTradesListDf)
+	#remove open postion total cost from all trades cost
+	openPositionsDict = myapi.getPortfolioPositions()
+	totalOpAmount = 0
+	if not openPositionsDict is None and not openPositionsDict["Success"] is None:
+		todayStr = datetime.now().strftime("%d-%b-%Y")
+		today = datetime.strptime(todayStr, "%d-%b-%Y")
+		if toDate == today:
+			openPositionsDf = pd.json_normalize(openPositionsDict["Success"])
+			#print(openPositionsDf)
+			openPositionsDf["quantity"] = openPositionsDf["quantity"].astype(float)
+			openPositionsDf["average_price"] = openPositionsDf["average_price"].astype(float)
+			openPositionsDf["total_op_amt"] = openPositionsDf["quantity"] * openPositionsDf["average_price"] * -1 #assuming buy
+			totalOpAmount = openPositionsDf['total_op_amt'].sum()
+			print("Total open position:" + str(totalOpAmount))
+
 	groupbyTradesListDfWithPnl = groupbyTradesListDf.groupby(["stock_code"]).agg(realised_pnl=("sum_total_cost","sum"),realised_pnl_with_taxes=("total_cost_with_taxes","sum"))
 	#print(groupbyTradesListDfWithPnl)
+	groupbyTradesListDfWithPnl["realised_pnl"] = groupbyTradesListDfWithPnl["realised_pnl"] - totalOpAmount
+	groupbyTradesListDfWithPnl["realised_pnl_with_taxes"] = groupbyTradesListDfWithPnl["realised_pnl_with_taxes"] - totalOpAmount
 	resultJsonStr = groupbyTradesListDfWithPnl.to_json(orient = "records")
 	resultJsonDict = json.loads(resultJsonStr)
 	tradesListJsonDict["Success"]=resultJsonDict[0]
@@ -333,6 +369,14 @@ def subscribeQuotesFeed(token,interval):
 
 def unsubscribeQuotesFeed(token,interval):
 	 unsubscriptionStatus = myapi.unsubscribeQuotes(token,interval)
+	 return (unsubscriptionStatus,200, {'Content-Type': 'application/json'})
+
+def subscribeMarketDepth(token):
+	 subscriptionStatus = myapi.subscribeMarketDepth(token)
+	 return (subscriptionStatus,200, {'Content-Type': 'application/json'})
+
+def unsubscribeMarketDepth(token):
+	 unsubscriptionStatus = myapi.unsubscribeMarketDepth(token)
 	 return (unsubscriptionStatus,200, {'Content-Type': 'application/json'})
 	
 @app.route('/getHistoricalData', methods=['GET', 'POST'])
@@ -412,7 +456,6 @@ def feedData(data):
 	elif data.get('quotes') == "Market Depth":
 		#Market Data
 		token = data['symbol'].split('!')[1]
-		interval = data['interval']
 	elif data.get('quotes') == "Quotes Data":
 		token = data['symbol'].split('!')[1]
 		interval = data['interval']
@@ -426,3 +469,10 @@ def feedData(data):
 	socketio.emit(eventName, json.dumps(data))
 
 
+if __name__ == '__main__':
+	#context = ('local.crt', 'local.key')#certificate and key files
+	#app.run(debug=True, ssl_context=context)
+	app.run(debug=True)
+	socketio.run(app, debug = True)
+
+	

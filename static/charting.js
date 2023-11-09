@@ -117,6 +117,45 @@ $(document).ready(function() {
 		socket.emit('subscribeQuotes', 'NIFTY BANK', '1second')
 		socket.on('NIFTY BANK-1second', function (ltpData){
 					//console.log(ltpData)
+					if (interval != "30minute"){
+						divisor = 60
+						if(interval == "5minute"){
+							divisor = divisor * 5
+						}
+						tickDataStr = updateTimeNVolumeInTickData(ltpData,false)
+						tickDataDict = JSON.parse(tickDataStr)
+						//console.log(tickDataDict["time"])
+						var currentTime = Number(tickDataDict["time"])
+						var closestMinuteTime = Math.floor(Number(tickDataDict["time"])/divisor)*divisor
+						var differenceInTime = currentTime - closestMinuteTime
+
+						if(indexTickOpen == 0)
+							indexTickOpen = tickDataDict["open"]
+						if(differenceInTime == 2){
+							indexTickOpen = tickDataDict["open"]
+							indexTickLow = tickDataDict["low"]
+							indexTickHigh = tickDataDict["high"]
+							indexTickClose = tickDataDict["close"]
+						}
+						indexTickLow = Math.min(indexTickLow,Number(tickDataDict["low"]) )
+						indexTickHigh = Math.max(indexTickHigh,Number(tickDataDict["high"]) )
+						indexTickClose = tickDataDict["close"]
+						tickDataDict["open"] = indexTickOpen
+						tickDataDict["low"] = indexTickLow
+						tickDataDict["high"] = indexTickHigh
+						tickDataDict["close"] = indexTickClose
+						//console.log(closestMinuteTime +":"+differenceInTime)
+						tickDataDict["time"] = closestMinuteTime
+
+						if (differenceInTime > 5 && differenceInTime < (divisor - 5)){
+							try{
+								//console.log(closestMinuteTime +":"+differenceInTime)
+								futuresSeries.update(tickDataDict);
+							}catch(e){console.log(e)}
+						}
+					}
+					//console.log(tickDataDict["time"])
+
 					ltpDataDict = JSON.parse(ltpData);
 					selectorStr = '[id="NIFTY BANK-price"]'
 					ltpElemArr = $(selectorStr);
@@ -129,6 +168,10 @@ $(document).ready(function() {
 
 });
 
+indexTickOpen = 0
+indexTickLow = 99999 
+indexTickHigh = 0
+indexTickClose = 0
 
 function drawChartLegend(chartContainer){
 	const legend = document.createElement('div');
@@ -336,9 +379,10 @@ async function loadOptionsData(hiddenDataDivId){
 			hDataArr = []
 			await getHistoricalData(stockCode,exchangeCode,fnotype,expiry,strike,right).then(result => {hDataArr=result});
 			
-			const upColor='#26a69a'
-			const downColor='#ef5350'
-			hDataArr.forEach(function(data){
+			var vDataArr = JSON.parse(JSON.stringify(hDataArr))
+			const upColor='#82e3d9' 
+			const downColor='#f6a3a2' 
+			vDataArr.forEach(function(data){
 				if(Number(data["open"]) < Number(data["close"])){
 					data["color"] = upColor
 				}else{
@@ -348,19 +392,25 @@ async function loadOptionsData(hiddenDataDivId){
 			//console.log(hDataArr)
 			
 			optionSeries.setData(hDataArr);
-			volumeSeries.setData(hDataArr);
+			volumeSeries.setData(vDataArr);
 			//chart.priceScale().fitContent();
 			//chart.timeScale().fitContent();
 			
 			//unsubscribe first so old token data do not override new token data
 			if(previousOptionsDataToken != null){
 				socket.emit('unsubscribeQuotes', previousOptionsDataToken, interval);
+				socket.off(previousOptionsDataToken+'-1second', updateOptionChartRealTime);
+				optionTickOpen = 0
+				optionTickLow = 99999 
+				optionTickHigh = 0
+				optionTickClose = 0
 			}
 			
 			socket.emit('subscribeQuotes', this.token, interval);
 			socket.on(this.token+'-'+interval, function (ohlcvData){
 				updateOptionChart(ohlcvData)
 			});
+			socket.on(this.token+'-1second', updateOptionChartRealTime);
 			
 			//socket.emit('unsubscribeQuotes', "NIFTY BANK", "1second")
 			previousOptionsDataToken = token;
@@ -379,8 +429,8 @@ function updateTimeNVolumeInTickData(data,addColorToData){
 	datetimeStr = data["datetime"]
 	
 	if(addColorToData){
-		var upColor='#26a69a'
-		var downColor='#ef5350'
+		var upColor='#82e3d9'
+		var downColor='#f6a3a2'
 		if(Number(data["open"]) < Number(data["close"])){
 			data["color"] = upColor
 		}else{
@@ -400,13 +450,65 @@ function updateTimeNVolumeInTickData(data,addColorToData){
 
 function updateIndexChart(data){
 	tickData = updateTimeNVolumeInTickData(data,false)
-	futuresSeries.update(JSON.parse(tickData));
+	try{
+		futuresSeries.update(JSON.parse(tickData));
+	}catch(e){console.log(e)}
 }
 
 function updateOptionChart(data){
-	tickData = updateTimeNVolumeInTickData(data,true)
-	optionSeries.update(JSON.parse(tickData));
-	volumeSeries.update(JSON.parse(tickData))
+	var vtickData = JSON.parse(JSON.stringify(data))
+	var tickData = updateTimeNVolumeInTickData(data,false)
+	vtickData = updateTimeNVolumeInTickData(vtickData,true)
+	try{
+		optionSeries.update(JSON.parse(tickData));
+		volumeSeries.update(JSON.parse(vtickData));
+	}catch(e){console.log(e)}
+	//chart.timeScale().fitContent();
+}
+
+optionTickOpen = 0
+optionTickLow = 99999 
+optionTickHigh = 0
+optionTickClose = 0
+
+function updateOptionChartRealTime(data){
+	var tickDataStr = updateTimeNVolumeInTickData(data,false)
+	if (interval != "30minute"){
+		divisor = 60
+		if(interval == "5minute"){
+			divisor = divisor * 5
+		}
+		tickDataDict = JSON.parse(tickDataStr)
+		//console.log(tickDataDict["time"])
+		var currentTime = Number(tickDataDict["time"])
+		var closestMinuteTime = Math.floor(Number(tickDataDict["time"])/divisor)*divisor
+		var differenceInTime = currentTime - closestMinuteTime
+
+		if(optionTickOpen == 0)
+			optionTickOpen = tickDataDict["open"]
+		if(differenceInTime == 2){
+			optionTickOpen = tickDataDict["open"]
+			optionTickLow = tickDataDict["low"]
+			optionTickHigh = tickDataDict["high"]
+			optionTickClose = tickDataDict["close"]
+		}
+		optionTickLow = Math.min(optionTickLow,Number(tickDataDict["low"]) )
+		optionTickHigh = Math.max(optionTickHigh,Number(tickDataDict["high"]) )
+		optionTickClose = tickDataDict["close"]
+		tickDataDict["open"] = optionTickOpen
+		tickDataDict["low"] = optionTickLow
+		tickDataDict["high"] = optionTickHigh
+		tickDataDict["close"] = optionTickClose
+		//console.log(closestMinuteTime +":"+differenceInTime)
+		tickDataDict["time"] = closestMinuteTime
+		
+		if (differenceInTime > 5 && differenceInTime < (divisor - 5)){
+			try{
+				//console.log(closestMinuteTime +":"+differenceInTime)
+				optionSeries.update(tickDataDict);
+			}catch(e){console.log(e)}
+		}
+	}
 	//chart.timeScale().fitContent();
 }
 
