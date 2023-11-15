@@ -1,6 +1,7 @@
 <html>
 	<head>
-
+	<meta name="viewport" content="width=device-width, user-scalable=no" />
+	<link rel="manifest" href= "manifest.json" />
 <!--  jQuery v3.0.0-beta1 for dynatable-->
 <!-- <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"></script>-->
 <!-- for date picker -->
@@ -56,13 +57,20 @@ caption {
 	padding:2px !important;
 	font-size:14px;
 }
-.marketDepth { border-collapse: collapse; width:250px; }
+.marketDepth { border-collapse: collapse; width:300px; }
 .marketDepth th { background-color: "#ADD8E6"; !important; }
 .marketDepth th, .marketDepth td {
 	font-size:10px !important;
 	border: solid 1px #777; 
 	padding: 1px;
+	
 }
+
+.marketDepth thead tr th { color: white !important;}
+.marketDepth tbody tr td:nth-child(1), .marketDepth tbody tr td:nth-child(4) { width: 50px }
+.marketDepth tbody tr td:nth-child(2), .marketDepth tbody tr td:nth-child(5) { width: 30px }
+.marketDepth tbody tr td:nth-child(1), .marketDepth tbody tr td:nth-child(2),.marketDepth tbody tr td:nth-child(3) { color: blue }
+.marketDepth tbody tr td:nth-child(4), .marketDepth tbody tr td:nth-child(5),.marketDepth tbody tr td:nth-child(6) { color: red }
 	
 input[type=number]::-webkit-inner-spin-button, 
 input[type=number]::-webkit-outer-spin-button {
@@ -72,6 +80,26 @@ input[type=number]::-webkit-outer-spin-button {
 	
 
 <script type="text/javascript">
+	
+	//navigator.serviceWorker && navigator.serviceWorker.register('./static/sw.js').then(function(registration) {  console.log('Excellent, 	registered with scope: ', registration.scope);});
+	// Initialize deferredPrompt for use later to show browser install prompt.
+	
+	let deferredPrompt;
+
+	window.addEventListener('beforeinstallprompt', (e) => {
+	  // Prevent the mini-infobar from appearing on mobile
+	  e.preventDefault();
+	  // Stash the event so it can be triggered later.
+	  deferredPrompt = e;
+	  // Update UI notify the user they can install the PWA
+	  //showInstallPromotion();
+	  // Optionally, send analytics event that PWA install promo was shown.
+	  console.log(`'beforeinstallprompt' event was fired.`);
+	});
+	
+	</script>
+	
+<script type="text/javascript">	
 	 var baseServerUrl = "http://127.0.0.1:5000"
 	 var socket = io("http://127.0.0.1:5000");
 	 socket.on('connect', function() {
@@ -137,6 +165,8 @@ $( function() {
 				</script>
 				
 			</td>
+		</tr>
+		<tr style="height:20px"><td></td>
 		</tr>
 		<tr>
 			<td>
@@ -221,7 +251,7 @@ $( function() {
 				<BR/>
 				<table border="1" bordercolor="black" class="dynatable-header">
 					<caption id="orderMessages" style="text-align:left;color:red">Select stock from watchlist to place order.</caption>
-					<tr><th>Stock</th><th>B/S</th><th>Qty</th><th>Price</th><th>SL</th><th></th><th></th></tr>
+					<tr><th>Stock</th><th>B/S</th><th>M/L</th><th>Qty</th><th>Price</th><th>SL</th><th></th><th></th></tr>
 				<tr>
 					<td style="width:225px">
 						<div style="display:inline;font-size:12px;">
@@ -231,6 +261,11 @@ $( function() {
 					</td>
 					<td style="width:30px">	
 						<div id="orderAction" style="padding:3px;text-align:center;color:black;font-size:12px;display:inline;font-weight:bold"></div>
+					</td>
+					<td style="margin-bottom:0px;padding:0px;text-align:center;color:black;font-size:8px;font-weight:bold">
+						<div style="margin-bottom:0px;padding:0px;font-size:10px;text-align:left">&nbsp;M&nbsp;&nbsp;&nbsp;L</div>
+						<input onchange="handleOrderTypeChange(this)" style="margin-top:0px;" type="radio" value="market" name="orderType"   />&nbsp;
+						<input onchange="handleOrderTypeChange(this)" style="margin-top:0px;" type="radio" value="limit" name="orderType" checked="checked"/>
 					</td>
 					<td>
 						<input id="orderQty" type="number" style="margin-bottom:0px;display:inline;text-align:center;width:70px;height:30px" value="15" step=15 required/>

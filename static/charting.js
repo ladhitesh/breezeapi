@@ -244,7 +244,7 @@ async function resetInterval(event, newInterval){
 }
 
 fromDateStr = moment().format("YYYY-MM-DD")+"T09:15:00.000Z"
-toDateStr = moment().format("YYYY-MM-DD")+"T15:30:00.000Z"
+toDateStr = moment().format("YYYY-MM-DD")+"T19:30:00.000Z"
 
 async function setChartRange(days){
 	fromDateStr = moment().subtract(days,'d').format("YYYY-MM-DD")+"T09:15:00.000Z"

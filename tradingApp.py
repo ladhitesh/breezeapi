@@ -1,7 +1,7 @@
 
 # A very simple Flask Hello World app for you to get started with...
 
-from flask import Flask, request, redirect, session, jsonify, render_template
+from flask import Flask, request, redirect, session, jsonify, render_template, send_from_directory
 import os
 from flask_cors import CORS, cross_origin
 from breeze_connect import BreezeConnect
@@ -38,6 +38,11 @@ myapi = breezeapi.MyBreezeApi(app.api_key)
     # Other headers can be added here if needed
 #    return response
 
+
+@app.route('/manifest.json')
+@cross_origin()
+def serve_manifest():
+	return send_from_directory('static', "manifest.json")
 
 @app.route('/static/<path:path>')
 @cross_origin()
@@ -99,7 +104,16 @@ def disconnect():
 	for subs in subsMDPair:
 		print(unsubscribeMarketDepth(subs))
 			
-		
+
+			
+def getApiSessionFromFile():
+	apiSession = ""
+	file_path = './bzapisessions/*'
+	files = sorted(glob.iglob(file_path), key=os.path.getctime, reverse=True)
+	if len(files) > 0:
+		apiSession = os.path.basename(files[0])
+	return apiSession
+	
 
 @app.route('/connect', methods=['GET', 'POST'])
 @cross_origin()
@@ -109,10 +123,7 @@ def connectApi():
 	loginMessage = "Not logged in."
 	invalidSessionMsg = ""
 	if apiSession == "no-breezeapi-session":
-		file_path = './bzapisessions/*'
-		files = sorted(glob.iglob(file_path), key=os.path.getctime, reverse=True)
-		if len(files) > 0:
-			apiSession = os.path.basename(files[0])
+		apiSession = getApiSessionFromFile()
 	else:
 		try:
 			file_path = './bzapisessions/'+apiSession
@@ -144,7 +155,12 @@ def connectApi():
 def oneClick():
 	if not myapi.isConnected:
 		return redirect("/connect", code=302)
-	apiSession = session["apisession"]
+	apiSession = session.get("apisession","")
+	if apiSession == "" or apiSession == "no-breezeapi-session":
+		print("api connected but session destroyed/tab closed.")
+		print("getting apisession from file")
+		apiSession = getApiSessionFromFile()
+		return redirect("/connect", code=302)
 	loginMessage = getCustomerDetails(apiSession)
 	output = "Most recent session:"+apiSession
 	return render_template("index.html", output=output, apiSession=apiSession, loginMessage=loginMessage)	
