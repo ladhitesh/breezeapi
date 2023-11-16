@@ -18,9 +18,10 @@ class RightType(Enum):
     put = "PUT"
     @staticmethod
     def from_str(label):
-        if label in ('CE', 'ce'):
+        label = label.lower()
+        if label in ('ce','call'):
             return RightType.call
-        elif label in ('PE', 'pr'):
+        elif label in ('pe','put'):
             return RightType.put
         else:
             raise NotImplementedError
@@ -88,16 +89,19 @@ class  MyBreezeApi():
 			expiry = codeArr[2]
 			strike = "NA"
 			right = "NA"
+			product = "futures"
 		else:
 			codeArrRevSplit = codeArr[2].rsplit("-", 2)
 			#print(codeArrRevSplit)
 			expiry = codeArrRevSplit[0]  #'26-Oct-2023'
 			strike = codeArrRevSplit[1]
 			right = codeArrRevSplit[2]
+			product="options"
 		df_row["fnoType"] = fnoType
 		df_row["expiry"] = expiry
 		df_row["strike"] = strike
 		df_row["right"] = right
+		df_row["product"] = product
 		return df_row
 
 	def getFnOStocks(self,*searchList):
@@ -118,12 +122,12 @@ class  MyBreezeApi():
 		resultJsonDict = json.loads(resultJsonStr)
 		return resultJsonDict
     
-	def getBrokerages(self,exchangeCode,stockCode,orderType="market",price="0",action="buy",quantity="1"):
-		print("exchangeCode=" + exchangeCode + ", stockcode= " + stockCode)
-		stock = self.api.get_names(exchange_code=exchangeCode, stock_code=stockCode)['isec_stock_code']
-		brokerages = self.api.preview_order( stock_code = stock,
+	def getBrokerages(self,exchangeCode,stockCode,product,orderType,price,action,quantity):
+		#print("exchangeCode=" + exchangeCode + ", stockcode= " + stockCode)
+		#stock = self.api.get_names(exchange_code=exchangeCode, stock_code=stockCode)['isec_stock_code']
+		brokerages = self.api.preview_order( stock_code = stockCode,
 														exchange_code = exchangeCode,
-														product = "margin",
+														product = product,
 														order_type = orderType,
 														price = price,
 														action = action,
@@ -131,15 +135,15 @@ class  MyBreezeApi():
 														specialflag = "N")
 		return brokerages
     
-	def placeOrder(self,stockcode,strike,expiry,action,right,order_type,price,quantity,stoploss):
+	def placeOrder(self,stockcode,exchangeCode,product,action,orderType,stoploss,quantity,price,expiryDate,rightStr,strike):
 		# Place order
 		todayStr = datetime.now().strftime('%Y-%m-%dT06:00:00.000Z')
-		expiryStr = expiry.strftime('%Y-%m-%dT06:00:00.000Z')
+		expiryStr = expiryDate.strftime('%Y-%m-%dT06:00:00.000Z')
 		buy_order = self.api.place_order(stock_code=stockcode,
-													exchange_code="NFO",
-													product="options",
+													exchange_code=exchangeCode,
+													product=product,
 													action=action,
-													order_type=order_type,
+													order_type=orderType,
 													stoploss=stoploss,
 													quantity=quantity,
 													price=price,
@@ -147,7 +151,7 @@ class  MyBreezeApi():
 													validity_date=todayStr,
 													disclosed_quantity="0",
 													expiry_date=expiryStr,
-													right=right,
+													right=rightStr,
 													strike_price=strike)
 
 		print(buy_order)

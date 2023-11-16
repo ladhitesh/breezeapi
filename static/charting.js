@@ -88,10 +88,10 @@ $(document).ready(function() {
 				var H = optionPrice.high
 				var L = optionPrice.low
 				var C = optionPrice.close
-				optionPriceFormatted = `O<div style="display:inline-block;width:45px;">${O}</div> `
-				optionPriceFormatted = optionPriceFormatted + `H<div style="display:inline-block;width:45px;">${H}</div> `
-				optionPriceFormatted = optionPriceFormatted + `L<div style="display:inline-block;width:45px;">${L}</div> `
-				optionPriceFormatted = optionPriceFormatted + `C<div style="display:inline-block;width:45px;">${C}</div>` 
+				optionPriceFormatted = `O<div style="display:inline-block;width:60px;">${O}</div> `
+				optionPriceFormatted = optionPriceFormatted + `H<div style="display:inline-block;width:60px;">${H}</div> `
+				optionPriceFormatted = optionPriceFormatted + `L<div style="display:inline-block;width:60px;">${L}</div> `
+				optionPriceFormatted = optionPriceFormatted + `C<div style="display:inline-block;width:60px;">${C}</div>` 
 			}
 				
 
@@ -112,66 +112,91 @@ $(document).ready(function() {
 	});
 	
 	if(isApiConnected){
-		//loadBankNiftyData(true);
+		//loadReferenceChart(true);
 		chart.timeScale().fitContent();
 		socket.emit('subscribeQuotes', 'NIFTY BANK', '1second')
-		socket.on('NIFTY BANK-1second', function (ltpData){
-					//console.log(ltpData)
-					if (interval != "30minute"){
-						divisor = 60
-						if(interval == "5minute"){
-							divisor = divisor * 5
-						}
-						tickDataStr = updateTimeNVolumeInTickData(ltpData,false)
-						tickDataDict = JSON.parse(tickDataStr)
-						//console.log(tickDataDict["time"])
-						var currentTime = Number(tickDataDict["time"])
-						var closestMinuteTime = Math.floor(Number(tickDataDict["time"])/divisor)*divisor
-						var differenceInTime = currentTime - closestMinuteTime
-
-						if(indexTickOpen == 0)
-							indexTickOpen = tickDataDict["open"]
-						if(differenceInTime == 2){
-							indexTickOpen = tickDataDict["open"]
-							indexTickLow = tickDataDict["low"]
-							indexTickHigh = tickDataDict["high"]
-							indexTickClose = tickDataDict["close"]
-						}
-						indexTickLow = Math.min(indexTickLow,Number(tickDataDict["low"]) )
-						indexTickHigh = Math.max(indexTickHigh,Number(tickDataDict["high"]) )
-						indexTickClose = tickDataDict["close"]
-						tickDataDict["open"] = indexTickOpen
-						tickDataDict["low"] = indexTickLow
-						tickDataDict["high"] = indexTickHigh
-						tickDataDict["close"] = indexTickClose
-						//console.log(closestMinuteTime +":"+differenceInTime)
-						tickDataDict["time"] = closestMinuteTime
-
-						if (differenceInTime > 5 && differenceInTime < (divisor - 5)){
-							try{
-								//console.log(closestMinuteTime +":"+differenceInTime)
-								futuresSeries.update(tickDataDict);
-							}catch(e){console.log(e)}
-						}
-					}
-					//console.log(tickDataDict["time"])
-
-					ltpDataDict = JSON.parse(ltpData);
-					selectorStr = '[id="NIFTY BANK-price"]'
-					ltpElemArr = $(selectorStr);
-					for(elementIndex in ltpElemArr){
-						ltpElemArr[elementIndex].innerHTML = ltpDataDict["close"]
-					}
-			});
+		//decouple this refChartTickListener function
+		socket.on('NIFTY BANK-1second', refChartTickListener);
 	}
 	
 
 });
 
+
+function refChartTickListener(ltpData){
+	//console.log(ltpData)
+	let selectedRefChartOption = $("#refChart :selected")[0];
+	let token = selectedRefChartOption.getAttribute("token")
+	ltpDataDict = JSON.parse(ltpData);
+
+	ltpDatatoken = ltpDataDict['token']
+	if(ltpDatatoken !== token){
+		//unsubscribe unwanted redchart tick data
+		socket.emit('unsubscribeQuotes', ltpDatatoken, '1second')
+		//ignore this data
+		return;
+	}
+	//update tick ltp on chart legend
+	
+	selectorStr = '[id="'+token+'-price"]'
+	ltpElemArr = $(selectorStr);
+	for(elementIndex in ltpElemArr){
+		ltpElemArr[elementIndex].innerHTML = ltpDataDict["close"]
+	}
+
+	//realtime tick update in chart
+	if (interval != "30minute"){
+		divisor = 60
+		if(interval == "5minute"){
+			divisor = divisor * 5
+		}
+		tickDataStr = updateTimeNVolumeInTickData(ltpData,false)
+		tickDataDict = JSON.parse(tickDataStr)
+		//console.log(tickDataDict["time"])
+		var currentTime = Number(tickDataDict["time"])
+		var closestMinuteTime = Math.floor(Number(tickDataDict["time"])/divisor)*divisor
+		var differenceInTime = currentTime - closestMinuteTime
+
+		if(indexTickOpen == 0)
+			indexTickOpen = tickDataDict["open"]
+		if(differenceInTime == 2){
+			indexTickOpen = tickDataDict["open"]
+			indexTickLow = tickDataDict["low"]
+			indexTickHigh = tickDataDict["high"]
+			indexTickClose = tickDataDict["close"]
+		}
+		indexTickLow = Math.min(indexTickLow,Number(tickDataDict["low"]) )
+		indexTickHigh = Math.max(indexTickHigh,Number(tickDataDict["high"]) )
+		indexTickClose = tickDataDict["close"]
+		tickDataDict["open"] = indexTickOpen
+		tickDataDict["low"] = indexTickLow
+		tickDataDict["high"] = indexTickHigh
+		tickDataDict["close"] = indexTickClose
+		//console.log(closestMinuteTime +":"+differenceInTime)
+		tickDataDict["time"] = closestMinuteTime
+
+		if (differenceInTime > 5 && differenceInTime < (divisor - 5)){
+			try{
+				//console.log(closestMinuteTime +":"+differenceInTime)
+				futuresSeries.update(tickDataDict);
+			}catch(e){console.log(e)}
+		}
+	}
+	//console.log(tickDataDict["time"])
+
+	
+}
+
 indexTickOpen = 0
 indexTickLow = 99999 
 indexTickHigh = 0
 indexTickClose = 0
+function resetRefChartTickOpeningLevels(){
+	indexTickOpen = 0
+	indexTickLow = 99999 
+	indexTickHigh = 0
+	indexTickClose = 0	
+}
 
 function drawChartLegend(chartContainer){
 	const legend = document.createElement('div');
@@ -186,17 +211,24 @@ function drawChartLegend(chartContainer){
 	firstRowStockNameDiv.style.color = 'black';
 	firstRowStockNameDiv.style.textAlign = 'left';
 	firstRowStockNameDiv.style.display = 'inline-block';
+	firstRowStockNameDiv.style.fontWeight = "bold"
+	firstRowStockNameDiv.style.fontSize = '12px'
+	firstRowStockNameDiv.style.backgroundColor="#fcfcde"
+	firstRowStockNameDiv.style.width = "230px"
+	firstRowStockNameDiv.style.paddingLeft = "3px"
 	const firstRowStockLtpDiv = document.createElement('div');
 	firstRowStockLtpDiv.id = 'set-in-chart-populate-function';
 	firstRowStockLtpDiv.style.textAlign = 'left';
 	firstRowStockLtpDiv.style.display = 'inline-block';
 	firstRowStockLtpDiv.style.color = 'blue';
 	firstRowStockLtpDiv.style.width = '70px';
+	firstRowStockLtpDiv.style.marginLeft = '10px';
 	const firstRowStockOHLCVDiv = document.createElement('div');
 	firstRowStockOHLCVDiv.style.color = 'black';
 	firstRowStockOHLCVDiv.style.textAlign = 'left';
 	firstRowStockOHLCVDiv.style.display = 'inline';
-	
+	firstRowStockOHLCVDiv.style.fontSize = '12px'
+
 	firstRow.appendChild(firstRowStockNameDiv)
 	firstRow.appendChild(firstRowStockLtpDiv)
 	firstRow.appendChild(firstRowStockOHLCVDiv)
@@ -205,25 +237,52 @@ function drawChartLegend(chartContainer){
 
 	const secondRow = document.createElement('div');
 	secondRow.style.textAlign = 'left';
-	const secondRowStockNameDiv = document.createElement('div');
-	secondRowStockNameDiv.innerText = "BANKNIFTY";
-	secondRowStockNameDiv.style.color = 'black';
-	secondRowStockNameDiv.style.textAlign = 'left';
-	secondRowStockNameDiv.style.display = 'inline-block';
-	secondRowStockNameDiv.style.width = '90px';
-	secondRowStockNameDiv.onclick=function(){loadBankNiftyData(toggleBNDataVisible);toggleBNDataVisible=!toggleBNDataVisible;}
+	
+	
+	const secondRowStockNameSelect = document.createElement('select');
+	secondRowStockNameSelect.id="refChart"
+	secondRowStockNameSelect.style.color = 'black';
+	secondRowStockNameSelect.style.backgroundColor="#fcfcde"
+	secondRowStockNameSelect.style.textAlign = 'left';
+	secondRowStockNameSelect.style.display = 'inline-block';
+	secondRowStockNameSelect.style.width = '230px';
+	secondRowStockNameSelect.style.fontSize = '12px'
+	secondRowStockNameSelect.style.padding = "0px"
+	secondRowStockNameSelect.style.margin = "0px"
+	secondRowStockNameSelect.style.border = "0px"
+	secondRowStockNameSelect.style.fontWeight = "bold"
+	secondRowStockNameSelect.setAttribute('onchange','updateReferenceChart();');
+	const secondRowOption1 = document.createElement('option');
+	secondRowOption1.text = "BANKNIFTY"
+	secondRowOption1.value = "CNXBAN"
+	secondRowOption1.setAttribute("token","NIFTY BANK")
+	secondRowOption1.setAttribute("exchangeCode","NSE")
+	secondRowOption1.setAttribute("product","")
+	secondRowOption1.setAttribute("expiry","")
+	secondRowOption1.selected = "selected"
+	const secondRowOption2 = document.createElement('option');
+	secondRowOption2.text = "BANKNIFTY FUT"
+	secondRowOption2.value = "CNXBAN"
+	secondRowOption2.setAttribute("exchangeCode","NFO")
+	secondRowOption2.setAttribute("product","futures")
+	secondRowStockNameSelect.appendChild(secondRowOption1)
+	secondRowStockNameSelect.appendChild(secondRowOption2)
+	
 	const secondRowStockLtpDiv = document.createElement('div');
 	secondRowStockLtpDiv.id = 'NIFTY BANK-price';
 	secondRowStockLtpDiv.style.textAlign = 'left';
 	secondRowStockLtpDiv.style.display = 'inline-block';
 	secondRowStockLtpDiv.style.color = 'blue';
 	secondRowStockLtpDiv.style.width = '70px';
+	secondRowStockLtpDiv.style.marginLeft = '10px';
 	const secondRowStockOHLCVDiv = document.createElement('div');
 	secondRowStockOHLCVDiv.style.color = 'black';
 	secondRowStockOHLCVDiv.style.textAlign = 'left';
 	secondRowStockOHLCVDiv.style.display = 'inline';
+	secondRowStockOHLCVDiv.style.fontSize = '12px'
 	
-	secondRow.appendChild(secondRowStockNameDiv)
+	//secondRow.appendChild(secondRowStockNameDiv)
+	secondRow.appendChild(secondRowStockNameSelect)
 	secondRow.appendChild(secondRowStockLtpDiv)
 	secondRow.appendChild(secondRowStockOHLCVDiv)
 	
@@ -231,15 +290,14 @@ function drawChartLegend(chartContainer){
 	return [firstRowStockOHLCVDiv,secondRowStockOHLCVDiv];
 }
 
-var toggleBNDataVisible = true
-
+var toggleRefChartVisible = true
 var interval = "5minute"
 
 async function resetInterval(event, newInterval){
 	clearOptionsChartData();
-	clearBankniftyChartData();
+	clearRefChartData();
 	interval = newInterval
-	await loadBankNiftyData(true).then(result => {console.log(result)});
+	await loadReferenceChart(true).then(result => {console.log(result)});
 	await loadOptionsData(currentHiddenDataDivId)
 }
 
@@ -248,24 +306,58 @@ toDateStr = moment().format("YYYY-MM-DD")+"T19:30:00.000Z"
 
 async function setChartRange(days){
 	fromDateStr = moment().subtract(days,'d').format("YYYY-MM-DD")+"T09:15:00.000Z"
-	await loadBankNiftyData(true).then(result => {console.log(result)});
+	await loadReferenceChart(true).then(result => {console.log(result)});
 	await loadOptionsData(currentHiddenDataDivId)
 }
 
-async function getHistoricalData(stockCode,exchangeCode,fnotype,expiry,strike,right){
+async function updateReferenceChart(){
+	
+	let selectedRefChartOption = $("#refChart :selected");
+	let selectedRefChartText = selectedRefChartOption.text();
+	let selectedRefChartStockCode = selectedRefChartOption.val();
+	console.log("updating reference chart-"+selectedRefChartStockCode+":"+selectedRefChartText)
+	//console.log($("#refChart")[0])
+	//update token
+	let product = selectedRefChartOption[0].getAttribute("product")
+	let searchStr = ""
+	if(product == "futures"){
+		searchStr = "FUT "
+		searchStr = searchStr + selectedRefChartStockCode
+		let fnoStocksUrl = baseServerUrl + '/getFnOStocks?' + new URLSearchParams({'searchStr': searchStr})
+		await callApi(fnoStocksUrl).then(result => {fnOJsonArr=result});
+		//console.log(fnOJsonArr[0])
+		let token = fnOJsonArr[0]["token"]
+		let expiry = fnOJsonArr[0]["expiry"]
+		expiry1806Format = moment(expiry,"DD-MMM-YYYY").format("YYYY-MM-DD")+"T19:30:00.000Z"
+		selectedRefChartOption[0].setAttribute("token",token)
+		selectedRefChartOption[0].setAttribute("expiry",expiry1806Format)
+		if(!selectedRefChartOption.text().includes(expiry)){
+			selectedRefChartOption.text(selectedRefChartOption.text() + " " + expiry)
+		}
+		//update id for tick data
+		let ltpDivObj = $("#refChart")[0].nextSibling
+		ltpDivObj.id = token + "-price"
+	}
+	resetRefChartTickOpeningLevels();
+	loadReferenceChart(true);
+
+}
+
+async function getHistoricalData(stockCode,exchangeCode,product,expiry,strike,right){
 
 	//interval = "5minute"
+	//console.log(exchangeCode)
 
 	var hDataParams = new URLSearchParams({
 		'fromDate' : fromDateStr,
-		'exchangeCode' : exchangeCode,
 		'toDate' : toDateStr,
 		'stockCode' : stockCode,
 		'interval' : interval,
 		'strike' : strike,
 		'expiry' : expiry,
 		'right' : right,
-		'product' : fnotype,
+		'product' : product,
+		'exchangeCode' : exchangeCode
 	})
 	var hDataResultJsonArr = null
 	var hDataUrl = baseServerUrl + '/getHistoricalData?' + hDataParams
@@ -279,29 +371,45 @@ async function getHistoricalData(stockCode,exchangeCode,fnotype,expiry,strike,ri
 	return hDataArr;
 }
 
-//var bnDataVisible = false
-async function loadBankNiftyData(bnDataVisible){
+prevRefChartToken = "";
+
+//var refChartVisible = false
+async function loadReferenceChart(refChartVisible){
 	try{
 		
-		if (bnDataVisible!= undefined && !bnDataVisible){
+		let selectedRefChartOption = $("#refChart :selected")[0];
+		let stockCode = selectedRefChartOption.value
+		let exchangeCode = selectedRefChartOption.getAttribute("exchangeCode")
+		let token = selectedRefChartOption.getAttribute("token")
+		let product = selectedRefChartOption.getAttribute("product")
+		let expiry = selectedRefChartOption.getAttribute("expiry")
+		
+		if (refChartVisible!= undefined && !refChartVisible){
+			socket.emit('unsubscribeQuotes', token, interval)
+			socket.emit('unsubscribeQuotes', token, "1second")
 			futuresSeries.setData([]);
 			return;
 		}
 		
-		stockCode = "CNXBAN"
-		exchangeCode = "NSE"
-
+		if(prevRefChartToken != "" && token != prevRefChartToken ){
+			socket.emit('unsubscribeQuotes', prevRefChartToken, interval)
+			socket.emit('unsubscribeQuotes', prevRefChartToken, "1second")
+		}
+		
 		hDataArr = []
-		await getHistoricalData(stockCode,exchangeCode,"","","","").then(result => {hDataArr=result});
+		await getHistoricalData(stockCode,exchangeCode,product,expiry,"","").then(result => {hDataArr=result});
 		//console.log(hDataArr)
 		futuresSeries.setData(hDataArr);
 		//chart.timeScale().fitContent();
-		//cnxban index token
-		token = "NIFTY BANK"
+
 		socket.emit('subscribeQuotes', token, interval)
+		socket.emit('subscribeQuotes', token, '1second')
 		socket.on(token+'-'+interval, function (ohlcvData){
 			updateIndexChart(ohlcvData)
 		});
+		socket.on(token+'-1second', refChartTickListener);
+		
+		prevRefChartToken = token
 		
 		//socket.emit('unsubscribeQuotes', "NIFTY BANK", "1second")
 
@@ -326,8 +434,10 @@ function clearOptionsChartData(){
 	//chart.timeScale().fitContent();
 }
 
-function clearBankniftyChartData(){
-	socket.emit('unsubscribeQuotes', "NIFTY BANK", interval);
+function clearRefChartData(){
+	let selectedRefChartOption = $("#refChart :selected")[0];
+	let token = selectedRefChartOption.getAttribute("token")
+	socket.emit('unsubscribeQuotes', token, interval);
 	futuresSeries.setData([]);
 	//chart.timeScale().fitContent();
 }
@@ -356,6 +466,7 @@ async function loadOptionsData(hiddenDataDivId){
 			stockCode = hiddenDivObj.dataset.stockcode
 			exchangeCode = hiddenDivObj.dataset.exchangecode
 			fnotype = hiddenDivObj.dataset.fnotype
+			product = hiddenDivObj.dataset.product
 			expiry = hiddenDivObj.dataset.expiry
 			expiry = moment(expiry,"DD-MMM-YYYY").format("YYYY-MM-DD")+"T00:00:00.000Z"
 			strike = hiddenDivObj.dataset.strike
@@ -377,7 +488,7 @@ async function loadOptionsData(hiddenDataDivId){
 			$("#optionsChartStockName")[0].nextSibling.id=token+"-price"
 
 			hDataArr = []
-			await getHistoricalData(stockCode,exchangeCode,fnotype,expiry,strike,right).then(result => {hDataArr=result});
+			await getHistoricalData(stockCode,exchangeCode,product,expiry,strike,right).then(result => {hDataArr=result});
 			
 			var vDataArr = JSON.parse(JSON.stringify(hDataArr))
 			const upColor='#82e3d9' 

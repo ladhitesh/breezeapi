@@ -186,9 +186,9 @@ $( function() {
 					<tr>
 						<td colspan = "7">
 							<div style="display:inline;margin-bottom:0px;height:30px">FnO allocated: </div>
-							<div id="fnoAllocated" style="display:inline-block;width:60px;color:gray;">0</div>
+							<div id="fnoAllocated" style="display:inline-block;width:80px;color:gray;">0</div>
 							<div style="display:inline"> FnO blocked: </div>
-							<div id="fnoBlocked" style="display:inline-block;width:60px;color:gray;">0</div>
+							<div id="fnoBlocked" style="display:inline-block;width:80px;color:gray;">0</div>
 							<div style="display:inline;margin-bottom:0px;height:30px"><button onClick="refreshFunds()">Refresh</button></div>
 						</td>
 					</tr>
@@ -240,7 +240,7 @@ $( function() {
 			</table>
 			<BR/>
 			<div width="100%">
-				<input id="seachStock" style="margin-bottom:0px;height:30px" type="text" value="OPT CNXBAN 43000 CE" />
+				<input id="seachStock" style="margin-bottom:0px;height:30px" type="text" value="OPT CNXBAN 44000 CE" />
 				<input type="button" onClick="getWatchListStocks()" value="Fetch Stocks" />
 				<BR/>
 				<select id="stock-selection" style="width:300px;margin-bottom:0px;height:30px">
@@ -268,13 +268,13 @@ $( function() {
 						<input onchange="handleOrderTypeChange(this)" style="margin-top:0px;" type="radio" value="limit" name="orderType" checked="checked"/>
 					</td>
 					<td>
-						<input id="orderQty" type="number" style="margin-bottom:0px;display:inline;text-align:center;width:70px;height:30px" value="15" step=15 required/>
+						<input id="orderQty" type="number" style="margin-bottom:0px;display:inline;text-align:center;width:70px;height:30px" value="15" step=15 min 0 required/>
 					</td>
 					<td>
-						<input id="orderPrice" type="number" style="margin-bottom:0px;text-align:center;width:70px;height:30px" value="0" step=0.05 required/>
+						<input id="orderPrice" type="number" style="margin-bottom:0px;text-align:center;width:70px;height:30px" value="0" step=0.05 min=0 required/>
 					</td>
 					<td>
-						<input id="orderSl" type="number" style="margin-bottom:0px;text-align:center;width:70px;height:30px" value="0" step=0.05 required/>
+						<input id="orderSl" type="number" style="margin-bottom:0px;text-align:center;width:70px;height:30px" value="0" step=0.05 min=0 required/>
 					</td>
 					<td>
 						<input id="orderButton" type="button" onClick="addOrder()" style=";display:inline;text-align:center;height:30px" value="Order"/>
@@ -298,7 +298,7 @@ $( function() {
 						 <th>SL</th>
 						 <th>Status</th>
 						 <th>X</th>
-						 <th>Modify</th>
+						 <th>Edit</th>
 			  </thead>
 				<tbody>
 				</tbody>

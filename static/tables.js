@@ -155,7 +155,7 @@ async function makeOrderRecord(hiddenDivObj,orderId,orderTime,stock,action,qty,p
 	record.type=action
 	record.status="<div id='status-"+orderId+"'>"+orderStatus+"</div>"
 	record.x=cancelButton
-	record.modify=modifyButton
+	record.edit=modifyButton
 	record.price="<div id='price-"+orderId+"'>"+price+"</div>"
 	record.sl=stoploss
 	return record
@@ -165,16 +165,18 @@ async function makePositionRecord(hiddenDivObj,stock,action,qty,price){
 	var action = action
 	var qty = qty
 	var price = price
-	exitButton = `<img onClick='squareoffStock("${stock}","${hiddenDivObj.id}","${qty}")' src="/static/images/exit.png" width="40" height="20"/>`
+	var exitButton = `<img onClick='squareoffStock("${stock}","${hiddenDivObj.id}","${qty}")' src="/static/images/exit.png" width="40" height="20"/>`
 
-	ltpDiv = document.createElement('div');
+	var showChart = `&nbsp;<img onClick='loadOptionsData("${hiddenDivObj.id}")' src='/static/images/chart.png' width='18' height='18' alt='Show Chart' style='display:inline'>`
+	
+	var ltpDiv = document.createElement('div');
 	ltpDiv.id = hiddenDivObj.dataset.token + '-price'
 	ltpDiv.setAttribute("priceType","op-"+stock)
 	ltpDiv.innerHTML = price
 
 	record = new Object();
 	record.hiddenColumn=hiddenDivObj.outerHTML;
-	record.stock=stock
+	record.stock=stock + showChart
 	record.type=action
 	record.qty=qty
 	record.price=price
@@ -194,25 +196,25 @@ function calculateLivePnl(mutationRecord){
 		pnlObj = mutationRecord[0].target.parentElement.nextSibling
 		pnl = (quantity*ltp) - (quantity*cost);
 		pnl = Math.round(pnl * 100) / 100
+		pnlObj.style.fontWeight = "bold"
+		pnlObj.style.color = pnl < 0 ? "red" : "green"
 		pnlObj.innerHTML = pnl
 	}catch(e){console.log(e)}
 }
 
-async function getStockToken(hiddenDivObj){
+async function getStockToken(stockCode,exchangeCode,product,expiry,strike,right){
 	var stockTokenArr
-	fnotype = hiddenDivObj.dataset.fnotype
-	if(fnotype == "OPT")
-		fnotype = "Options"
-	right = hiddenDivObj.dataset.right
+	//product = hiddenDivObj.dataset.product
+	//right = hiddenDivObj.dataset.right
 	if(right == "CE"){right="Call"}else if (right=="PE"){right="Put"}
 	
 	var stockTokenParams = new URLSearchParams({
-			'stockCode' : hiddenDivObj.dataset.stockcode,
-			'strike' : hiddenDivObj.dataset.strike,
-			'expiryDate' : hiddenDivObj.dataset.expiry,
-			'rightType' : right,
-			'productType' : fnotype,
-			'exchangeCode' : hiddenDivObj.dataset.exchangecode,
+			'stockCode' : stockCode,
+			'exchangeCode' : exchangeCode,
+			'productType' : product,
+			'expiryDate' : expiry,
+			'strike' : strike,
+			'rightType' : right
 		})
 	var stockTokenUrl = baseServerUrl + '/getStockToken?'+stockTokenParams
 	await callApi(stockTokenUrl).then(result => {stockTokenArr=result});
@@ -240,16 +242,21 @@ async function populateOpenPositions(){
 		price = openPositionsJsonArr[openPositionIndex]["average_price"]
 		
 		//stock name
-		product = openPositionsJsonArr[openPositionIndex]["product_type"]
-		if(product=="Options"){product="OPT"}
+		product = openPositionsJsonArr[openPositionIndex]["product_type"].toLowerCase()
+		if(product=="options"){fnotype="OPT"}
+		if(product=="futures"){fnotype="FUT"}
+		
 		stockCode = openPositionsJsonArr[openPositionIndex]["stock_code"]
 		expiry = openPositionsJsonArr[openPositionIndex]["expiry_date"]
 		strike = openPositionsJsonArr[openPositionIndex]["strike_price"]
 		exchangecode = openPositionsJsonArr[openPositionIndex]["exchange_code"]
 		right = openPositionsJsonArr[openPositionIndex]["right"]
-		if(right == "Call"){right = "CE"} else if(right=="Put"){right="PE"}
-									  
-		stockName = product+'-'+stockCode+'-'+expiry+'-'+strike+'-'+right
+		if(right == "Call"){rightShort = "CE"} else if(right=="Put"){rightShort="PE"}
+		
+		stockName = fnotype+'-'+stockCode+'-'+expiry
+		if(product == "options")
+			stockName = stockName + '-'+strike+'-'+rightShort
+
 		//console.log(stockName)
 		var hiddenDivObj = document.createElement("div");
 		hiddenDivObj.setAttribute("id","op-"+stockName)
@@ -257,12 +264,13 @@ async function populateOpenPositions(){
 		hiddenDivObj.setAttribute("data-code",stockName)
 		hiddenDivObj.setAttribute("data-expiry",expiry)
 		hiddenDivObj.setAttribute("data-strike",strike)
-		hiddenDivObj.setAttribute("data-right",right)
-		hiddenDivObj.setAttribute("data-fnotype",product)
+		hiddenDivObj.setAttribute("data-right",rightShort)
+		hiddenDivObj.setAttribute("data-fnotype",fnotype)
+		hiddenDivObj.setAttribute("data-product",product)
 		hiddenDivObj.setAttribute("data-exchangecode",exchangecode)
 		
 		var stockTokenDict
-		await getStockToken(hiddenDivObj).then(result => stockTokenDict = result);
+		await getStockToken(stockCode,exchangecode,product,expiry,strike,right).then(result => stockTokenDict = result);
 		const token = stockTokenDict["quotesToken"].split("!")[1]
 		console.log("token for openposition: "+token)
 		hiddenDivObj.setAttribute("data-token",token)
@@ -310,7 +318,7 @@ async function populateOrderList(){
 
 		
 		orderId = orderListJsonArr[orderIndex]["order_id"]
-		orderTime = orderListJsonArr[orderIndex]["order_datetime"]
+		orderTime = moment(orderListJsonArr[orderIndex]["order_datetime"],"DD-MMM-YYYY HH:mm:ss").format("HH:mm:ss")
 		quantity = orderListJsonArr[orderIndex]["quantity"]
 		price = orderListJsonArr[orderIndex]["price"]
 		status = orderListJsonArr[orderIndex]["status"]
@@ -320,8 +328,9 @@ async function populateOrderList(){
 		orderType = orderListJsonArr[orderIndex]["order_type"]
 		pendingQuantity = orderListJsonArr[orderIndex]["pending_quantity"]
 		//stock name
-		product = orderListJsonArr[orderIndex]["product_type"]
-		if(product=="Options"){product="OPT"}
+		product = orderListJsonArr[orderIndex]["product_type"].toLowerCase()
+		if(product=="options"){fnotype="OPT"}
+		if(product=="futures"){fnotype="FUT"}
 		stockCode = orderListJsonArr[orderIndex]["stock_code"]
 		expiry = orderListJsonArr[orderIndex]["expiry_date"]
 		strike = orderListJsonArr[orderIndex]["strike_price"]
@@ -330,7 +339,9 @@ async function populateOrderList(){
 		right = orderListJsonArr[orderIndex]["right"]
 		if(right == "Call"){right = "CE"} else if(right=="Put"){right="PE"}
 									  
-		stockName = product+'-'+stockCode+'-'+expiry+'-'+strike+'-'+right
+		stockName = fnotype+'-'+stockCode+'-'+expiry
+		if(product == "options")
+			stockName = stockName + '-'+strike+'-'+right
 		//console.log(stockName)
 		var hiddenDivObj = document.createElement("div");
 		hiddenDivObj.setAttribute("id","ol-"+orderId)
@@ -340,7 +351,8 @@ async function populateOrderList(){
 		hiddenDivObj.setAttribute("data-expiry",expiry)
 		hiddenDivObj.setAttribute("data-strike",strike)
 		hiddenDivObj.setAttribute("data-right",right)
-		hiddenDivObj.setAttribute("data-fnotype",product)
+		hiddenDivObj.setAttribute("data-fnotype",fnotype)
+		hiddenDivObj.setAttribute("data-product",product)
 		hiddenDivObj.setAttribute("data-exchangecode",exchangecode)
 		await makeOrderRecord(hiddenDivObj,orderId,orderTime,stockName,action,quantity,price,stoploss,orderType,status).then(result => {orderRecords[orderIndex]=result});
 		//console.log(orderRecords[orderIndex].id)
@@ -424,7 +436,8 @@ async function modifyOrder(){
 		}
 	}
 	
-	orderTime = moment().format("DD-MM-YYYY HH:mm:ss")
+	//orderTime = moment().format("DD-MMM-YYYY HH:mm:ss")
+	orderTime = moment().format("HH:mm:ss")
 	orderType = "limit"
 	if (price == 0)
 		orderType = "market"
@@ -432,30 +445,6 @@ async function modifyOrder(){
 	
 	await makeOrderRecord(hiddenOlDivObj,orderId,orderTime,stockName,action,quantity,price,stoploss,orderType,orderStatus)
 		.then(result => {myRecords[recordIndex]=result});
-	
-	
-	/*
-	
-	modifyBtn = `<img id='modifyOrdBtn-${orderId}' onClick='populateModifyOrder(this,"${action}","${qty}","${price}","${orderSl}")' src='/static/images/modify.png' width='20' height='20' />`
-	cancelBtn = `<img id='cancelOrdBtn-${orderId}' onClick='cancelOrder("${orderId}")' src='/static/images/cancel.png' width='20' height='20'/>`
-
-	//myRecords = JSON.parse($records.text());
-	myRecords[recordIndex].hiddenColumn=hiddenOlDivObj.outerHTML
-	myRecords[recordIndex].id=orderTime
-	myRecords[recordIndex].stock=stockName
-	myRecords[recordIndex].qty=quantity
-	myRecords[recordIndex].type=action
-	myRecords[recordIndex].status="<div id='status-"+orderId+"'></div>"
-	myRecords[recordIndex].x=cancelBtn
-	myRecords[recordIndex].modify=modifyBtn	
-	if (price == 0)
-		myRecords[recordIndex].price = "Mkt"
-	else
-		myRecords[recordIndex].price = price
-	
-	myRecords[recordIndex].sl=stoploss
-	
-	*/
 	
 	obj = new Object();
 	obj.records = myRecords;
@@ -479,23 +468,29 @@ async function addOrder(){
 		return
 	}
 	
-	hiddenDivObj = $("#"+hiddenDivId)[0]
-	
-	
+	hiddenDivObj = $("#"+hiddenDivId)[0];
+	hiddenDivObj = $(hiddenDivObj).clone()[0];
+
 	var hiddenOlDivObj = null;
 	var hiddenOrderId = $("#hiddenOrderId")[0].innerText
 	
-	var stock = $('#orderStock')[0].innerText;
+	var stockName = $('#orderStock')[0].innerText;
 	var quantity = $('#orderQty')[0].value;
 	var action = $('#orderAction')[0].innerText;;
 	var price = $('#orderPrice')[0].value;
 	var stoploss = $('#orderSl')[0].value;
+
+	//reset immediately after reading values to avoid duplicate orders
+	clearOrder()
+	
 	var orderId = moment().format("DDMMYYYYHHmmss")
 	
 	//call api to place order and fetch order id
 	//new order
 	var newOrderParams = new URLSearchParams({
 		'stockCode' : hiddenDivObj.dataset.stockcode,
+		'exchangeCode' : hiddenDivObj.dataset.exchangecode,
+		'product' : hiddenDivObj.dataset.product, 
 		'strike' : hiddenDivObj.dataset.strike,
 		'expiryDate' : hiddenDivObj.dataset.expiry,
 		'action' : action.toLowerCase(),
@@ -537,7 +532,8 @@ async function addOrder(){
 	myRecords = [new Object()];
 
 	
-	orderTime = moment().format("DD-MM-YYYY HH:mm:ss")
+	//orderTime = moment().format("DD-MMM-YYYY HH:mm:ss")
+	orderTime = moment().format("HH:mm:ss")
 	orderType = "limit"
 	if (price == 0)
 		orderType = "market"
@@ -545,31 +541,8 @@ async function addOrder(){
 	
 	await makeOrderRecord(hiddenOlDivObj,orderId,orderTime,stockName,action,quantity,price,stoploss,orderType,orderStatus)
 		.then(result => {myRecords[recordIndex]=result});
-	
-	/*
-	modifyBtn = `<img id='modifyOrdBtn-${orderId}' onClick='populateModifyOrder(this,"${action}","${quantity}","${price}","${stoploss}")' src='/static/images/modify.png' width='20' height='20' />`
-	cancelBtn = `<img id='cancelOrdBtn-${orderId}' onClick='cancelOrder("${orderId}")' src='/static/images/cancel.png' width='20' height='20'/>`
 
-	//myRecords = JSON.parse($records.text());
-	myRecords[recordIndex].hiddenColumn=hiddenOlDivObj.outerHTML
-	myRecords[recordIndex].id=orderTime
-	myRecords[recordIndex].stock=stock
-	myRecords[recordIndex].qty=quantity
-	myRecords[recordIndex].type=action
-	myRecords[recordIndex].status="<div id='status-"+orderId+"'></div>"
-	myRecords[recordIndex].x=cancelBtn
-	myRecords[recordIndex].modify=modifyBtn	
-
-	if (price == 0)
-		myRecords[recordIndex].price = "Mkt"
-	else
-		myRecords[recordIndex].price = price
-	
-	myRecords[recordIndex].sl=stoploss
-	*/
-	
 	myRecords = myRecords.concat(existingRecords);
-
 	
 	obj = new Object();
 	obj.records = myRecords;
@@ -578,8 +551,6 @@ async function addOrder(){
 	orderListTable.records.updateFromJson(obj)
 	orderListTable.dom.update();
 
-	//reset
-	clearOrder()
 }
 async function cancelOrder(cancelOrderId){
 	var captionObj = $("#orderMessages")[0]
@@ -714,7 +685,7 @@ function addToWatchList() {
 	
 	var showChart = "&nbsp;<img onClick='loadOptionsData(\""+hiddenDivId+"\")' src='/static/images/chart.png' width='18' height='18' alt='Show Chart' style='display:inline'>"
 	
-	var showMarketDepth = `&nbsp;<img  style='display:inline' onClick='showMarketDepth(this,"${hiddenDivId}")' src='/static/images/bidask.png' width='18' height='18' alt='Show Market Depth' />`
+	var showMarketDepth = `&nbsp;<img  style='display:inline' onClick='showMarketDepth("${hiddenDivId}")' src='/static/images/bidask.png' width='18' height='18' alt='Show Market Depth' />`
 	
 	var marketDepthTable = `<div id='marketDepth-${hiddenDivId}'></div>`
 	myRecords = [new Object()];
@@ -877,20 +848,28 @@ async function refreshFunds(){
 
 function hideMarketDepth(){
 	//alert("hiding MD")
-	MDTableDivArr = $("[id^='marketDepth']")
+	let MDTableDivArr = $("[id^='marketDepth']").get()
 	for(elementIndex in MDTableDivArr){
-			MDTableDivArr[elementIndex].innerHTML = ""
+		let MDTableDiv = MDTableDivArr[elementIndex]
+		let hiddenDivId = (MDTableDiv.id).split(/-(.*)/s)[1]
+		let hiddenDivObj = $("#"+hiddenDivId)[0]
+		if(MDTableDiv.innerHTML != ""){
+			MDTableDiv.innerHTML = ""
+			console.log("unsubscribing market depth for token:"+hiddenDivObj.dataset.token)
+			unsubscribeMarketDepth(hiddenDivObj.dataset.token)
+		}
 	}
 }
 
-function showMarketDepth(divObj,hiddenDivId){
+function showMarketDepth(hiddenDivId){
 	MDTableDiv = $("#marketDepth-"+hiddenDivId)[0]
+	hiddenDivObj = $("#"+hiddenDivId)[0]
 	if(MDTableDiv.innerHTML != ""){
 		MDTableDiv.innerHTML = ""
+		console.log("unsubscribing market depth for token:"+hiddenDivObj.dataset.token)
 		unsubscribeMarketDepth(hiddenDivObj.dataset.token)
 		return;
 	}
-	hiddenDivObj = $("#"+hiddenDivId)[0]
 	MDTableStart = `<table class="marketDepth" id='MD-${hiddenDivObj.dataset.token}' width='100%'><thead><tr><th>Bid</th><th>Orders</th><th>Qty</th><th>Ask</th><th>Orders</th><th>Qty</th></tr></thead><tbody>`
 	MDTableEnd = "</tbody></table>"
 	MDTableDiv.innerHTML=MDTableStart+MDTableEnd

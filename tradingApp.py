@@ -266,19 +266,27 @@ def getOpenPositions():
 def placeOrder():
 	queryParams = request.args.to_dict()
 	stockCode = queryParams.get("stockCode","CNXBAN")
-	strike = queryParams.get("strike")
-	expiryDateStr = queryParams.get("expiryDate")
-	action = queryParams.get("action")
-	rightTypeStr = queryParams.get("rightType")
+	quantity = queryParams.get("quantity","1")
 	priceStr = queryParams.get("price","1")
-	quantity = queryParams.get("quantity","15")
 	stoploss = queryParams.get("stoploss","")
-	expiryDate = datetime.strptime(expiryDateStr, "%d-%b-%Y")
-	rightType = breezeapi.RightType.from_str(rightTypeStr)
+	action = queryParams.get("action")
+	product = queryParams.get("product")
+	exchangeCode = queryParams.get("exchangeCode","NFO")
+	strike = ""
+	rightTypeStr = ""
 	orderType = "limit"
 	if priceStr == "0":
 		orderType = "market"
-	result = myapi.placeOrder(stockCode,strike,expiryDate,action,rightType.name,orderType,priceStr,quantity,stoploss)
+
+	if exchangeCode == "NFO":
+		expiryDateStr = queryParams.get("expiryDate")
+		expiryDate = datetime.strptime(expiryDateStr, "%d-%b-%Y")
+		if product == "options":
+			strike = queryParams.get("strike","NA")
+			rightTypeStr = queryParams.get("rightType","NA")
+			rightTypeEnum = breezeapi.RightType.from_str(rightTypeStr)
+			rightTypeStr = rightTypeEnum.name
+	result = myapi.placeOrder(stockCode,exchangeCode,product,action,orderType,stoploss,quantity,priceStr, expiryDate,rightTypeStr,strike)
 	if result is None:
 		print(result)
 		result = json.loads('{"Error":"Not connected"}')
@@ -371,8 +379,8 @@ def getRealisedPnL():
 
 	groupbyTradesListDfWithPnl = groupbyTradesListDf.groupby(["stock_code"]).agg(realised_pnl=("sum_total_cost","sum"),realised_pnl_with_taxes=("total_cost_with_taxes","sum"))
 	#print(groupbyTradesListDfWithPnl)
-	groupbyTradesListDfWithPnl["realised_pnl"] = groupbyTradesListDfWithPnl["realised_pnl"] - totalOpAmount
-	groupbyTradesListDfWithPnl["realised_pnl_with_taxes"] = groupbyTradesListDfWithPnl["realised_pnl_with_taxes"] - totalOpAmount
+	groupbyTradesListDfWithPnl["realised_pnl"] = round((groupbyTradesListDfWithPnl["realised_pnl"] - totalOpAmount),2)
+	groupbyTradesListDfWithPnl["realised_pnl_with_taxes"] = round((groupbyTradesListDfWithPnl["realised_pnl_with_taxes"] - totalOpAmount),2)
 	resultJsonStr = groupbyTradesListDfWithPnl.to_json(orient = "records")
 	resultJsonDict = json.loads(resultJsonStr)
 	tradesListJsonDict["Success"]=resultJsonDict[0]
@@ -415,8 +423,8 @@ def getHistoricalData():
         hDataJsonDict = json.loads('{"Error":"Not connected"}')
         return (hDataJsonDict,200, {'Content-Type': 'application/json'})
 
-    if not hDataJsonDict["Success"]:
-        print("Empty Historical data")
+    if not hDataJsonDict["Success"] or hDataJsonDict["Error"]:
+        print("Invalid Historical data")
         print(hDataJsonDict)
         return (hDataJsonDict,200, {'Content-Type': 'application/json'})
 
@@ -481,6 +489,7 @@ def feedData(data):
 	eventName = token
 	if interval != "":
 		eventName = token + "-" + interval
+		data['token'] = token
 	#print("emited data for eventName:" + eventName)
 	socketio.emit(eventName, json.dumps(data))
 
