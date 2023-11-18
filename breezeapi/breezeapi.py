@@ -114,7 +114,8 @@ class  MyBreezeApi():
 		requiredCol = stockScriptdf[["TK","CD","EC","SC","SN"]]
 		result = requiredCol.loc[( \
 										  (stockScriptdf["SG"]  == "DERIVATIVE") \
-										  & (stockScriptdf["CD"].str.contains(searchRegex,na=False, case=False)) \
+										  & (stockScriptdf["CD"].str.contains(searchRegex,na=False, case=False)
+											   | stockScriptdf["SN"].str.contains(searchRegex,na=False, case=False) ) \
 										 ) ].head(10).copy()
 		result.rename(columns = {'TK':'token', 'CD':'code','EC':'exchangeCode','SC':'stockCode'}, inplace = True)
 		result = result.apply(self.addFnOStocksAdditionalColumns,axis=1)

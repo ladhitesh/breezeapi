@@ -779,7 +779,13 @@ function orderNotification(notificationData){
 	//$('#output')[0].innerHTML = "<pre>"+new Date().toLocaleString()+" : " + notificationDataDict + "</pre>"
 	orderId = notificationDataDict["orderReference"];
 	orderStatus = notificationDataDict["orderStatus"];
-	console.log("order notification: "+orderId+"-->"+orderStatus)
+	stockCode = notificationDataDict["stockCode"];
+	//console.log("order notification: "+orderId+"-->"+orderStatus)
+	const options = {
+    body: orderId + " " + orderStatus,
+    icon: "/static/images/alert.jpg",
+  };
+  new Notification(stockCode + " " + orderStatus, options);
 	//update status
 	$('#status-'+orderId)[0].innerText = orderStatus
 	if(orderStatus.toLowerCase() == "executed"){

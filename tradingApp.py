@@ -1,7 +1,7 @@
 
 # A very simple Flask Hello World app for you to get started with...
 
-from flask import Flask, request, redirect, session, jsonify, render_template, send_from_directory
+from flask import Flask, request, redirect, session, jsonify, render_template, send_from_directory, url_for
 import os
 from flask_cors import CORS, cross_origin
 from breeze_connect import BreezeConnect
@@ -16,7 +16,6 @@ import json
 import pandas as pd
 import configapi
 
-
 app = Flask(__name__)
 socketio = SocketIO(app)
 #socketioTestClient = socketio.test_client(app)
@@ -28,6 +27,7 @@ app.config['CORS_HEADERS'] = 'Content-Type'
 
 app.api_key = configapi.API_KEY
 app.secret_key = configapi.SECRET_KEY
+app.login_url = configapi.LOGIN_URL + urllib.parse.quote_plus(app.api_key)
 
 myapi = breezeapi.MyBreezeApi(app.api_key)
 
@@ -113,6 +113,34 @@ def getApiSessionFromFile():
 	if len(files) > 0:
 		apiSession = os.path.basename(files[0])
 	return apiSession
+
+
+@app.route('/login', methods=['GET', 'POST'])
+@cross_origin()
+def login():
+	print("login to idirect breeze api")
+	#redirect_uri = url_for('authorize', _external=True)
+	print(app.login_url)
+	#return oauth.breezeapi.authorize_redirect(redirect_uri)
+	return redirect(app.login_url)
+
+@app.route('/authorize', methods=['GET', 'POST'])
+def authorize():
+	print("inside authorize")
+	'''
+	token = oauth.breezeapi.authorize_access_token()
+	print("obtained access token:"+str(token))
+	print("getting repos")
+	resp = oauth.breezeapi.get('/breezeapi/api/v1/customerdetails')
+	resp.raise_for_status()
+	profile = resp.json()
+	# do something with the token and profile
+	print("token :"+str(token))
+	print("profile :"+str(profile))
+	'''
+	queryParams = request.args.to_dict()
+	apiSession = queryParams.get('apisession','')
+	return redirect('/connect?apisession=' + apiSession)
 	
 
 @app.route('/connect', methods=['GET', 'POST'])
@@ -145,7 +173,7 @@ def connectApi():
 			print(e)
 			invalidSessionMsg = ". Session invalid. Create new session from login url."
 	
-	loginUrl = "<a href='https://api.icicidirect.com/apiuser/login?api_key="+urllib.parse.quote_plus(app.api_key)+"'>Login</a>"
+	loginUrl = "<a href='/login'>Login</a>"
 	output = loginUrl +"<br/>Most recent session:"+apiSession+invalidSessionMsg
 	return render_template("index.html", output=output, apiSession=apiSession, loginMessage=loginMessage)	
 

@@ -113,6 +113,8 @@ $(document).ready(function() {
 	today = moment().format("DD-MMM-YYYY");
 	$($("#fromDatepicker")).val(today);
 	$($("#toDatepicker")).val(today);
+
+	Notification.requestPermission();
 })
 	 
 	 
@@ -169,7 +171,7 @@ $( function() {
 		<tr style="height:20px"><td></td>
 		</tr>
 		<tr>
-			<td>
+			<td >
 				<input type="button" value="Clear Output" onClick='document.getElementById("output").innerText=""'/>
 				<BR/>
 				<div style="display:inline-block;width:100px">Intervals(mins)</div>
@@ -182,8 +184,8 @@ $( function() {
 				<button onClick="setChartRange(5)">5</button>
 			</td>
 			<td>
-				<table>
-					<tr>
+				<table width="97%">
+					<tr style="background-color:#f9f9f9;border:solid 1px #777">
 						<td colspan = "7">
 							<div style="display:inline;margin-bottom:0px;height:30px">FnO allocated: </div>
 							<div id="fnoAllocated" style="display:inline-block;width:80px;color:gray;">0</div>
@@ -192,7 +194,7 @@ $( function() {
 							<div style="display:inline;margin-bottom:0px;height:30px"><button onClick="refreshFunds()">Refresh</button></div>
 						</td>
 					</tr>
-					<tr>
+					<tr style="background-color:#f9f9f9;border:solid 1px #777">
 						<td>From :<input type="text" id="fromDatepicker" style="width:100px;margin-bottom:0px;height:30px"></td>
 						<td>To :<input type="text" id="toDatepicker" style="width:100px;margin-bottom:0px;height:30px"></td>
 						<td><input onclick="getRealisedPnl()" type="button" value="Get PnL">

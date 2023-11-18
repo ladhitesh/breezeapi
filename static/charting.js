@@ -298,7 +298,7 @@ async function resetInterval(event, newInterval){
 	clearRefChartData();
 	interval = newInterval
 	await loadReferenceChart(true).then(result => {console.log(result)});
-	await loadOptionsData(currentHiddenDataDivId)
+	await loadOptionsChart(currentHiddenDataDivId, optionsChartVisible)
 }
 
 fromDateStr = moment().format("YYYY-MM-DD")+"T09:15:00.000Z"
@@ -307,7 +307,7 @@ toDateStr = moment().format("YYYY-MM-DD")+"T19:30:00.000Z"
 async function setChartRange(days){
 	fromDateStr = moment().subtract(days,'d').format("YYYY-MM-DD")+"T09:15:00.000Z"
 	await loadReferenceChart(true).then(result => {console.log(result)});
-	await loadOptionsData(currentHiddenDataDivId)
+	await loadOptionsChart(currentHiddenDataDivId, optionsChartVisible)
 }
 
 async function updateReferenceChart(){
@@ -443,7 +443,21 @@ function clearRefChartData(){
 }
 
 var currentHiddenDataDivId = null;
+var optionsChartVisible = true;
 async function loadOptionsData(hiddenDataDivId){
+	newHiddenDataDivId = hiddenDataDivId
+	if(newHiddenDataDivId == currentHiddenDataDivId){
+		//clear options chart data
+		optionSeries.setData([]);
+		volumeSeries.setData([]);
+		currentHiddenDataDivId = null;
+		optionsChartVisible = false;
+		return;
+	}
+	optionsChartVisible = true;
+	loadOptionsChart(hiddenDataDivId, optionsChartVisible)
+}
+async function loadOptionsChart(hiddenDataDivId, optionsChartVisible){
 		try{
 			
 			newHiddenDataDivId = hiddenDataDivId
@@ -451,12 +465,10 @@ async function loadOptionsData(hiddenDataDivId){
 			if(hiddenDivObj == null)
 				return;
 			
-			if(newHiddenDataDivId == currentHiddenDataDivId){
+			if(newHiddenDataDivId == currentHiddenDataDivId && optionsChartVisible){
 				//clear options chart data
 				optionSeries.setData([]);
 				volumeSeries.setData([]);
-				currentHiddenDataDivId = null;
-				return;
 			}
 				
 				
@@ -521,6 +533,7 @@ async function loadOptionsData(hiddenDataDivId){
 			socket.on(this.token+'-'+interval, function (ohlcvData){
 				updateOptionChart(ohlcvData)
 			});
+			resetOptionsChartTickOpeningLevels();
 			socket.on(this.token+'-1second', updateOptionChartRealTime);
 			
 			//socket.emit('unsubscribeQuotes', "NIFTY BANK", "1second")
@@ -567,6 +580,8 @@ function updateIndexChart(data){
 }
 
 function updateOptionChart(data){
+	if(!optionsChartVisible)
+		return;
 	var vtickData = JSON.parse(JSON.stringify(data))
 	var tickData = updateTimeNVolumeInTickData(data,false)
 	vtickData = updateTimeNVolumeInTickData(vtickData,true)
@@ -582,7 +597,16 @@ optionTickLow = 99999
 optionTickHigh = 0
 optionTickClose = 0
 
+function resetOptionsChartTickOpeningLevels(){
+	optionTickOpen = 0
+	optionTickLow = 99999 
+	optionTickHigh = 0
+	optionTickClose = 0
+}
+
 function updateOptionChartRealTime(data){
+	if(!optionsChartVisible)
+		return;
 	var tickDataStr = updateTimeNVolumeInTickData(data,false)
 	if (interval != "30minute"){
 		divisor = 60
