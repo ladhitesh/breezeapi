@@ -221,7 +221,7 @@ function drawChartLegend(chartContainer){
 	firstRowStockLtpDiv.style.textAlign = 'left';
 	firstRowStockLtpDiv.style.display = 'inline-block';
 	firstRowStockLtpDiv.style.color = 'blue';
-	firstRowStockLtpDiv.style.width = '70px';
+	firstRowStockLtpDiv.style.width = '67px';
 	firstRowStockLtpDiv.style.marginLeft = '10px';
 	const firstRowStockOHLCVDiv = document.createElement('div');
 	firstRowStockOHLCVDiv.style.color = 'black';
