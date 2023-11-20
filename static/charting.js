@@ -265,8 +265,23 @@ function drawChartLegend(chartContainer){
 	secondRowOption2.value = "CNXBAN"
 	secondRowOption2.setAttribute("exchangeCode","NFO")
 	secondRowOption2.setAttribute("product","futures")
+	const secondRowOption3 = document.createElement('option');
+	secondRowOption3.text = "NIFTY 50"
+	secondRowOption3.value = "NIFTY"
+	secondRowOption3.setAttribute("token","NIFTY 50")
+	secondRowOption3.setAttribute("exchangeCode","NSE")
+	secondRowOption3.setAttribute("product","equity")
+	secondRowOption3.setAttribute("expiry","")
+	const secondRowOption4 = document.createElement('option');
+	secondRowOption4.text = "NIFTY FUT"
+	secondRowOption4.value = "NIFTY"
+	secondRowOption4.setAttribute("exchangeCode","NFO")
+	secondRowOption4.setAttribute("product","futures")
+
 	secondRowStockNameSelect.appendChild(secondRowOption1)
 	secondRowStockNameSelect.appendChild(secondRowOption2)
+	secondRowStockNameSelect.appendChild(secondRowOption3)
+	secondRowStockNameSelect.appendChild(secondRowOption4)
 	
 	const secondRowStockLtpDiv = document.createElement('div');
 	secondRowStockLtpDiv.id = 'NIFTY BANK-price';
@@ -318,6 +333,7 @@ async function updateReferenceChart(){
 	console.log("updating reference chart-"+selectedRefChartStockCode+":"+selectedRefChartText)
 	//console.log($("#refChart")[0])
 	//update token
+	let token = selectedRefChartOption[0].getAttribute("token")
 	let product = selectedRefChartOption[0].getAttribute("product")
 	let searchStr = ""
 	if(product == "futures"){
@@ -326,7 +342,7 @@ async function updateReferenceChart(){
 		let fnoStocksUrl = baseServerUrl + '/getFnOStocks?' + new URLSearchParams({'searchStr': searchStr})
 		await callApi(fnoStocksUrl).then(result => {fnOJsonArr=result});
 		//console.log(fnOJsonArr[0])
-		let token = fnOJsonArr[0]["token"]
+		token = fnOJsonArr[0]["token"]
 		let expiry = fnOJsonArr[0]["expiry"]
 		expiry1806Format = moment(expiry,"DD-MMM-YYYY").format("YYYY-MM-DD")+"T19:30:00.000Z"
 		selectedRefChartOption[0].setAttribute("token",token)
@@ -334,10 +350,10 @@ async function updateReferenceChart(){
 		if(!selectedRefChartOption.text().includes(expiry)){
 			selectedRefChartOption.text(selectedRefChartOption.text() + " " + expiry)
 		}
-		//update id for tick data
-		let ltpDivObj = $("#refChart")[0].nextSibling
-		ltpDivObj.id = token + "-price"
 	}
+	//update id for tick data
+	let ltpDivObj = $("#refChart")[0].nextSibling
+	ltpDivObj.id = token + "-price"
 	resetRefChartTickOpeningLevels();
 	loadReferenceChart(true);
 
