@@ -196,11 +196,11 @@ def oneClick():
 @app.route('/getFnOStocks', methods=['GET'])
 @cross_origin()
 def getFnOStocks():
-	 queryParams = request.args.to_dict()
-	 searchStr = queryParams.get('searchStr','OPT CNXBAN 43800')
-	 seachStrList = searchStr.split(' ')
-	 fnoStocksDict = myapi.getFnOStocks(*seachStrList)
-	 return (json.dumps(fnoStocksDict),200, {'Content-Type': 'application/json'})
+	queryParams = request.args.to_dict()
+	searchStr = queryParams.get('searchStr','OPT CNXBAN 43800')
+	seachStrList = searchStr.split(' ')
+	fnoStocksDict = myapi.getFnOStocks(*seachStrList)
+	return (json.dumps(fnoStocksDict),200, {'Content-Type': 'application/json'})
 
 
 @app.route('/getExistingSessions', methods=['GET', 'POST'])
@@ -404,32 +404,34 @@ def getRealisedPnL():
 			openPositionsDf["total_op_amt"] = openPositionsDf["quantity"] * openPositionsDf["average_price"] * -1 #assuming buy
 			totalOpAmount = openPositionsDf['total_op_amt'].sum()
 			print("Total open position:" + str(totalOpAmount))
-
-	groupbyTradesListDfWithPnl = groupbyTradesListDf.groupby(["stock_code"]).agg(realised_pnl=("sum_total_cost","sum"),realised_pnl_with_taxes=("total_cost_with_taxes","sum"))
-	#print(groupbyTradesListDfWithPnl)
-	groupbyTradesListDfWithPnl["realised_pnl"] = round((groupbyTradesListDfWithPnl["realised_pnl"] - totalOpAmount),2)
-	groupbyTradesListDfWithPnl["realised_pnl_with_taxes"] = round((groupbyTradesListDfWithPnl["realised_pnl_with_taxes"] - totalOpAmount),2)
-	resultJsonStr = groupbyTradesListDfWithPnl.to_json(orient = "records")
+	realised_pnl = groupbyTradesListDf['sum_total_cost'].sum()
+	realised_pnl_with_taxes = groupbyTradesListDf['total_cost_with_taxes'].sum()
+	#remove open positions
+	realised_pnl = round((realised_pnl - totalOpAmount),2)
+	realised_pnl_with_taxes = round((realised_pnl_with_taxes - totalOpAmount),2)
+	realisedPnlDf = pd.DataFrame({"realised_pnl": realised_pnl, 'realised_pnl_with_taxes': realised_pnl_with_taxes}, index=[0])
+	#print(realisedPnlDf)
+	resultJsonStr = realisedPnlDf.to_json(orient = "records")
 	resultJsonDict = json.loads(resultJsonStr)
 	tradesListJsonDict["Success"]=resultJsonDict[0]
 	return (tradesListJsonDict,200, {'Content-Type': 'application/json'})
 
 
 def subscribeQuotesFeed(token,interval):
-	 subscriptionStatus = myapi.subscribeQuotes(token,interval)
-	 return (subscriptionStatus,200, {'Content-Type': 'application/json'})
+	subscriptionStatus = myapi.subscribeQuotes(token,interval)
+	return (subscriptionStatus,200, {'Content-Type': 'application/json'})
 
 def unsubscribeQuotesFeed(token,interval):
-	 unsubscriptionStatus = myapi.unsubscribeQuotes(token,interval)
-	 return (unsubscriptionStatus,200, {'Content-Type': 'application/json'})
+	unsubscriptionStatus = myapi.unsubscribeQuotes(token,interval)
+	return (unsubscriptionStatus,200, {'Content-Type': 'application/json'})
 
 def subscribeMarketDepth(token):
-	 subscriptionStatus = myapi.subscribeMarketDepth(token)
-	 return (subscriptionStatus,200, {'Content-Type': 'application/json'})
+	subscriptionStatus = myapi.subscribeMarketDepth(token)
+	return (subscriptionStatus,200, {'Content-Type': 'application/json'})
 
 def unsubscribeMarketDepth(token):
-	 unsubscriptionStatus = myapi.unsubscribeMarketDepth(token)
-	 return (unsubscriptionStatus,200, {'Content-Type': 'application/json'})
+	unsubscriptionStatus = myapi.unsubscribeMarketDepth(token)
+	return (unsubscriptionStatus,200, {'Content-Type': 'application/json'})
 	
 @app.route('/getHistoricalData', methods=['GET', 'POST'])
 @cross_origin()
