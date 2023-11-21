@@ -4,68 +4,32 @@ chart = null;
 $(document).ready(function() {
 
 	const chartOptions = { height:450, 
-								 layout: { textColor: 'black', 
-											 background: { type: 'solid', color: 'white' } 
-											}, 
-								 timeScale: { 
-									 rightOffset: 10,
-									 visible: true,
-									 timeVisible: true,
-									 secondsVisible: true,
-									 shiftVisibleRangeOnNewBar: true,
-									 ticksVisible: false
-								 },
-								 rightPriceScale: { visible: true },
-								 leftPriceScale: { visible: true, ticksVisible: true },
-								 crosshair: {mode : 0}
-								};
+			layout: { textColor: 'black', background: { type: 'solid', color: 'white' } }, 
+			timeScale: { rightOffset: 10,visible: true,timeVisible: true,secondsVisible: true,shiftVisibleRangeOnNewBar: true,
+									 ticksVisible: false },
+			rightPriceScale: { visible: true }, leftPriceScale: { visible: true, ticksVisible: true }, crosshair: {mode : 0}
+			};
 	chart = LightweightCharts.createChart(document.getElementById('chart'), chartOptions);
 	
 	optionSeries = chart.addCandlestickSeries(
 		{ priceScaleId: 'right', upColor: '#26a69a', downColor: '#ef5350', 
 		 borderVisible: false, wickUpColor: '#26a69a', wickDownColor: '#ef5350' 
 		});
-
 	optionSeries.setData([]);
 
-	futuresSeries = chart.addCandlestickSeries(
+	refDataSeries = chart.addCandlestickSeries(
 		{ priceScaleId: 'left', upColor: '#bbbbbf', downColor: '#585859', 
 		 borderVisible: false, wickUpColor: '#bbbbbf', wickDownColor: '#585859' 
 		});
-
-	futuresSeries.setData([]);
-	
-	futuresSeries.priceScale().applyOptions({
-		scaleMargins: {
-			top: 0.1, // highest point of the series will be 80% away from the top
-			bottom: 0.5,
-		},
-	});
+	refDataSeries.setData([]);
+	refDataSeries.priceScale().applyOptions({ scaleMargins: {top: 0.1, bottom: 0.5,} });
 
 	//Volume Data
-	optionSeries.priceScale().applyOptions({
-		scaleMargins: {
-			top: 0.1,
-			bottom: 0.2,
-		},
-		priceFormat: {
-			type: 'price', precision: 2, minMove: 0.05, formatter: price => parseFloat(price).toFixed(2),
-		}
+	optionSeries.priceScale().applyOptions({ scaleMargins: { top: 0.1,bottom: 0.2,},
+		priceFormat: {type: 'price', precision: 2, minMove: 0.05, formatter: price => parseFloat(price).toFixed(2),}
 	});
-	volumeSeries = chart.addHistogramSeries({
-		color: '#C5C5C5',
-		priceFormat: {
-			type: 'volume',
-		},
-		priceScaleId: '', // set as an overlay by setting a blank priceScaleId
-		
-	});
-	volumeSeries.priceScale().applyOptions({
-		scaleMargins: {
-			top: 0.8, // highest point of the series will be 80% away from the top
-			bottom: 0,
-		},
-	});
+	volumeSeries = chart.addHistogramSeries({ color: '#C5C5C5',priceFormat: {type: 'volume',}, priceScaleId: ''});
+	volumeSeries.priceScale().applyOptions({ scaleMargins: {top: 0.8, bottom: 0,} });
 
 
 	//Legend
@@ -95,7 +59,7 @@ $(document).ready(function() {
 			}
 				
 
-			const futurePrice = param.seriesData.get(futuresSeries);
+			const futurePrice = param.seriesData.get(refDataSeries);
 			if(futurePrice != undefined && futurePrice.open !=0){
 				var O = futurePrice.open
 				var H = futurePrice.high
@@ -178,7 +142,7 @@ function refChartTickListener(ltpData){
 		if (differenceInTime > 5 && differenceInTime < (divisor - 5)){
 			try{
 				//console.log(closestMinuteTime +":"+differenceInTime)
-				futuresSeries.update(tickDataDict);
+				refDataSeries.update(tickDataDict);
 			}catch(e){console.log(e)}
 		}
 	}
@@ -205,29 +169,15 @@ function drawChartLegend(chartContainer){
 
 	const firstRow = document.createElement('div');
 	firstRow.style.textAlign = 'left';
-	const firstRowStockNameDiv = document.createElement('div');
-	firstRowStockNameDiv.id = 'optionsChartStockName'
-	firstRowStockNameDiv.innerText = optionsStockName;
-	firstRowStockNameDiv.style.color = 'black';
-	firstRowStockNameDiv.style.textAlign = 'left';
-	firstRowStockNameDiv.style.display = 'inline-block';
-	firstRowStockNameDiv.style.fontWeight = "bold"
-	firstRowStockNameDiv.style.fontSize = '12px'
-	firstRowStockNameDiv.style.backgroundColor="#fcfcde"
-	firstRowStockNameDiv.style.width = "230px"
-	firstRowStockNameDiv.style.paddingLeft = "3px"
-	const firstRowStockLtpDiv = document.createElement('div');
-	firstRowStockLtpDiv.id = 'set-in-chart-populate-function';
-	firstRowStockLtpDiv.style.textAlign = 'left';
-	firstRowStockLtpDiv.style.display = 'inline-block';
-	firstRowStockLtpDiv.style.color = 'blue';
-	firstRowStockLtpDiv.style.width = '67px';
-	firstRowStockLtpDiv.style.marginLeft = '10px';
-	const firstRowStockOHLCVDiv = document.createElement('div');
-	firstRowStockOHLCVDiv.style.color = 'black';
-	firstRowStockOHLCVDiv.style.textAlign = 'left';
-	firstRowStockOHLCVDiv.style.display = 'inline';
-	firstRowStockOHLCVDiv.style.fontSize = '12px'
+	
+	let firstRowStockNameDivHtml = `<div id='optionsChartStockName' style='color:black;text-align:left;display:inline-block;font-weight:bold;font-size:12px;background-color:#fcfcde;width:230px;padding-left:3px'>${optionsStockName}</div>`
+	const firstRowStockNameDiv = new DOMParser().parseFromString(firstRowStockNameDivHtml, 'text/html').querySelector("div");
+
+	let firstRowStockLtpDivHtml = "<div id='' style='text-align:left;display:inline-block;color:blue;width:67px;margin-left:10px'></div>"
+	const firstRowStockLtpDiv = new DOMParser().parseFromString(firstRowStockLtpDivHtml, 'text/html').querySelector("div");
+
+	let firstRowStockOHLCVDivHtml = "<div style='color:black;text-align:left;display:inline;font-size:12px'></div>"
+	const firstRowStockOHLCVDiv = new DOMParser().parseFromString(firstRowStockOHLCVDivHtml, 'text/html').querySelector("div");
 
 	firstRow.appendChild(firstRowStockNameDiv)
 	firstRow.appendChild(firstRowStockLtpDiv)
@@ -238,63 +188,31 @@ function drawChartLegend(chartContainer){
 	const secondRow = document.createElement('div');
 	secondRow.style.textAlign = 'left';
 	
-	
-	const secondRowStockNameSelect = document.createElement('select');
-	secondRowStockNameSelect.id="refChart"
-	secondRowStockNameSelect.style.color = 'black';
-	secondRowStockNameSelect.style.backgroundColor="#fcfcde"
-	secondRowStockNameSelect.style.textAlign = 'left';
-	secondRowStockNameSelect.style.display = 'inline-block';
-	secondRowStockNameSelect.style.width = '230px';
-	secondRowStockNameSelect.style.fontSize = '12px'
-	secondRowStockNameSelect.style.padding = "0px"
-	secondRowStockNameSelect.style.margin = "0px"
-	secondRowStockNameSelect.style.border = "0px"
-	secondRowStockNameSelect.style.fontWeight = "bold"
-	secondRowStockNameSelect.setAttribute('onchange','updateReferenceChart();');
-	const secondRowOption1 = document.createElement('option');
-	secondRowOption1.text = "BANKNIFTY"
-	secondRowOption1.value = "CNXBAN"
-	secondRowOption1.setAttribute("token","NIFTY BANK")
-	secondRowOption1.setAttribute("exchangeCode","NSE")
-	secondRowOption1.setAttribute("product","")
-	secondRowOption1.setAttribute("expiry","")
-	secondRowOption1.selected = "selected"
-	const secondRowOption2 = document.createElement('option');
-	secondRowOption2.text = "BANKNIFTY FUT"
-	secondRowOption2.value = "CNXBAN"
-	secondRowOption2.setAttribute("exchangeCode","NFO")
-	secondRowOption2.setAttribute("product","futures")
-	const secondRowOption3 = document.createElement('option');
-	secondRowOption3.text = "NIFTY 50"
-	secondRowOption3.value = "NIFTY"
-	secondRowOption3.setAttribute("token","NIFTY 50")
-	secondRowOption3.setAttribute("exchangeCode","NSE")
-	secondRowOption3.setAttribute("product","equity")
-	secondRowOption3.setAttribute("expiry","")
-	const secondRowOption4 = document.createElement('option');
-	secondRowOption4.text = "NIFTY FUT"
-	secondRowOption4.value = "NIFTY"
-	secondRowOption4.setAttribute("exchangeCode","NFO")
-	secondRowOption4.setAttribute("product","futures")
+	let secondRowStockNameSelectHtml = "<select id='refChart' style='color:black;background-color:#fcfcde;text-align:left;display:inline-block;width:230px;font-size:12px;padding:0px;margin:0px;border:0px;font-weight:bold' onchange='updateReferenceChart();'>"
+	const secondRowStockNameSelect = new DOMParser().parseFromString(secondRowStockNameSelectHtml, 'text/html').querySelector("select");
 
+	let secondRowOption1Html = "<option value='CNXBAN' token='NIFTY BANK' exchangeCode='NSE' product='' expiry='' selected>BANKNIFTY</option>";
+	const secondRowOption1 = new DOMParser().parseFromString(secondRowOption1Html, 'text/html').querySelector("option");
+
+	let secondRowOption2Html = "<option value='CNXBAN' exchangeCode='NFO' product='futures'>BANKNIFTY FUT</option>";
+	const secondRowOption2 = new DOMParser().parseFromString(secondRowOption2Html, 'text/html').querySelector("option");
+
+	let secondRowOption3Html = "<option value='NIFTY' token='NIFTY 50' exchangeCode='NSE' product='equity' expiry=''>NIFTY 50</option>";
+	const secondRowOption3 = new DOMParser().parseFromString(secondRowOption3Html, 'text/html').querySelector("option");
+	
+	let secondRowOption4Html = "<option value='NIFTY' exchangeCode='NFO' product='futures'>NIFTY FUT</option>";
+	const secondRowOption4 = new DOMParser().parseFromString(secondRowOption4Html, 'text/html').querySelector("option");
+	
 	secondRowStockNameSelect.appendChild(secondRowOption1)
 	secondRowStockNameSelect.appendChild(secondRowOption2)
 	secondRowStockNameSelect.appendChild(secondRowOption3)
 	secondRowStockNameSelect.appendChild(secondRowOption4)
-	
-	const secondRowStockLtpDiv = document.createElement('div');
-	secondRowStockLtpDiv.id = 'NIFTY BANK-price';
-	secondRowStockLtpDiv.style.textAlign = 'left';
-	secondRowStockLtpDiv.style.display = 'inline-block';
-	secondRowStockLtpDiv.style.color = 'blue';
-	secondRowStockLtpDiv.style.width = '70px';
-	secondRowStockLtpDiv.style.marginLeft = '10px';
-	const secondRowStockOHLCVDiv = document.createElement('div');
-	secondRowStockOHLCVDiv.style.color = 'black';
-	secondRowStockOHLCVDiv.style.textAlign = 'left';
-	secondRowStockOHLCVDiv.style.display = 'inline';
-	secondRowStockOHLCVDiv.style.fontSize = '12px'
+
+	let secondRowStockLtpDivHtml = "<div id='NIFTY BANK-price' style='text-align:left;display:inline-block;color:blue;width:70px;margin-left:10px'></div>"
+	const secondRowStockLtpDiv = new DOMParser().parseFromString(secondRowStockLtpDivHtml, 'text/html').querySelector("div");
+
+	let secondRowStockOHLCVDivHtml = "<div style='color:black;text-align:left;display:inline;font-size:12px'></div>"
+	const secondRowStockOHLCVDiv = new DOMParser().parseFromString(secondRowStockOHLCVDivHtml, 'text/html').querySelector("div");
 	
 	//secondRow.appendChild(secondRowStockNameDiv)
 	secondRow.appendChild(secondRowStockNameSelect)
@@ -403,7 +321,7 @@ async function loadReferenceChart(refChartVisible){
 		if (refChartVisible!= undefined && !refChartVisible){
 			socket.emit('unsubscribeQuotes', token, interval)
 			socket.emit('unsubscribeQuotes', token, "1second")
-			futuresSeries.setData([]);
+			refDataSeries.setData([]);
 			return;
 		}
 		
@@ -415,7 +333,7 @@ async function loadReferenceChart(refChartVisible){
 		hDataArr = []
 		await getHistoricalData(stockCode,exchangeCode,product,expiry,"","").then(result => {hDataArr=result});
 		//console.log(hDataArr)
-		futuresSeries.setData(hDataArr);
+		refDataSeries.setData(hDataArr);
 		//chart.timeScale().fitContent();
 
 		socket.emit('subscribeQuotes', token, interval)
@@ -454,7 +372,7 @@ function clearRefChartData(){
 	let selectedRefChartOption = $("#refChart :selected")[0];
 	let token = selectedRefChartOption.getAttribute("token")
 	socket.emit('unsubscribeQuotes', token, interval);
-	futuresSeries.setData([]);
+	refDataSeries.setData([]);
 	//chart.timeScale().fitContent();
 }
 
@@ -591,7 +509,7 @@ function updateTimeNVolumeInTickData(data,addColorToData){
 function updateIndexChart(data){
 	tickData = updateTimeNVolumeInTickData(data,false)
 	try{
-		futuresSeries.update(JSON.parse(tickData));
+		refDataSeries.update(JSON.parse(tickData));
 	}catch(e){console.log(e)}
 }
 
