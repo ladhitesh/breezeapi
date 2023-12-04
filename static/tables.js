@@ -603,7 +603,7 @@ function clearOrder(){
 	$("#hiddenDataColumnId")[0].innerText=""
 	$('#orderStock')[0].innerText=""
 	$('#orderAction')[0].innerText = "";
-	$('#orderQty')[0].valueAsNumber = 15;
+	$('#orderQty')[0].valueAsNumber = 1;
 	$('#orderPrice')[0].valueAsNumber = 0;
 	$('#orderSl')[0].valueAsNumber = 0;
 	$('#orderButton')[0].value="Order"
@@ -726,6 +726,10 @@ function buyStock(stockToBuy,hiddenDivId){
 	$($("#orderAction")[0]).css("color","green")
 	$("#hiddenDataColumnId")[0].innerText = hiddenDivId
 	$('#orderButton')[0].value="Buy"
+	let lotsize = $('#'+hiddenDivId).get()[0].dataset.lotsize;
+	$("#orderQty")[0].valueAsNumber = lotsize
+	$("#orderQty")[0].step = lotsize;
+	$("#orderQty")[0].min = lotsize;
 	$('#orderButton')[0].onclick=addOrder
 }
 
@@ -752,6 +756,10 @@ function sellStock(stockToSell,hiddenDivId){
 	$($("#orderAction")[0]).css("color","red")
 	$("#hiddenDataColumnId")[0].innerText = hiddenDivId
 	$('#orderButton')[0].value="Sell"
+	let lotsize = $('#'+hiddenDivId).get()[0].dataset.lotsize;
+	$("#orderQty")[0].valueAsNumber = lotsize
+	$("#orderQty")[0].step = lotsize;
+	$("#orderQty")[0].min = lotsize;
 	$('#orderButton')[0].onclick=addOrder
 }
 function subscribeQuotesFeed(token){

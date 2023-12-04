@@ -111,13 +111,13 @@ class  MyBreezeApi():
 		#ic(searchRegex)
 		#ic(stockScriptdf.columns.values)
 		stockScriptdf = self.stockScriptdf
-		requiredCol = stockScriptdf[["TK","CD","EC","SC","SN"]]
+		requiredCol = stockScriptdf[["TK","CD","EC","SC","SN", "LS"]]
 		result = requiredCol.loc[( \
 										  (stockScriptdf["SG"]  == "DERIVATIVE") \
 										  & (stockScriptdf["CD"].str.contains(searchRegex,na=False, case=False)
 											   | stockScriptdf["SN"].str.contains(searchRegex,na=False, case=False) ) \
 										 ) ].head(10).copy()
-		result.rename(columns = {'TK':'token', 'CD':'code','EC':'exchangeCode','SC':'stockCode'}, inplace = True)
+		result.rename(columns = {'TK':'token', 'CD':'code','EC':'exchangeCode','SC':'stockCode', 'LS':'lotSize'}, inplace = True)
 		result = result.apply(self.addFnOStocksAdditionalColumns,axis=1)
 		resultJsonStr = result.to_json(orient = "records")
 		resultJsonDict = json.loads(resultJsonStr)
