@@ -2,7 +2,7 @@ $(document).ready(function() {
 	$('#orderList').dynatable({
 		features: {
 			paginate: false,
-			recordCount: false,
+			recordCount: true,
 			sort: false,
 			search: false
 		},
@@ -362,8 +362,8 @@ async function populateOrderList(){
 	obj = new Object();
 	obj.records = orderRecords;
 	if(orderListJsonArr != null){
-		obj.queryRecordCount = orderListJsonArr.length + 1;
-		obj.totalRecordCount = orderListJsonArr.length + 1;
+		obj.queryRecordCount = orderListJsonArr.length;
+		obj.totalRecordCount = orderListJsonArr.length;
 	}
 	var orderListTable = $('#orderList').data('dynatable');
 	orderListTable.records.updateFromJson(obj)
