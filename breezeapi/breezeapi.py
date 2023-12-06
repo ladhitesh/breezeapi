@@ -157,6 +157,29 @@ class  MyBreezeApi():
 
 		print(buy_order)
 		return buy_order
+	
+	def squareOff(self,stockcode,exchangeCode,product,action,orderType,stoploss,quantity,price,expiryDate,rightStr,strike):
+		# Place order
+		todayStr = datetime.now().strftime('%Y-%m-%dT06:00:00.000Z')
+		expiryStr = expiryDate.strftime('%Y-%m-%dT06:00:00.000Z')
+		buy_order = self.api.square_off(stock_code=stockcode,
+													exchange_code=exchangeCode,
+													product=product,
+													action=action,
+													order_type=orderType,
+													stoploss=stoploss,
+													quantity=quantity,
+													price=price,
+													validity="day",
+													validity_date=todayStr,
+													disclosed_quantity="0",
+													expiry_date=expiryStr,
+													right=rightStr,
+													strike_price=strike)
+
+		print(buy_order)
+		return buy_order
+
     
 	def getOrderDetail(self,orderId):
 		orderDetail = self.api.get_order_detail(exchange_code="NFO",order_id=orderId)
@@ -164,17 +187,6 @@ class  MyBreezeApi():
 		return orderDetail
     
 		#orderDetail = getOrderDetail('202310201500017588')
-		'''
-    {'Success': [{'order_id': '202310201500017588', 'exchange_order_id': '1500000114831618', 
-    'exchange_code': 'NFO', 'stock_code': 'CNXBAN', 'product_type': 'Options', 'action': 'Buy', 
-    'order_type': 'Limit', 'stoploss': '0', 'quantity': '15', 'price': '1', 'validity': 'Day', 
-    'disclosed_quantity': '0', 'expiry_date': '26-Oct-2023', 'right': 'Call', 'strike_price': 43800.0, 
-    'average_price': '0', 'cancelled_quantity': '0', 'pending_quantity': '15', 'status': 'Ordered', 
-    'user_remark': None, 'order_datetime': '20-Oct-2023 13:16:24', 'parent_order_id': '', 
-    'modification_number': None, 'exchange_acknowledgement_date': None, 'SLTP_price': None,
-    'exchange_acknowledge_number': None, 'initial_limit': None, 'intial_sltp': None, 'LTP': None, 
-    'limit_offset': None, 'mbc_flag': None, 'cutoff_price': None, 'validity_date': None}], 'Status': 200, 'Error': None}
-    '''
     
 	def modifyOrder(self,orderId,exchangeCode,orderType,stopLoss,quantity,price):
 		modifyResult = self.api.modify_order(order_id=orderId,

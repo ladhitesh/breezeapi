@@ -457,7 +457,7 @@ async function modifyOrder(){
 	clearOrder()
 }
 
-async function addOrder(){
+async function addOrder(newOrSquareoff){
 	
 	//validate order related data
 	hiddenDivId = $("#hiddenDataColumnId")[0].innerText
@@ -501,7 +501,11 @@ async function addOrder(){
 	})
 
 	var orderResultJsonArr = null
-	var newOrderUrl = baseServerUrl + '/placeOrder?' + newOrderParams
+	let orderpath = '/placeOrder'
+	if(newOrSquareoff == "squareoff"){
+		orderpath = '/squareoff'
+	}
+	var newOrderUrl = baseServerUrl + orderpath + '?' + newOrderParams
 	console.log(newOrderUrl)
 	await callApi(newOrderUrl).then(result => {orderResultJsonArr=result});
 	errorStatus = orderResultJsonArr["Error"]
@@ -730,7 +734,7 @@ function buyStock(stockToBuy,hiddenDivId){
 	$("#orderQty")[0].valueAsNumber = lotsize
 	$("#orderQty")[0].step = lotsize;
 	$("#orderQty")[0].min = lotsize;
-	$('#orderButton')[0].onclick=addOrder
+	$('#orderButton')[0].onclick=function() { addOrder('new') }
 }
 
 //adjust this function to call squareoff api
@@ -742,11 +746,7 @@ function squareoffStock(stockToSell,hiddenDivId,qty){
 	$($("#orderAction")[0]).css("color","red")
 	$("#hiddenDataColumnId")[0].innerText = hiddenDivId
 	$('#orderButton')[0].value="squareoff"
-	$('#orderButton')[0].onclick=squareoffOpenPosition
-}
-
-function squareoffOpenPosition(){
-	addOrder();
+	$('#orderButton')[0].onclick=function(){addOrder('squareoff')}
 }
 
 function sellStock(stockToSell,hiddenDivId){
@@ -760,7 +760,7 @@ function sellStock(stockToSell,hiddenDivId){
 	$("#orderQty")[0].valueAsNumber = lotsize
 	$("#orderQty")[0].step = lotsize;
 	$("#orderQty")[0].min = lotsize;
-	$('#orderButton')[0].onclick=addOrder
+	$('#orderButton')[0].onclick=function() { addOrder('new')}
 }
 function subscribeQuotesFeed(token){
 	//alert("subscribing to quotes feed for token: "+token)

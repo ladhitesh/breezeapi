@@ -320,6 +320,37 @@ def placeOrder():
 		result = json.loads('{"Error":"Not connected"}')
 	return (result,200, {'Content-Type': 'application/json'})
 
+@app.route('/squareoff', methods=['GET', 'POST'])
+@cross_origin()
+def squareoff():
+	queryParams = request.args.to_dict()
+	stockCode = queryParams.get("stockCode","CNXBAN")
+	quantity = queryParams.get("quantity","1")
+	priceStr = queryParams.get("price","1")
+	stoploss = queryParams.get("stoploss","")
+	action = queryParams.get("action")
+	product = queryParams.get("product")
+	exchangeCode = queryParams.get("exchangeCode","NFO")
+	strike = ""
+	rightTypeStr = ""
+	orderType = "limit"
+	if priceStr == "0":
+		orderType = "market"
+
+	if exchangeCode == "NFO":
+		expiryDateStr = queryParams.get("expiryDate")
+		expiryDate = datetime.strptime(expiryDateStr, "%d-%b-%Y")
+		if product == "options":
+			strike = queryParams.get("strike","NA")
+			rightTypeStr = queryParams.get("rightType","NA")
+			rightTypeEnum = breezeapi.RightType.from_str(rightTypeStr)
+			rightTypeStr = rightTypeEnum.name
+	result = myapi.squareOff(stockCode,exchangeCode,product,action,orderType,stoploss,quantity,priceStr, expiryDate,rightTypeStr,strike)
+	if result is None:
+		print(result)
+		result = json.loads('{"Error":"Not connected"}')
+	return (result,200, {'Content-Type': 'application/json'})
+
 @app.route('/modifyOrder', methods=['GET', 'POST'])
 @cross_origin()
 def modifyOrder():
