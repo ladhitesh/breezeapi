@@ -507,6 +507,19 @@ def getFunds():
 	print(fundsJsonDict)
 	return (fundsJsonDict,200, {'Content-Type': 'application/json'})
 	
+
+@app.route('/getMargin', methods=['GET', 'POST'])
+@cross_origin()
+def getMargin():
+	queryParams = request.args.to_dict()
+	exchangeCode = queryParams.get("exchangeCode","NFO")
+	marginJsonDict = myapi.getMargin(exchangeCode)
+	if marginJsonDict is None:
+		marginJsonDict = json.loads('{"Error":"Not connected"}')
+	print(marginJsonDict)
+	return (marginJsonDict,200, {'Content-Type': 'application/json'})
+
+
 def feedData(data):
 	#print(data)
 	token = "none"

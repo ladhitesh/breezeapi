@@ -298,6 +298,9 @@ class  MyBreezeApi():
 	def getHistoricalData(self, interval, fromDate, toDate, stockCode, exchangeCode, product="", expiry="", right="", strikePrice=""):
 		return self.api.get_historical_data_v2(interval, fromDate, toDate, stockCode, exchangeCode, product, expiry, right, strikePrice)
 
+	def getMargin(self,exchangeCode):
+		return self.api.get_margin(exchangeCode)
+
 	def getNseStocks(self,stockName):
 		nseSecuritiesDf = pd.read_csv(self.nseFile, sep=',', engine='python')
 		#print(dataframe.keys())

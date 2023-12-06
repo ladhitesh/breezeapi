@@ -51,6 +51,7 @@ async function initIfConnected(){
 		//populate existing data
 		await populateOpenPositions()
 		await populateOrderList()
+		refreshMargins()
 		socket.on('order_notification', orderNotification)
 		//attachObservers()
 	}
@@ -800,7 +801,7 @@ function orderNotification(notificationData){
 		$('#cancelOrdBtn-'+orderId)[0].remove();
 		$('#modifyOrdBtn-'+orderId)[0].remove();
 		refreshOpenPositions();
-		refreshFunds();
+		refreshMargins();
 	}
 	//$('#price-'+orderId)[0].innerText = orderStatus
 }
@@ -835,28 +836,31 @@ async function getRealisedPnl(){
 	$("#realisedPnlWithTaxes")[0].innerHTML=realisedPnlWithTaxes;
 }
 
-async function refreshFunds(){
+async function refreshMargins(){
 	
-	fundsResultJsonArr = null
-	var fundsUrl = baseServerUrl + '/getFunds'
-	console.log(fundsUrl)
-	await callApi(fundsUrl).then(result => {fundsResultJsonArr=result});
+	marginResultJsonArr = null
+	var marginUrl = baseServerUrl + '/getMargin'
+	console.log(marginUrl)
+	await callApi(marginUrl).then(result => {marginResultJsonArr=result});
 	//console.log(pnlResultJsonArr)
-	errorStatus = fundsResultJsonArr["Error"]
+	errorStatus = marginResultJsonArr["Error"]
 	if(errorStatus != null && errorStatus != ""){
 		if(errorStatus == "Not connected"){
-			allocatedFnoFunds = "NA";
-			blockedFnoFunds = "NA";
+			allocatedMargin = "NA";
+			availableMargin = "NA";
+			mtm = "NA"
 		}
 		else{return;}
 	}
 	else{
-		allocatedFnoFunds = fundsResultJsonArr["Success"]["allocated_fno"]
-		blockedFnoFunds = fundsResultJsonArr["Success"]["block_by_trade_fno"]
+		allocatedMargin = marginResultJsonArr["Success"]["amount_allocated"]
+		availableMargin = marginResultJsonArr["Success"]["cash_limit"]
+		mtm = marginResultJsonArr["Success"]["limit_list"][0]["amount"]
 	}
 
-	$("#fnoAllocated")[0].innerHTML=allocatedFnoFunds;
-	$("#fnoBlocked")[0].innerHTML=blockedFnoFunds;
+	$("#allocatedMargin")[0].innerHTML=allocatedMargin;
+	$("#availableMargin")[0].innerHTML=availableMargin;
+	$("#mtm")[0].innerHTML=mtm;
 	
 }
 
