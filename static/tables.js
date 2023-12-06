@@ -448,8 +448,8 @@ async function modifyOrder(){
 	
 	obj = new Object();
 	obj.records = myRecords;
-	obj.queryRecordCount = existingRecords.length + 1;
-	obj.totalRecordCount = existingRecords.length + 1;
+	obj.queryRecordCount = existingRecords.length;
+	obj.totalRecordCount = existingRecords.length;
 	orderListTable.records.updateFromJson(obj)
 	orderListTable.dom.update();
 
