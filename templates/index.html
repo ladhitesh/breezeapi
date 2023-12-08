@@ -17,8 +17,11 @@
 <link rel="stylesheet" media="all" href="/static/dynatable-docs-assets/css/bootstrap-2.3.2.min.css" />
 <link rel="stylesheet" media="all" href="/static/dynatable-docs-assets/css/jquery.dynatable.css" />
 <link rel="stylesheet" href="//code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css">
+<link rel="stylesheet" type="text/css" href="/static/tooltipster/dist/css/tooltipster.bundle.min.css" />
+<link rel="stylesheet" type="text/css" href="/static/tooltipster/dist/css/plugins/tooltipster/sideTip/themes/tooltipster-sideTip-shadow.min.css" />
 <link href="data:image/x-icon;base64,AAABAAEAEBAAAAEAIABoBAAAFgAAACgAAAAQAAAAIAAAAAEAIAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAD///////////////////////////jy7v/15dL/9efU//bn1f/36tX//fv2//////////////////////////////////////////////////3//v/qzav/6Zku/+yfNv/qoTf/76pB//rr0v/////////////////////////////////+/v7/9vb2//b29v/19fX/5cWu/+CBQP/igkH/44RC/+GGQ//x28r/9/b2//b29v/5+fn/////////////////9PT0/+Dh3//g4d//4eDe/+Ph3//k4OD/4Mq2/+TXy//k4eH/5OLh/+Ti4f/j4uD/4+Pi//z8/P////////////Lz8//axrP/1bWa/9m6nf/fv6D/3bya/+G+mP/kwp3/4MKh/+HDoP/gwJ7/5cek/+TVwf/8/Pz////////////w8vL/zp90/4xWTP+lg5X/y4RI/8ifff/fl03/3plO/9+XTv/emEv/17SP/+mrVP/oxZT/+/v7////////////8PLx/8qbcf82LJz/VVzm/3xiUf89rnz/jrF4/7FvOf/KlW3/tH46/3WugP+/uXH/6sWW//v7+/////////////Dy8f/LmnH/NCqd/1hc5/9uYFX/N7yJ/4CzgP88NZb/T1Le/4JwU/86voj/oc6U/+jHlf/7+/v////////////x8vL/06F0/0Ayof9ZX+j/cWBS/zi8h/99soH/MzGh/1Vd5f96bFj/Or2K/6LQlf/ox5T/+/v7////////////8vLz/9qpef+9hGb/v6So/4xuP/83vYb/griF/zk4o/9XXub/e2xV/zm/iv+h0JX/58eU//v7+/////////////Lz8//Qn3b/enmI/8WVbf+XeED/N72H/5HEkP+aeYD/opS9/5F6TP87v4r/odCU/+nIlv/8/Pz////////////19vb/xry3/0eW4v9OkNH/r6iW/4bLsv+pw6//k5md/9/Kt/+yron/U8eb/63atv/n17///f39//////////////////v8+v/W6Pb/Sprn/0+f5f/P4e7/bafj/z6U5v+IvOv/8fb4/+bs7//8/Pv//f39/////////////////////////////P79/9fp9v9Lm+b/QpPl/0KX5/94tu7/PZTl/1Kd5v/Z7Pn//v/////////////////////////////////////////9/v3/1+j3/1Cf5v+82/b/9fn6/1mg5f8/k+f/v934//3///////////////////////////////////////////////7+/v/y+Pv//f7+//n8+//i7/n/yeL4/9/u+f/+//7/////////////////AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==" rel="icon" type="image/x-icon">
-		
+
+<script type="text/javascript" src="/static/tooltipster/dist/js/tooltipster.bundle.min.js"></script>
 <script type='text/javascript' src="/static/dynatable-docs-assets/js/jquery.dynatable.js"></script>
 	
 <!-- Tradingview Lightweight Charts -->
@@ -76,6 +79,8 @@ input[type=number]::-webkit-inner-spin-button,
 input[type=number]::-webkit-outer-spin-button {
   opacity: 1;
 }
+
+.tooltip_templates { display: none; }
 </style>
 	
 
@@ -115,6 +120,12 @@ $(document).ready(function() {
 	$($("#toDatepicker")).val(today);
 
 	Notification.requestPermission();
+
+	$('.tooltip').tooltipster({
+		theme: 'tooltipster-shadow',
+		side: 'bottom',
+		contentAsHTML:true
+		});
 })
 	 
 	 
@@ -144,7 +155,8 @@ $( function() {
 		<table style="width:100%;border-color:black;border-top-width:10px !important">
 		<tr>
 			<td colspan="2">
-				<div id="output">
+				<input style="vertical-align:bottom" type="button" value="Clear" onClick='document.getElementById("output").innerText=""'/>
+				<div id="output" style="width:auto;display:inline-block;border:solid 0px #777">
 					{% block body %}					
 						{% autoescape false %}
 							{{ output }}
@@ -173,8 +185,14 @@ $( function() {
 		<tr style="height:20px"><td></td>
 		</tr>
 		<tr>
-			<td >
-				<input type="button" value="Clear Output" onClick='document.getElementById("output").innerText=""'/>
+			<td>
+				<div style="display:inline-block;width:70px;border:solid 0px;padding-left:50px"><span onclick="refreshTick('INDIA VIX')">Vix</span>
+					<div style="display:inline;padding-right:0px;border:solid 0px;color:brown" id="INDIA VIX-price">0.00</div></div>
+				<div style="display:inline-block;width:120px;border:solid 0px;"><span onclick="refreshTick('NIFTY 50')">Nifty 50</span>
+					<div style="display:inline;padding-right:0px;border:solid 0px;color:brown" id="NIFTY 50-price">0.00</div></div>
+				<div style="display:inline-block;width:130px"><span onclick="refreshTick('NIFTY BANK')">Banknifty</span>  
+					<div style="display:inline;color:brown" id="NIFTY BANK-price">0.00</div>
+				</div>
 				<BR/>
 				<div style="display:inline-block;width:100px">Intervals(mins)</div>
 				<button onClick="resetInterval(event,'1minute')">1</button>
@@ -274,7 +292,7 @@ $( function() {
 						<input onchange="handleOrderTypeChange(this)" style="margin-top:0px;" type="radio" value="limit" name="orderType" checked="checked"/>
 					</td>
 					<td>
-						<input id="orderQty" type="number" style="margin-bottom:0px;display:inline;text-align:center;width:70px;height:30px" value="1" min="0" required/>
+						<input id="orderQty" type="number" style="margin-bottom:0px;display:inline;text-align:center;width:70px;height:30px" value="0" min="0" required/>
 					</td>
 					<td>
 						<input id="orderPrice" type="number" style="margin-bottom:0px;text-align:center;width:70px;height:30px" value="0" step=0.05 min="0" required/>
@@ -287,6 +305,13 @@ $( function() {
 					</td>
 					<td>
 						<input id="clearButton" type="button" onClick="clearOrder()" style=";display:inline;text-align:center;height:30px" value="Clear"/>
+					</td>
+				</tr>
+				<tr>
+					<td colspan="8" style="color:black">
+						<div style="display:inline-block;width:60px" >Charges: </div><span style="display:inline;" class="tooltip" >tooltip</span><div id="charges" style="display:inline-block;width:70px;color:black" >0.00</div>
+						<div style="display:inline-block;width:50px">Margin: </div><div style="display:inline-block;width:50px">0.00</div>
+						<img onClick="getBrokerages()" src="/static/images/refresh.png" width="20" height="20">
 					</td>
 				</tr>
 				</table>
@@ -314,5 +339,18 @@ $( function() {
 <script type='text/javascript' src="/static/tables.js"></script>
 <script type='text/javascript' src="/static/charting.js"></script>
 
+<div class="tooltip_templates">
+    <span id="charges_content">
+      <div>
+			<div style="font-size:12px"><span style="display:inline-block;width:100px">Brokerage:</span><span style="display:inline" id="brokerage">0</span></div>
+			<div style="font-size:12px"><span style="display:inline-block;width:100px">Stamp Duty:</span><span style="display:inline" id="stamp_duty">0</span></div>
+			<div style="font-size:12px"><span style="display:inline-block;width:100px">STT:</span><span style="display:inline" id="stt">0</span></div>		
+			<div style="font-size:12px"><span style="display:inline-block;width:100px">GST:</span><span style="display:inline" id="gst">0</span></div>
+			<div style="font-size:12px"><span style="display:inline-block;width:160px">Exchange Turnover Charges:</span><span style="display:inline" id="exchange_turnover_charges">0</span></div>
+			<div style="font-size:12px"><span style="display:inline-block;width:160px">Sebi Charges:</span><span style="display:inline" id="sebi_charges">0</span></div>
+			<div style="font-size:12px"><span style="display:inline-block;width:160px">Total Brokerage:</span><span style="display:inline" id="total_brokerage">0</span></div>
+		</div>
+    </span>
+</div>
 	</body>
 </html>

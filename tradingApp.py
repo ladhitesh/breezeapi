@@ -522,9 +522,36 @@ def getMargin():
 	marginJsonDict = myapi.getMargin(exchangeCode)
 	if marginJsonDict is None:
 		marginJsonDict = json.loads('{"Error":"Not connected"}')
-	print(marginJsonDict)
+	#print(marginJsonDict)
 	return (marginJsonDict,200, {'Content-Type': 'application/json'})
 
+@app.route('/getBrokerages', methods=['GET', 'POST'])
+@cross_origin()
+def getBrokerages():
+	queryParams = request.args.to_dict()
+	stockCode = queryParams.get("stockCode","CNXBAN")
+	quantity = queryParams.get("quantity","1")
+	priceStr = queryParams.get("price","1")
+	action = queryParams.get("action")
+	product = queryParams.get("product")
+	exchangeCode = queryParams.get("exchangeCode","NFO")
+	strike = ""
+	rightTypeStr = ""
+	orderType = "limit"
+	if priceStr == "0":
+		orderType = "market"
+
+	if exchangeCode == "NFO":
+		expiryDateStr = queryParams.get("expiryDate")
+		expiryDate = datetime.strptime(expiryDateStr, "%d-%b-%Y")
+		if product == "options":
+			strike = queryParams.get("strike","NA")
+			rightTypeStr = queryParams.get("rightType","NA")
+			rightTypeEnum = breezeapi.RightType.from_str(rightTypeStr)
+			rightTypeStr = rightTypeEnum.name
+	brokerageDict = myapi.getBrokerages(exchangeCode,stockCode,product,orderType,priceStr,action,quantity,expiryDate,rightTypeStr,strike)
+	print(brokerageDict)
+	return (brokerageDict,200, {'Content-Type': 'application/json'})
 
 def feedData(data):
 	#print(data)

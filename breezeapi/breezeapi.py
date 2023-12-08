@@ -126,9 +126,8 @@ class  MyBreezeApi():
 		resultJsonDict = json.loads(resultJsonStr)
 		return resultJsonDict
     
-	def getBrokerages(self,exchangeCode,stockCode,product,orderType,price,action,quantity):
-		#print("exchangeCode=" + exchangeCode + ", stockcode= " + stockCode)
-		#stock = self.api.get_names(exchange_code=exchangeCode, stock_code=stockCode)['isec_stock_code']
+	def getBrokerages(self,exchangeCode,stockCode,product,orderType,price,action,quantity,expiryDate,right,strike):
+		expiry = expiryDate.strftime('%Y-%m-%dT06:00:00.000Z')
 		brokerages = self.api.preview_order( stock_code = stockCode,
 														exchange_code = exchangeCode,
 														product = product,
@@ -136,6 +135,9 @@ class  MyBreezeApi():
 														price = price,
 														action = action,
 														quantity = quantity,
+														expiry_date=expiry,
+														right=right,
+														strike_price=strike,
 														specialflag = "N")
 		return brokerages
     

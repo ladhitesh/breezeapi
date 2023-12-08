@@ -555,8 +555,8 @@ async function addOrder(newOrSquareoff){
 	obj.totalRecordCount = existingRecords.length + 1;
 	orderListTable.records.updateFromJson(obj)
 	orderListTable.dom.update();
-
 }
+
 async function cancelOrder(cancelOrderId){
 	var captionObj = $("#orderMessages")[0]
 	var orderStatus = $("#status-"+cancelOrderId)[0]
@@ -612,6 +612,18 @@ function clearOrder(){
 	$('#orderPrice')[0].valueAsNumber = 0;
 	$('#orderSl')[0].valueAsNumber = 0;
 	$('#orderButton')[0].value="Order"
+
+	try{
+		$('#charges')[0].innerHTML = "0.00"
+		$('#charges_content #total_brokerage')[0].innerHTML = "0.00"
+		$('#charges_content #brokerage')[0].innerHTML = "0.00"
+		$('#charges_content #stamp_duty')[0].innerHTML = "0.00"
+		$('#charges_content #stt')[0].innerHTML = "0.00"
+		$('#charges_content #gst')[0].innerHTML = "0.00"
+		$('#charges_content #exchange_turnover_charges')[0].innerHTML = "0.00"
+		$('#charges_content #sebi_charges')[0].innerHTML = "0.00"
+		$('.tooltip').tooltipster('content',$('#charges_content')[0].innerHTML)
+	}catch(e){console.log(e)}
 }
 function refreshOrderList(){
 	populateOrderList();
@@ -736,6 +748,7 @@ function buyStock(stockToBuy,hiddenDivId){
 	$("#orderQty")[0].step = lotsize;
 	$("#orderQty")[0].min = lotsize;
 	$('#orderButton')[0].onclick=function() { addOrder('new') }
+	getBrokerages();
 }
 
 //adjust this function to call squareoff api
@@ -748,6 +761,7 @@ function squareoffStock(stockToSell,hiddenDivId,qty){
 	$("#hiddenDataColumnId")[0].innerText = hiddenDivId
 	$('#orderButton')[0].value="squareoff"
 	$('#orderButton')[0].onclick=function(){addOrder('squareoff')}
+	getBrokerages();
 }
 
 function sellStock(stockToSell,hiddenDivId){
@@ -762,16 +776,17 @@ function sellStock(stockToSell,hiddenDivId){
 	$("#orderQty")[0].step = lotsize;
 	$("#orderQty")[0].min = lotsize;
 	$('#orderButton')[0].onclick=function() { addOrder('new')}
+	getBrokerages();
 }
 function subscribeQuotesFeed(token){
-	//alert("subscribing to quotes feed for token: "+token)
-	response = socket.emit('subscribeQuotes', this.token, "1second")
-	//socket.emit('unsubscribeQuotes', "NIFTY BANK", "1second")
+	//console.log("subscribing to quotes feed for token: "+token)
+	response = socket.emit('subscribeQuotes', token, "1second")
+	//console.log(response)
 
-	const inputToken = this.token
+	const inputToken = token
 	socket.on(inputToken+'-1second', function (ohlcvData){
 		ohlcvDataDict = JSON.parse(ohlcvData);
-		selectorStr = '[id='+inputToken+'-price]'
+		selectorStr = '[id="'+inputToken+'-price"]'
 		ltpElemArr = $(selectorStr);
 		for(elementIndex in ltpElemArr){
 			ltpElemArr[elementIndex].innerHTML = ohlcvDataDict["close"]
@@ -800,9 +815,10 @@ function orderNotification(notificationData){
 	if(orderStatus.toLowerCase() == "executed"){
 		$('#cancelOrdBtn-'+orderId)[0].remove();
 		$('#modifyOrdBtn-'+orderId)[0].remove();
+		//$('#price-'+orderId)[0].innerText = orderStatus
 		refreshOpenPositions();
-		refreshMargins();
 	}
+	refreshMargins();
 	//$('#price-'+orderId)[0].innerText = orderStatus
 }
 
@@ -855,7 +871,10 @@ async function refreshMargins(){
 	else{
 		allocatedMargin = marginResultJsonArr["Success"]["amount_allocated"]
 		availableMargin = marginResultJsonArr["Success"]["cash_limit"]
-		mtm = marginResultJsonArr["Success"]["limit_list"][0]["amount"]
+		mtm = 0
+		if ($.isArray(marginResultJsonArr["Success"]["limit_list"]) &&  marginResultJsonArr["Success"]["limit_list"].length>0){
+			mtm = marginResultJsonArr["Success"]["limit_list"][0]["amount"]
+		}
 	}
 
 	$("#allocatedMargin")[0].innerHTML=allocatedMargin;
@@ -937,3 +956,57 @@ function handleOrderTypeChange(obj){
 		$("#orderSl").attr("readonly",false)
 	}
 }
+
+async function getBrokerages(){
+	//validate order related data
+	hiddenDivId = $("#hiddenDataColumnId")[0].innerText
+	if(hiddenDivId == ""){
+		return
+	}
+	
+	hiddenDivObj = $("#"+hiddenDivId)[0];
+	hiddenDivObj = $(hiddenDivObj).clone()[0];
+
+	var hiddenOlDivObj = null;
+	var hiddenOrderId = $("#hiddenOrderId")[0].innerText
+	
+	var quantity = $('#orderQty')[0].value;
+	var action = $('#orderAction')[0].innerText;;
+	var price = $('#orderPrice')[0].value;
+	var stoploss = $('#orderSl')[0].value;
+	
+	//call api for brokerage
+	var brokerageParams = new URLSearchParams({
+		'stockCode' : hiddenDivObj.dataset.stockcode,
+		'exchangeCode' : hiddenDivObj.dataset.exchangecode,
+		'product' : hiddenDivObj.dataset.product, 
+		'strike' : hiddenDivObj.dataset.strike,
+		'expiryDate' : hiddenDivObj.dataset.expiry,
+		'action' : action.toLowerCase(),
+		'rightType' : hiddenDivObj.dataset.right,
+		'price' : price,
+		'quantity' : quantity,
+		'stoploss' : stoploss
+	})
+
+	var brokerageResultJsonArr = null
+	let brokeragePath = '/getBrokerages'
+	let brokerageUrl = baseServerUrl + brokeragePath + '?' + brokerageParams
+	console.log(brokerageUrl)
+	await callApi(brokerageUrl).then(result => {brokerageResultJsonArr=result});
+	errorStatus = brokerageResultJsonArr["Error"]
+	if(errorStatus != null && errorStatus != ""){
+		return;
+	}
+	brokerageDict = brokerageResultJsonArr["Success"]	
+	$('#charges')[0].innerHTML = brokerageDict["total_brokerage"]
+	$('#charges_content #total_brokerage')[0].innerHTML = brokerageDict["total_brokerage"]
+	$('#charges_content #brokerage')[0].innerHTML = brokerageDict["brokerage"]
+	$('#charges_content #stamp_duty')[0].innerHTML = brokerageDict["stamp_duty"]
+	$('#charges_content #stt')[0].innerHTML = brokerageDict["stt"]
+	$('#charges_content #gst')[0].innerHTML = brokerageDict["gst"]
+	$('#charges_content #exchange_turnover_charges')[0].innerHTML = brokerageDict["exchange_turnover_charges"]
+	$('#charges_content #sebi_charges')[0].innerHTML = brokerageDict["sebi_charges"]
+	$('.tooltip').tooltipster('content',$('#charges_content')[0].innerHTML)
+}
+

@@ -79,7 +79,7 @@ $(document).ready(function() {
 
 		//direct websocket datafeed
 		try{
-			const sio = io.connect('https://breezeapi.icicidirect.com', {
+			sio = io.connect('https://breezeapi.icicidirect.com', {
 									path: '/ohlcvstream/',
 									transports: ['websocket'],
 									auth: {
@@ -101,17 +101,19 @@ $(document).ready(function() {
 				try{
 					console.log(`error connecting directly to breezeapi: ${err.message}`)
 					console.log(err.data.content)
+					$('#output')[0].innerHTML = "<span style='color:red'>error connecting to direct data feed: " + err.message + "</span>"
 				}catch(e){console.log(e)}
 			  });
 			sio.on('disconnect', function () {
-				sio.emit('leave', '4.1!57919');
-				sio.emit('disconnect', 'transport close');
+				//sio.emit('leave', '4.1!57919');
+				//sio.emit('disconnect', 'transport close');
+				$('#output')[0].innerHTML = "<span style='color:red'>disconnected from direct data feed.Kindly reconnect.</span>"
 				setTimeout(function () {
 					console.log("disconnected from breezeapi websocket. Unsubscribing...")
 				}, 10000);
 			});					
 			//sio.emit('join', '4.1!42099');
-			sio.on('1SEC', onTicks);
+			//sio.on('1SEC', onTicks);
 		}catch(error){
 			console.log(error)
 		}
@@ -121,16 +123,42 @@ $(document).ready(function() {
 		//loadReferenceChart(true);
 		chart.timeScale().fitContent();
 		socket.emit('subscribeQuotes', 'NIFTY BANK', '1second')
-		//decouple this refChartTickListener function
 		socket.on('NIFTY BANK-1second', refChartTickListener);
+
+		//direct feed
+		stockCodeTokenDict = {
+		  "CNXBAN": "NIFTY BANK",
+		  "INDVIX":"INDIA VIX",
+		  "NIFTY": "NIFTY 50"
+		};
+		refreshTick('INDIA VIX')
+		refreshTick('NIFTY 50')
+		refreshTick('NIFTY BANK')
 	}
 	
 
 });
 
+function refreshTick(token){
+	console.log("direct feed for "+token)
+	response = sio.emit('leave', '4.1!'+token)
+	//console.log(response)
+	response = sio.emit('join', '4.1!'+token)
+	//console.log(response)
 
-async function onTicks(ticks){
-	console.log(ticks)
+	sio.on('1SEC', function (ticks){
+		let ohlcvDataDict = parseTicks(ticks)
+		let mytoken = stockCodeTokenDict[ohlcvDataDict['stock_code']]
+		let selectorStr = '[id="'+mytoken+'-price"]'
+		let ltpElemArr = $(selectorStr);
+		for(elementIndex in ltpElemArr){
+			ltpElemArr[elementIndex].innerHTML = ohlcvDataDict["close"]
+		}
+	});
+}
+
+function parseTicks(ticks){
+	//console.log(ticks)
 	/* Sample Data
 	index: NSE,CNXBAN,43768.55,43768.55,43768.55,43768.55,0,2023-11-21 09:21:42,1SEC
 	futures: NFO,CNXBAN,30-Nov-2023,43820.0,43823.9,43823.9,43820.0,675,2141520,2023-11-21 11:13:34,1SEC
@@ -141,26 +169,25 @@ async function onTicks(ticks){
 	let ticksDict = {}
 	ticksDict['exchange_code'] = ticksArr[0]
 	ticksDict['stock_code'] = ticksArr[1]
-	/*
+	
 	if (ticksArr.length == 9){
 		//index data
+		ticksDict['low'] = ticksArr[2]
+		ticksDict['high'] = ticksArr[3]
+		ticksDict['open'] = ticksArr[4]
+		ticksDict['close'] = ticksArr[5]
+		ticksDict['volume'] = ticksArr[6]
+		ticksDict['datetime'] = ticksArr[7]
+		ticksDict['interval'] = ticksArr[8]
 	}else if (ticksArr.length == 11){
 		//futures data
 	}else if (ticksArr.length == 13){
 		//options data
 	}
-	var stockTokenDict
-	await getStockToken(stockCode,exchangecode,product,expiry,strike,right).then(result => stockTokenDict = result);
-	const token = stockTokenDict["quotesToken"].split("!")[1]
-	*/
-	ticksDict['low'] = ticksArr[2]
-	ticksDict['high'] = ticksArr[3]
-	ticksDict['open'] = ticksArr[4]
-	ticksDict['close'] = ticksArr[5]
-	ticksDict['volume'] = ticksArr[6]
-	ticksDict['datetime'] = ticksArr[7]
-	ticksDict['interval'] = ticksArr[8]
-	console.log(ticksDict)
+	
+	
+	//console.log(ticksDict)
+	return ticksDict
 }
 
 function refChartTickListener(ltpData){
@@ -172,7 +199,7 @@ function refChartTickListener(ltpData){
 	ltpDatatoken = ltpDataDict['token']
 	if(ltpDatatoken !== token){
 		//unsubscribe unwanted redchart tick data
-		socket.emit('unsubscribeQuotes', ltpDatatoken, '1second')
+		socket.off('unsubscribeQuotes', ltpDatatoken, '1second')
 		//ignore this data
 		return;
 	}
@@ -396,14 +423,14 @@ async function loadReferenceChart(refChartVisible){
 		
 		if (refChartVisible!= undefined && !refChartVisible){
 			socket.emit('unsubscribeQuotes', token, interval)
-			socket.emit('unsubscribeQuotes', token, "1second")
+			socket.off(token+"-1second")
 			refDataSeries.setData([]);
 			return;
 		}
 		
 		if(prevRefChartToken != "" && token != prevRefChartToken ){
 			socket.emit('unsubscribeQuotes', prevRefChartToken, interval)
-			socket.emit('unsubscribeQuotes', prevRefChartToken, "1second")
+			socket.off(prevRefChartToken+"-1second")
 		}
 		
 		hDataArr = []
@@ -413,7 +440,7 @@ async function loadReferenceChart(refChartVisible){
 		//chart.timeScale().fitContent();
 
 		socket.emit('subscribeQuotes', token, interval)
-		socket.emit('subscribeQuotes', token, '1second')
+		//socket.emit('subscribeQuotes', token, '1second')
 		socket.on(token+'-'+interval, function (ohlcvData){
 			updateIndexChart(ohlcvData)
 		});
