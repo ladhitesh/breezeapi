@@ -74,6 +74,9 @@ class  MyBreezeApi():
 		# Assign the callbacks.
 		self.api.on_ticks = self.on_ticks
 		self.api.subscribe_feeds(get_order_notification=True)
+		print("USERID-->" + self.api.user_id)
+		self.user_id = self.api.user_id
+		self.session_key = self.api.session_key
 		self.isConnected = True
 		
 	def getCustomerDetails(self, apiSession):

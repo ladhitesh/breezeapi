@@ -76,6 +76,48 @@ $(document).ready(function() {
 	});
 	
 	if(isApiConnected){
+
+		//direct websocket datafeed
+		try{
+			const sio = io.connect('https://breezeapi.icicidirect.com', {
+									path: '/ohlcvstream/',
+									transports: ['websocket'],
+									auth: {
+										user: userId,
+										token: sessionKey
+									},
+									extraHeaders: {
+										'User-Agent': 'node-socketio[client]/socket'
+									},
+									upgrade: true,
+									rememberUpgrade: true,
+									withCredentials: true
+								});
+			console.log(sio)
+			sio.on('connect', function () {
+				console.log("connected directly to breezeapi websocket for chart tick data")
+			});
+			sio.on("connect_error", (err) => {
+				try{
+					console.log(`error connecting directly to breezeapi: ${err.message}`)
+					console.log(err.data.content)
+				}catch(e){console.log(e)}
+			  });
+			sio.on('disconnect', function () {
+				sio.emit('leave', '4.1!57919');
+				sio.emit('disconnect', 'transport close');
+				setTimeout(function () {
+					console.log("disconnected from breezeapi websocket. Unsubscribing...")
+				}, 10000);
+			});					
+			//sio.emit('join', '4.1!42099');
+			sio.on('1SEC', onTicks);
+		}catch(error){
+			console.log(error)
+		}
+
+
+
 		//loadReferenceChart(true);
 		chart.timeScale().fitContent();
 		socket.emit('subscribeQuotes', 'NIFTY BANK', '1second')
@@ -86,6 +128,40 @@ $(document).ready(function() {
 
 });
 
+
+async function onTicks(ticks){
+	console.log(ticks)
+	/* Sample Data
+	index: NSE,CNXBAN,43768.55,43768.55,43768.55,43768.55,0,2023-11-21 09:21:42,1SEC
+	futures: NFO,CNXBAN,30-Nov-2023,43820.0,43823.9,43823.9,43820.0,675,2141520,2023-11-21 11:13:34,1SEC
+	options: NFO,CNXBAN,22-Nov-2023,44000.0,CE,49.7,49.8,49.8,49.7,165,4635675,2023-11-21 11:26:52,1SEC
+	*/
+	let ticksArr = ticks.split(',')
+	//console.log(ticksArr)
+	let ticksDict = {}
+	ticksDict['exchange_code'] = ticksArr[0]
+	ticksDict['stock_code'] = ticksArr[1]
+	/*
+	if (ticksArr.length == 9){
+		//index data
+	}else if (ticksArr.length == 11){
+		//futures data
+	}else if (ticksArr.length == 13){
+		//options data
+	}
+	var stockTokenDict
+	await getStockToken(stockCode,exchangecode,product,expiry,strike,right).then(result => stockTokenDict = result);
+	const token = stockTokenDict["quotesToken"].split("!")[1]
+	*/
+	ticksDict['low'] = ticksArr[2]
+	ticksDict['high'] = ticksArr[3]
+	ticksDict['open'] = ticksArr[4]
+	ticksDict['close'] = ticksArr[5]
+	ticksDict['volume'] = ticksArr[6]
+	ticksDict['datetime'] = ticksArr[7]
+	ticksDict['interval'] = ticksArr[8]
+	console.log(ticksDict)
+}
 
 function refChartTickListener(ltpData){
 	//console.log(ltpData)

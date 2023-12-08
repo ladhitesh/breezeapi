@@ -148,6 +148,8 @@ def authorize():
 def connectApi():		
 	queryParams = request.args.to_dict()
 	apiSession = queryParams.get('apisession','no-breezeapi-session')
+	userId = ""
+	sessionKey = ""
 	loginMessage = "Not logged in."
 	invalidSessionMsg = ""
 	if apiSession == "no-breezeapi-session":
@@ -169,13 +171,15 @@ def connectApi():
 			session["apisession"] = apiSession
 			return redirect("/", code=302)
 			loginMessage = getCustomerDetails(apiSession)
+			userId = myapi.user_id
+			sessionKey = myapi.session_key
 		except Exception as e:
 			print(e)
 			invalidSessionMsg = ". Session invalid. Create new session from login url."
 	
 	loginUrl = "<a href='/login'>Login</a>"
 	output = loginUrl +"<br/>Most recent session:"+apiSession+invalidSessionMsg
-	return render_template("index.html", output=output, apiSession=apiSession, loginMessage=loginMessage)	
+	return render_template("index.html", output=output, apiSession=apiSession, userId=userId, sessionKey=sessionKey, loginMessage=loginMessage)	
 
 
 @app.route('/', methods=['GET', 'POST'])
@@ -190,8 +194,10 @@ def oneClick():
 		apiSession = getApiSessionFromFile()
 		return redirect("/connect", code=302)
 	loginMessage = getCustomerDetails(apiSession)
+	userId = myapi.user_id
+	sessionKey = myapi.session_key
 	output = "Most recent session:"+apiSession
-	return render_template("index.html", output=output, apiSession=apiSession, loginMessage=loginMessage)	
+	return render_template("index.html", output=output, apiSession=apiSession, userId=userId, sessionKey=sessionKey, loginMessage=loginMessage)	
 
 @app.route('/getFnOStocks', methods=['GET'])
 @cross_origin()
