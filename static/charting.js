@@ -31,16 +31,12 @@ $(document).ready(function() {
 	volumeSeries = chart.addHistogramSeries({ color: '#C5C5C5',priceFormat: {type: 'volume',}, priceScaleId: ''});
 	volumeSeries.priceScale().applyOptions({ scaleMargins: {top: 0.8, bottom: 0,} });
 
-
 	//Legend
 	optionsStockName = "Option Chart";
 	indexName = "BANKNIFTY";
 	const container = document.getElementById('chart');
 	const [firstRowStockOHLCVDiv, secondRowStockOHLCVDiv  ] = drawChartLegend(container)
 
-	
-	
-	
 	var optionPriceFormatted = '';
 	var futurePriceFormatted = '';
 
@@ -76,181 +72,114 @@ $(document).ready(function() {
 	});
 	
 	if(isApiConnected){
-
-		//direct websocket datafeed
-		try{
-			sio = io.connect('https://breezeapi.icicidirect.com', {
-									path: '/ohlcvstream/',
-									transports: ['websocket'],
-									auth: {
-										user: userId,
-										token: sessionKey
-									},
-									extraHeaders: {
-										'User-Agent': 'node-socketio[client]/socket'
-									},
-									upgrade: true,
-									rememberUpgrade: true,
-									withCredentials: true
-								});
-			console.log(sio)
-			sio.on('connect', function () {
-				console.log("connected directly to breezeapi websocket for chart tick data")
-			});
-			sio.on("connect_error", (err) => {
-				try{
-					console.log(`error connecting directly to breezeapi: ${err.message}`)
-					console.log(err.data.content)
-					$('#output')[0].innerHTML = "<span style='color:red'>error connecting to direct data feed: " + err.message + "</span>"
-				}catch(e){console.log(e)}
-			  });
-			sio.on('disconnect', function () {
-				//sio.emit('leave', '4.1!57919');
-				//sio.emit('disconnect', 'transport close');
-				$('#output')[0].innerHTML = "<span style='color:red'>disconnected from direct data feed.Kindly reconnect.</span>"
-				setTimeout(function () {
-					console.log("disconnected from breezeapi websocket. Unsubscribing...")
-				}, 10000);
-			});					
-			//sio.emit('join', '4.1!42099');
-			//sio.on('1SEC', onTicks);
-		}catch(error){
-			console.log(error)
+		
+		//socket.emit('subscribeQuotes', 'NIFTY BANK', '1second')
+		//socket.on('NIFTY BANK-1second', refChartTickListener);
+		//sio.emit('join', '4.1!NIFTY BANK');
+		let refChart = $("#refChart")[0];
+		futuresOptionNodeList = refChart.querySelectorAll("option[product='futures']");
+		//console.log(futuresOptionNodeList)
+		for (let i = 0; i < futuresOptionNodeList.length; i++) {
+			updateRefChartSelectOptions(futuresOptionNodeList[i])
 		}
-
-
-
-		//loadReferenceChart(true);
+		currentRefChartToken = $("#refChart :selected")[0].getAttribute("token")
+		loadReferenceChart(true);
 		chart.timeScale().fitContent();
-		socket.emit('subscribeQuotes', 'NIFTY BANK', '1second')
-		socket.on('NIFTY BANK-1second', refChartTickListener);
-
-		//direct feed
-		stockCodeTokenDict = {
-		  "CNXBAN": "NIFTY BANK",
-		  "INDVIX":"INDIA VIX",
-		  "NIFTY": "NIFTY 50"
-		};
-		refreshTick('INDIA VIX')
-		refreshTick('NIFTY 50')
-		refreshTick('NIFTY BANK')
+		
 	}
-	
+	intervalLookup = {}
+	intervalLookup["1MIN"] = "1minute"
+	intervalLookup["5MIN"] = "5minute"
+	intervalLookup["30MIN"] = "30minute"
+	intervalRevLookup = {}
+	intervalRevLookup["1minute"] = "1MIN"
+	intervalRevLookup["5minute"] = "5MIN"
+	intervalRevLookup["30minute"] = "30MIN"
 
 });
 
-function refreshTick(token){
-	console.log("direct feed for "+token)
-	response = sio.emit('leave', '4.1!'+token)
-	//console.log(response)
-	response = sio.emit('join', '4.1!'+token)
-	//console.log(response)
+//will be set on document ready
+currentRefChartToken = null;
 
-	sio.on('1SEC', function (ticks){
-		let ohlcvDataDict = parseTicks(ticks)
-		let mytoken = stockCodeTokenDict[ohlcvDataDict['stock_code']]
-		let selectorStr = '[id="'+mytoken+'-price"]'
-		let ltpElemArr = $(selectorStr);
+function updateRefChartSelectOptions(option){
+	searchStr = "FUT " + option.value
+	//console.log(searchStr)
+	fetchStocks(searchStr).then(result => {
+			let token = result[0]["token"]
+			//console.log(token)
+			let expiry = result[0]["expiry"]
+			//let expiry1806Format = moment(expiry,"DD-MMM-YYYY").format("YYYY-MM-DD")+"T19:30:00.000Z"
+			option.setAttribute("token",token)
+			option.setAttribute("expiry",expiry)
+			option.text = (option.text + " " + expiry)
+		});
+}
+
+
+
+function refChartTickListener(ltpDataDict){
+	try{
+		//console.log(ltpData)
+		//check token of feed data with current selected token and then process data
+		if(typeof ltpDataDict == 'string')
+			ltpDataDict = JSON.parse(ltpDataDict);
+		
+		let selectedRefChartOption = $("#refChart :selected")[0];
+		let token = selectedRefChartOption.getAttribute("token")
+		//ltpDataDict = JSON.parse(ltpData);
+	
+		ltpDatatoken = ltpDataDict['token']
+		if(ltpDatatoken !== token){
+			//unsubscribe unwanted redchart tick data
+			//socket.off('unsubscribeQuotes', ltpDatatoken, '1second')
+			//ignore this data
+			return;
+		}
+		//update tick ltp on chart legend
+		
+		selectorStr = '[id="'+token+'-price"]'
+		ltpElemArr = $(selectorStr);
 		for(elementIndex in ltpElemArr){
-			ltpElemArr[elementIndex].innerHTML = ohlcvDataDict["close"]
+			ltpElemArr[elementIndex].innerHTML = ltpDataDict["close"]
 		}
-	});
-}
-
-function parseTicks(ticks){
-	//console.log(ticks)
-	/* Sample Data
-	index: NSE,CNXBAN,43768.55,43768.55,43768.55,43768.55,0,2023-11-21 09:21:42,1SEC
-	futures: NFO,CNXBAN,30-Nov-2023,43820.0,43823.9,43823.9,43820.0,675,2141520,2023-11-21 11:13:34,1SEC
-	options: NFO,CNXBAN,22-Nov-2023,44000.0,CE,49.7,49.8,49.8,49.7,165,4635675,2023-11-21 11:26:52,1SEC
-	*/
-	let ticksArr = ticks.split(',')
-	//console.log(ticksArr)
-	let ticksDict = {}
-	ticksDict['exchange_code'] = ticksArr[0]
-	ticksDict['stock_code'] = ticksArr[1]
 	
-	if (ticksArr.length == 9){
-		//index data
-		ticksDict['low'] = ticksArr[2]
-		ticksDict['high'] = ticksArr[3]
-		ticksDict['open'] = ticksArr[4]
-		ticksDict['close'] = ticksArr[5]
-		ticksDict['volume'] = ticksArr[6]
-		ticksDict['datetime'] = ticksArr[7]
-		ticksDict['interval'] = ticksArr[8]
-	}else if (ticksArr.length == 11){
-		//futures data
-	}else if (ticksArr.length == 13){
-		//options data
-	}
+		//realtime tick update in chart
+		if (interval != "30minute" && interval != "30MIN"){
+			divisor = 60
+			if(interval == "5minute" || interval == "5MIN" ){
+				divisor = divisor * 5
+			}
+			tickDataDict = updateTimeNVolumeInTickData(ltpDataDict,false)
+			//console.log(tickDataDict["time"])
+			var currentTime = Number(tickDataDict["time"])
+			var closestMinuteTime = Math.floor(Number(tickDataDict["time"])/divisor)*divisor
+			var differenceInTime = currentTime - closestMinuteTime
 	
-	
-	//console.log(ticksDict)
-	return ticksDict
-}
-
-function refChartTickListener(ltpData){
-	//console.log(ltpData)
-	let selectedRefChartOption = $("#refChart :selected")[0];
-	let token = selectedRefChartOption.getAttribute("token")
-	ltpDataDict = JSON.parse(ltpData);
-
-	ltpDatatoken = ltpDataDict['token']
-	if(ltpDatatoken !== token){
-		//unsubscribe unwanted redchart tick data
-		socket.off('unsubscribeQuotes', ltpDatatoken, '1second')
-		//ignore this data
-		return;
-	}
-	//update tick ltp on chart legend
-	
-	selectorStr = '[id="'+token+'-price"]'
-	ltpElemArr = $(selectorStr);
-	for(elementIndex in ltpElemArr){
-		ltpElemArr[elementIndex].innerHTML = ltpDataDict["close"]
-	}
-
-	//realtime tick update in chart
-	if (interval != "30minute"){
-		divisor = 60
-		if(interval == "5minute"){
-			divisor = divisor * 5
-		}
-		tickDataStr = updateTimeNVolumeInTickData(ltpData,false)
-		tickDataDict = JSON.parse(tickDataStr)
-		//console.log(tickDataDict["time"])
-		var currentTime = Number(tickDataDict["time"])
-		var closestMinuteTime = Math.floor(Number(tickDataDict["time"])/divisor)*divisor
-		var differenceInTime = currentTime - closestMinuteTime
-
-		if(indexTickOpen == 0)
-			indexTickOpen = tickDataDict["open"]
-		if(differenceInTime == 2){
-			indexTickOpen = tickDataDict["open"]
-			indexTickLow = tickDataDict["low"]
-			indexTickHigh = tickDataDict["high"]
+			if(indexTickOpen == 0)
+				indexTickOpen = tickDataDict["open"]
+			if(differenceInTime == 2){
+				indexTickOpen = tickDataDict["open"]
+				indexTickLow = tickDataDict["low"]
+				indexTickHigh = tickDataDict["high"]
+				indexTickClose = tickDataDict["close"]
+			}
+			indexTickLow = Math.min(indexTickLow,Number(tickDataDict["low"]) )
+			indexTickHigh = Math.max(indexTickHigh,Number(tickDataDict["high"]) )
 			indexTickClose = tickDataDict["close"]
+			tickDataDict["open"] = indexTickOpen
+			tickDataDict["low"] = indexTickLow
+			tickDataDict["high"] = indexTickHigh
+			tickDataDict["close"] = indexTickClose
+			//console.log(closestMinuteTime +":"+differenceInTime)
+			tickDataDict["time"] = closestMinuteTime
+	
+			if (differenceInTime > 5 && differenceInTime < (divisor - 5)){
+					//console.log(closestMinuteTime +":"+differenceInTime)
+					refDataSeries.update(tickDataDict);
+			}
 		}
-		indexTickLow = Math.min(indexTickLow,Number(tickDataDict["low"]) )
-		indexTickHigh = Math.max(indexTickHigh,Number(tickDataDict["high"]) )
-		indexTickClose = tickDataDict["close"]
-		tickDataDict["open"] = indexTickOpen
-		tickDataDict["low"] = indexTickLow
-		tickDataDict["high"] = indexTickHigh
-		tickDataDict["close"] = indexTickClose
-		//console.log(closestMinuteTime +":"+differenceInTime)
-		tickDataDict["time"] = closestMinuteTime
-
-		if (differenceInTime > 5 && differenceInTime < (divisor - 5)){
-			try{
-				//console.log(closestMinuteTime +":"+differenceInTime)
-				refDataSeries.update(tickDataDict);
-			}catch(e){console.log(e)}
-		}
-	}
-	//console.log(tickDataDict["time"])
-
+		//console.log(tickDataDict["time"])
+	}catch(e){console.log("error in refChartTickListener");console.log(e)}
 	
 }
 
@@ -291,6 +220,23 @@ function drawChartLegend(chartContainer){
 	const secondRow = document.createElement('div');
 	secondRow.style.textAlign = 'left';
 	
+	let secondRowStockNameSelect = getRefChartStockSelectHTMLElement()
+	let secondRowStockLtpDivHtml = "<div id='NIFTY BANK-price' style='text-align:left;display:inline-block;color:blue;width:70px;margin-left:10px'></div>"
+	const secondRowStockLtpDiv = new DOMParser().parseFromString(secondRowStockLtpDivHtml, 'text/html').querySelector("div");
+
+	let secondRowStockOHLCVDivHtml = "<div style='color:black;text-align:left;display:inline;font-size:12px'></div>"
+	const secondRowStockOHLCVDiv = new DOMParser().parseFromString(secondRowStockOHLCVDivHtml, 'text/html').querySelector("div");
+	
+	//secondRow.appendChild(secondRowStockNameDiv)
+	secondRow.appendChild(secondRowStockNameSelect)
+	secondRow.appendChild(secondRowStockLtpDiv)
+	secondRow.appendChild(secondRowStockOHLCVDiv)
+	
+	legend.appendChild(secondRow);
+	return [firstRowStockOHLCVDiv,secondRowStockOHLCVDiv];
+}
+
+function getRefChartStockSelectHTMLElement(){
 	let secondRowStockNameSelectHtml = "<select id='refChart' style='color:black;background-color:#fcfcde;text-align:left;display:inline-block;width:230px;font-size:12px;padding:0px;margin:0px;border:0px;font-weight:bold' onchange='updateReferenceChart();'>"
 	const secondRowStockNameSelect = new DOMParser().parseFromString(secondRowStockNameSelectHtml, 'text/html').querySelector("select");
 
@@ -310,143 +256,90 @@ function drawChartLegend(chartContainer){
 	secondRowStockNameSelect.appendChild(secondRowOption2)
 	secondRowStockNameSelect.appendChild(secondRowOption3)
 	secondRowStockNameSelect.appendChild(secondRowOption4)
-
-	let secondRowStockLtpDivHtml = "<div id='NIFTY BANK-price' style='text-align:left;display:inline-block;color:blue;width:70px;margin-left:10px'></div>"
-	const secondRowStockLtpDiv = new DOMParser().parseFromString(secondRowStockLtpDivHtml, 'text/html').querySelector("div");
-
-	let secondRowStockOHLCVDivHtml = "<div style='color:black;text-align:left;display:inline;font-size:12px'></div>"
-	const secondRowStockOHLCVDiv = new DOMParser().parseFromString(secondRowStockOHLCVDivHtml, 'text/html').querySelector("div");
-	
-	//secondRow.appendChild(secondRowStockNameDiv)
-	secondRow.appendChild(secondRowStockNameSelect)
-	secondRow.appendChild(secondRowStockLtpDiv)
-	secondRow.appendChild(secondRowStockOHLCVDiv)
-	
-	legend.appendChild(secondRow);
-	return [firstRowStockOHLCVDiv,secondRowStockOHLCVDiv];
+	return secondRowStockNameSelect
 }
 
 var toggleRefChartVisible = true
 var interval = "5minute"
 
-async function resetInterval(event, newInterval){
+function resetInterval(event, newInterval){
 	clearOptionsChartData();
 	clearRefChartData();
 	interval = newInterval
-	await loadReferenceChart(true).then(result => {console.log(result)});
-	await loadOptionsChart(currentHiddenDataDivId, optionsChartVisible)
+	loadReferenceChart(true);
+	loadOptionsChart(currentHiddenDataDivId, optionsChartVisible)
 }
 
 fromDateStr = moment().format("YYYY-MM-DD")+"T09:15:00.000Z"
 toDateStr = moment().format("YYYY-MM-DD")+"T19:30:00.000Z"
 
-async function setChartRange(days){
+function setChartRange(days){
 	fromDateStr = moment().subtract(days,'d').format("YYYY-MM-DD")+"T09:15:00.000Z"
-	await loadReferenceChart(true).then(result => {console.log(result)});
-	await loadOptionsChart(currentHiddenDataDivId, optionsChartVisible)
+	loadReferenceChart(true);
+	loadOptionsChart(currentHiddenDataDivId, optionsChartVisible)
 }
 
-async function updateReferenceChart(){
-	
+function updateReferenceChart(){
 	let selectedRefChartOption = $("#refChart :selected");
 	let selectedRefChartText = selectedRefChartOption.text();
 	let selectedRefChartStockCode = selectedRefChartOption.val();
 	console.log("updating reference chart-"+selectedRefChartStockCode+":"+selectedRefChartText)
 	//console.log($("#refChart")[0])
-	//update token
 	let token = selectedRefChartOption[0].getAttribute("token")
-	let product = selectedRefChartOption[0].getAttribute("product")
-	let searchStr = ""
-	if(product == "futures"){
-		searchStr = "FUT "
-		searchStr = searchStr + selectedRefChartStockCode
-		let fnoStocksUrl = baseServerUrl + '/getFnOStocks?' + new URLSearchParams({'searchStr': searchStr})
-		await callApi(fnoStocksUrl).then(result => {fnOJsonArr=result});
-		//console.log(fnOJsonArr[0])
-		token = fnOJsonArr[0]["token"]
-		let expiry = fnOJsonArr[0]["expiry"]
-		expiry1806Format = moment(expiry,"DD-MMM-YYYY").format("YYYY-MM-DD")+"T19:30:00.000Z"
-		selectedRefChartOption[0].setAttribute("token",token)
-		selectedRefChartOption[0].setAttribute("expiry",expiry1806Format)
-		if(!selectedRefChartOption.text().includes(expiry)){
-			selectedRefChartOption.text(selectedRefChartOption.text() + " " + expiry)
-		}
-	}
 	//update id for tick data
 	let ltpDivObj = $("#refChart")[0].nextSibling
 	ltpDivObj.id = token + "-price"
 	resetRefChartTickOpeningLevels();
 	loadReferenceChart(true);
-
-}
-
-async function getHistoricalData(stockCode,exchangeCode,product,expiry,strike,right){
-
-	//interval = "5minute"
-	//console.log(exchangeCode)
-
-	var hDataParams = new URLSearchParams({
-		'fromDate' : fromDateStr,
-		'toDate' : toDateStr,
-		'stockCode' : stockCode,
-		'interval' : interval,
-		'strike' : strike,
-		'expiry' : expiry,
-		'right' : right,
-		'product' : product,
-		'exchangeCode' : exchangeCode
-	})
-	var hDataResultJsonArr = null
-	var hDataUrl = baseServerUrl + '/getHistoricalData?' + hDataParams
-	//console.log(hDataUrl)
-	await callApi(hDataUrl).then(result => {hDataResultJsonArr=result});
-	errorStatus = hDataResultJsonArr["Error"]
-	if(errorStatus != null && errorStatus != ""){
-		return;
-	}
-	hDataArr = hDataResultJsonArr["Success"]
-	return hDataArr;
 }
 
 prevRefChartToken = "";
 
 //var refChartVisible = false
-async function loadReferenceChart(refChartVisible){
+function loadReferenceChart(refChartVisible){
 	try{
-		
 		let selectedRefChartOption = $("#refChart :selected")[0];
 		let stockCode = selectedRefChartOption.value
 		let exchangeCode = selectedRefChartOption.getAttribute("exchangeCode")
 		let token = selectedRefChartOption.getAttribute("token")
 		let product = selectedRefChartOption.getAttribute("product")
 		let expiry = selectedRefChartOption.getAttribute("expiry")
+		let expiryFormatted = moment(expiry,"DD-MMM-YYYY").format("YYYY-MM-DD")+"T00:00:00.000Z"
 		
 		if (refChartVisible!= undefined && !refChartVisible){
-			socket.emit('unsubscribeQuotes', token, interval)
-			socket.off(token+"-1second")
+			//socket.emit('unsubscribeQuotes', token, interval)
+			unsubscribeDirectOHLCV(token,interval);
+			//socket.off(token+"-1second")
 			refDataSeries.setData([]);
 			return;
 		}
 		
 		if(prevRefChartToken != "" && token != prevRefChartToken ){
-			socket.emit('unsubscribeQuotes', prevRefChartToken, interval)
-			socket.off(prevRefChartToken+"-1second")
+			//socket.emit('unsubscribeQuotes', prevRefChartToken, interval)
+			//socket.off(prevRefChartToken+"-1second")
+			unsubscribeDirectOHLCV(prevRefChartToken,interval);
 		}
 		
 		hDataArr = []
-		await getHistoricalData(stockCode,exchangeCode,product,expiry,"","").then(result => {hDataArr=result});
-		//console.log(hDataArr)
-		refDataSeries.setData(hDataArr);
-		//chart.timeScale().fitContent();
+		fetchHistoricalData(stockCode,exchangeCode,product,expiryFormatted,"","")
+			.then(result => {
+				hDataArr = result;
+				//console.log(hDataArr)
+				refDataSeries.setData(hDataArr);
+				//chart.timeScale().fitContent();
 
-		socket.emit('subscribeQuotes', token, interval)
-		//socket.emit('subscribeQuotes', token, '1second')
-		socket.on(token+'-'+interval, function (ohlcvData){
-			updateIndexChart(ohlcvData)
-		});
-		socket.on(token+'-1second', refChartTickListener);
-		
-		prevRefChartToken = token
+				//socket.emit('subscribeQuotes', token, interval)
+				subscribeDirectOHLCV(token,intervalRevLookup[interval],{'token':token,'stockCode':stockCode,'expiry':expiry,'strike':"",'right':""},"")
+				//socket.emit('subscribeQuotes', token, '1second')
+				subscribeDirectOHLCV(token,"1SEC",{'token':token,'stockCode':stockCode,'expiry':expiry,'strike':"",'right':""},"")
+				//socket.on(token+'-'+interval, function (ohlcvData){
+				//	refChartFeedDataListener(ohlcvData)
+				//});
+				//socket.on(token+'-1second', function (ohlcvData) {
+				//	refChartTickListener(ohlcvData)
+				//});
+				prevRefChartToken = token
+			});
 		
 		//socket.emit('unsubscribeQuotes', "NIFTY BANK", "1second")
 
@@ -463,7 +356,8 @@ var previousOptionsDataToken = null
 function clearOptionsChartData(){
 	//unsubscribe first so old token data do not override new token data
 	if(previousOptionsDataToken != null){
-		socket.emit('unsubscribeQuotes', previousOptionsDataToken, interval);
+		//socket.emit('unsubscribeQuotes', previousOptionsDataToken, interval);
+		unsubscribeDirectOHLCV(previousOptionsDataToken,interval);
 	}
 	previousOptionsDataToken = null
 	optionSeries.setData([]);
@@ -474,14 +368,15 @@ function clearOptionsChartData(){
 function clearRefChartData(){
 	let selectedRefChartOption = $("#refChart :selected")[0];
 	let token = selectedRefChartOption.getAttribute("token")
-	socket.emit('unsubscribeQuotes', token, interval);
+	//socket.emit('unsubscribeQuotes', token, interval);
+	unsubscribeDirectOHLCV(token,interval);
 	refDataSeries.setData([]);
 	//chart.timeScale().fitContent();
 }
 
 var currentHiddenDataDivId = null;
 var optionsChartVisible = true;
-async function loadOptionsData(hiddenDataDivId){
+function loadOptionsData(hiddenDataDivId){
 	newHiddenDataDivId = hiddenDataDivId
 	if(newHiddenDataDivId == currentHiddenDataDivId){
 		//clear options chart data
@@ -494,7 +389,8 @@ async function loadOptionsData(hiddenDataDivId){
 	optionsChartVisible = true;
 	loadOptionsChart(hiddenDataDivId, optionsChartVisible)
 }
-async function loadOptionsChart(hiddenDataDivId, optionsChartVisible){
+
+function loadOptionsChart(hiddenDataDivId, optionsChartVisible){
 		try{
 			
 			newHiddenDataDivId = hiddenDataDivId
@@ -508,7 +404,6 @@ async function loadOptionsChart(hiddenDataDivId, optionsChartVisible){
 				volumeSeries.setData([]);
 			}
 				
-				
 			currentHiddenDataDivId = newHiddenDataDivId
 			//console.log(hiddenDivObj)
 
@@ -517,18 +412,11 @@ async function loadOptionsChart(hiddenDataDivId, optionsChartVisible){
 			fnotype = hiddenDivObj.dataset.fnotype
 			product = hiddenDivObj.dataset.product
 			expiry = hiddenDivObj.dataset.expiry
-			expiry = moment(expiry,"DD-MMM-YYYY").format("YYYY-MM-DD")+"T00:00:00.000Z"
+			expiryFormatted = moment(expiry,"DD-MMM-YYYY").format("YYYY-MM-DD")+"T00:00:00.000Z"
 			strike = hiddenDivObj.dataset.strike
 			right = hiddenDivObj.dataset.right
-			if(right == "CE"){right="Call"}else if (right=="PE"){right="Put"}
-			
-			if(fnotype == "OPT")
-				fnotype = "Options"
-			else if(fnotype == "FUT"){
-				fnotype = "Futures"
-				strike = ""
-				right = ""
-			}
+			rightLong = right
+			if(right == "CE"){rightLong="Call"}else if (right=="PE"){rightLong="Put"}
 			
 			token = hiddenDivObj.dataset.token
 			
@@ -537,44 +425,52 @@ async function loadOptionsChart(hiddenDataDivId, optionsChartVisible){
 			$("#optionsChartStockName")[0].nextSibling.id=token+"-price"
 
 			hDataArr = []
-			await getHistoricalData(stockCode,exchangeCode,product,expiry,strike,right).then(result => {hDataArr=result});
-			
-			var vDataArr = JSON.parse(JSON.stringify(hDataArr))
-			const upColor='#82e3d9' 
-			const downColor='#f6a3a2' 
-			vDataArr.forEach(function(data){
-				if(Number(data["open"]) < Number(data["close"])){
-					data["color"] = upColor
-				}else{
-					data["color"] = downColor
-				}
-			});
-			//console.log(hDataArr)
-			
-			optionSeries.setData(hDataArr);
-			volumeSeries.setData(vDataArr);
-			//chart.priceScale().fitContent();
-			//chart.timeScale().fitContent();
-			
-			//unsubscribe first so old token data do not override new token data
-			if(previousOptionsDataToken != null){
-				socket.emit('unsubscribeQuotes', previousOptionsDataToken, interval);
-				socket.off(previousOptionsDataToken+'-1second', updateOptionChartRealTime);
-				optionTickOpen = 0
-				optionTickLow = 99999 
-				optionTickHigh = 0
-				optionTickClose = 0
-			}
-			
-			socket.emit('subscribeQuotes', this.token, interval);
-			socket.on(this.token+'-'+interval, function (ohlcvData){
-				updateOptionChart(ohlcvData)
-			});
-			resetOptionsChartTickOpeningLevels();
-			socket.on(this.token+'-1second', updateOptionChartRealTime);
-			
-			//socket.emit('unsubscribeQuotes', "NIFTY BANK", "1second")
-			previousOptionsDataToken = token;
+			fetchHistoricalData(stockCode,exchangeCode,product,expiryFormatted,strike,rightLong)
+				.then(result => {
+
+					hDataArr=result			
+					var vDataArr = JSON.parse(JSON.stringify(hDataArr))
+					const upColor='#82e3d9' 
+					const downColor='#f6a3a2' 
+					vDataArr.forEach(function(data){
+						if(Number(data["open"]) < Number(data["close"])){
+							data["color"] = upColor
+						}else{
+							data["color"] = downColor
+						}
+					});
+					//console.log(hDataArr)
+					
+					optionSeries.setData(hDataArr);
+					volumeSeries.setData(vDataArr);
+					//chart.priceScale().fitContent();
+					//chart.timeScale().fitContent();
+					
+					//unsubscribe first so old token data do not override new token data
+					if(previousOptionsDataToken != null){
+						//socket.emit('unsubscribeQuotes', previousOptionsDataToken, interval);
+						//socket.off(previousOptionsDataToken+'-1second', optionChartTickListener);
+						//let ltpElemArr = $('#'+token+'-price');
+						//if(ltpElemArr.length < 2)
+						//	unsubscribeDirectOHLCV(previousOptionsDataToken)
+						unsubscribeDirectOHLCV(previousOptionsDataToken,interval)
+						optionTickOpen = 0
+						optionTickLow = 99999 
+						optionTickHigh = 0
+						optionTickClose = 0
+					}
+					
+					//socket.emit('subscribeQuotes', this.token, interval);
+					subscribeDirectOHLCV(token,intervalRevLookup[interval],{'token':token,'stockCode':stockCode,'expiry':expiry,'strike':strike,'right':right},"")
+					//socket.on(this.token+'-'+interval, function (ohlcvData){
+					//	optionChartFeedDataListener(ohlcvData)
+					//});
+					resetOptionsChartTickOpeningLevels();
+					//socket.on(this.token+'-1second', optionChartTickListener);
+					subscribeDirectOHLCV(this.token,"1SEC",{'token':this.token,'stockCode':stockCode,'expiry':expiry,'strike':strike,'right':right},"")
+					
+					previousOptionsDataToken = this.token;
+				});
 
 		}
 		catch(error){
@@ -584,11 +480,10 @@ async function loadOptionsChart(hiddenDataDivId, optionsChartVisible){
 }
 
 function updateTimeNVolumeInTickData(data,addColorToData){
-	data = JSON.parse(data);
+	if(typeof data == 'string')
+		data = JSON.parse(data);
 	//console.log(data)	
-
 	datetimeStr = data["datetime"]
-	
 	if(addColorToData){
 		var upColor='#82e3d9'
 		var downColor='#f6a3a2'
@@ -603,30 +498,65 @@ function updateTimeNVolumeInTickData(data,addColorToData){
 								  .add(30,'m')
 								  .valueOf()/1000)
 	data["datetime"] = toUTC
-	tickData = JSON.stringify(data,undefined, 4)
-	tickData = tickData.replaceAll('datetime','time')
-	tickData = tickData.replaceAll('volume','value')
-	return tickData
+	//tickData = JSON.stringify(data,undefined, 4)
+	//tickData = tickData.replaceAll('datetime','time')
+	//tickData = tickData.replaceAll('volume','value')
+	data["time"] = data["datetime"]
+	data["value"] = data["volume"]
+	return data
 }
 
-function updateIndexChart(data){
-	tickData = updateTimeNVolumeInTickData(data,false)
+function refChartFeedDataListener(data){
 	try{
-		refDataSeries.update(JSON.parse(tickData));
-	}catch(e){console.log(e)}
+		if(typeof data == 'string')
+			data = JSON.parse(data);
+		//check token of feed data with current selected token and then process data
+		let selectedRefChartOption = $("#refChart :selected")[0];
+		let selectedToken = selectedRefChartOption.getAttribute("token")
+		let dataInterval = data['interval']
+				if (!dataInterval.includes("minute")){
+			dataInterval = intervalLookup[data['interval']]
+		}
+		if(selectedToken != data['token'] || interval != dataInterval){
+			console.log("ignoring token("+selectedToken+"): "+data["token"]+" as selected interval "+interval+" is different than data interval "+dataInterval)
+			//unsubscribe minute feed data
+			return;
+		}
+		tickData = updateTimeNVolumeInTickData(data,false)
+		//refDataSeries.update(JSON.parse(tickData));
+		refDataSeries.update(tickData);
+	}catch(e){console.log("error in refChartFeedDataListener");console.log(e)}
 }
 
-function updateOptionChart(data){
-	if(!optionsChartVisible)
-		return;
-	var vtickData = JSON.parse(JSON.stringify(data))
-	var tickData = updateTimeNVolumeInTickData(data,false)
-	vtickData = updateTimeNVolumeInTickData(vtickData,true)
+function optionChartFeedDataListener(data){
 	try{
-		optionSeries.update(JSON.parse(tickData));
-		volumeSeries.update(JSON.parse(vtickData));
-	}catch(e){console.log(e)}
-	//chart.timeScale().fitContent();
+		if(!optionsChartVisible)
+			return;
+		if(typeof data == 'string')
+			data = JSON.parse(data);
+		//console.log("option minute"+data['interval']+" listener token:"+data['token'])
+		let dataInterval = data['interval']
+		if (!dataInterval.includes("minute")){
+			dataInterval = intervalLookup[data['interval']]
+		}
+		if(data['token'] != previousOptionsDataToken || interval != dataInterval ){
+			console.log("ignoring token("+previousOptionsDataToken+"): "+data["token"]+" as selected interval "+interval+" is different than data interval "+dataInterval)
+			//send unscubscribe message for appropriate interval
+			return;
+		}
+		var vtickData = JSON.parse(JSON.stringify(data))
+		//var vtickData = data
+		var tickData = updateTimeNVolumeInTickData(data,false)
+		vtickData = updateTimeNVolumeInTickData(vtickData,true)
+
+		//optionSeries.update(JSON.parse(tickData));
+		//volumeSeries.update(JSON.parse(vtickData));
+		//console.log(vtickData)
+		optionSeries.update(tickData);
+		volumeSeries.update(vtickData);
+		//chart.timeScale().fitContent();
+	}catch(e){console.log("error in optionChartFeedDataListener");console.log(e)}
+
 }
 
 optionTickOpen = 0
@@ -641,16 +571,21 @@ function resetOptionsChartTickOpeningLevels(){
 	optionTickClose = 0
 }
 
-function updateOptionChartRealTime(data){
+function optionChartTickListener(data){
 	if(!optionsChartVisible)
 		return;
-	var tickDataStr = updateTimeNVolumeInTickData(data,false)
+	if(typeof data == 'string')
+		data = JSON.parse(data);
+	if(data['token'] != previousOptionsDataToken)
+		return;
+	//var tickDataStr = updateTimeNVolumeInTickData(data,false)
+	var tickDataDict = updateTimeNVolumeInTickData(data,false)
 	if (interval != "30minute"){
 		divisor = 60
 		if(interval == "5minute"){
 			divisor = divisor * 5
 		}
-		tickDataDict = JSON.parse(tickDataStr)
+		//tickDataDict = JSON.parse(tickDataStr)
 		//console.log(tickDataDict["time"])
 		var currentTime = Number(tickDataDict["time"])
 		var closestMinuteTime = Math.floor(Number(tickDataDict["time"])/divisor)*divisor

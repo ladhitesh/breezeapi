@@ -5,7 +5,7 @@ from flask import Flask, request, redirect, session, jsonify, render_template, s
 import os
 from flask_cors import CORS, cross_origin
 from breeze_connect import BreezeConnect
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 import glob
 import urllib
 from flask_socketio import SocketIO, emit, SocketIOTestClient
@@ -18,7 +18,6 @@ import configapi
 
 app = Flask(__name__)
 socketio = SocketIO(app)
-#socketioTestClient = socketio.test_client(app)
 
 cors = CORS(app)
 app.config["SESSION_PERMANENT"] = False
@@ -261,20 +260,38 @@ def getStockToken():
 def getOrderList():
 	#from_date = datetime.strpdate(str(datetime.today()),"%Y-%m-%d").isoformat()[:10] + 'T05:30:00.000Z'
 	#to_date = datetime.strpdate(str(datetime.today()),"%Y-%m-%d").isoformat()[:10] + 'T20:30:00.000Z'
-	orderList =  myapi.getOrderList()
-	if orderList is None:
+	
+	queryParams = request.args.to_dict()
+	fromDateStr = queryParams.get("orderDate","07-12-2023")
+	toDateStr = queryParams.get("orderDate","07-12-2023")
+	
+	if fromDateStr == "":
+		today = datetime.now()
+		#show only one day orders
+		daysFrom = timedelta(days = 0)
+		fromDate = today - daysFrom
+		toDate = today
+		fromDateStr = fromDate.strftime("%d-%b-%Y")
+	else:
+		fromDate = datetime.strptime(fromDateStr,"%d-%m-%Y").date()
+		toDate = datetime.strptime(toDateStr,"%d-%m-%Y").date()
+		fromDateStr = fromDate.strftime("%d-%b-%Y")
+		
+	orderList =  myapi.getOrderList(fromDate,toDate)
+	if orderList is None or orderList.get("Success") is None:
 		print(orderList)
 		orderList = json.loads('{"Error":"Not connected"}')
 		return (orderList,200, {'Content-Type': 'application/json'})
-	unfilteredOrderList = orderList["Success"]
+	unfilteredOrderList = orderList.get("Success")
 	if(unfilteredOrderList is not None):
 		orderListDf = pd.json_normalize(unfilteredOrderList)
 		#orderListDf = orderListDf.apply(derivedCol, axis=1)
-		today = datetime.now()    
-		todayStr = today.strftime("%d-%b-%Y")
+		#today = datetime.now()    
+		#todayStr = today.strftime("%d-%b-%Y")
+		orderDateStr = fromDateStr
 		#print(todayStr)
 		result = orderListDf.loc[( \
-										  ((orderListDf["order_datetime"].str.contains(todayStr,na=False, case=False))) \
+										  ((orderListDf["order_datetime"].str.contains(orderDateStr,na=False, case=False))) \
 										 ) ].copy()
 		#print(result.columns.values)
 		#print(result[["order_id","order_datetime","stock_code","status","1","2","3"]])
@@ -525,6 +542,84 @@ def getMargin():
 	#print(marginJsonDict)
 	return (marginJsonDict,200, {'Content-Type': 'application/json'})
 
+@app.route('/marginCalculator', methods=['GET', 'POST'])
+@cross_origin()
+def marginCalculator():
+	queryParams = request.args.to_dict()
+	newPosition = {}
+	exchangeCode = queryParams.get("exchangeCode","NFO")
+	newPosition["stock_code"] = queryParams.get("stockCode","")
+	newPosition["expiry_date"] = queryParams.get("expiryDate","")
+	newPosition["product"] = queryParams.get("product","")
+	newPosition["action"] = queryParams.get("action","")
+	newPosition["price"] = queryParams.get("price","")
+	newPosition["quantity"] = queryParams.get("quantity","")
+	newPosition["strike_price"] = queryParams.get("strike","")
+	rightTypeStr = queryParams.get("rightType","")
+	if not rightTypeStr == "":
+		rightTypeEnum = breezeapi.RightType.from_str(rightTypeStr)
+		rightTypeStr = rightTypeEnum.name
+	newPosition["right"] = rightTypeStr
+	includeOpenPostions = queryParams.get("includeOpenPositions","")
+	if includeOpenPostions.lower() == "true":
+		includeOpenPostions = True
+	includePendingOrders = False
+	#open positions
+	openPositionsList = []
+	if includeOpenPostions:
+		openPositionsDictList = myapi.getPortfolioPositions()
+		#print("open position as below")
+		#print(openPositionsDictList)
+		if not openPositionsDictList is None and not openPositionsDictList["Success"] is None:
+			#print(openPositionsDictList)
+			openPositionsDictList = openPositionsDictList["Success"]
+			filteredKeys = ["stock_code","expiry_date","action","price","quantity","strike_price","right"]
+			openPositionsList = []
+			for openPosition in openPositionsDictList:
+				print(openPosition)
+				if openPosition['action'] == 'NA':
+					continue
+				openPositionsFilteredDict = {key: openPosition[key] for key in filteredKeys}
+				openPositionsFilteredDict["product"] = openPosition["product_type"]
+				openPositionsFilteredDict["price"] = openPosition["average_price"]
+				openPositionsList.append(openPositionsFilteredDict)
+	#print(openPositionsList)
+
+	#pending orders
+	pendingOrdersList = []
+	if includePendingOrders:
+		today = datetime.now()
+		#show only one day orders
+		daysFrom = timedelta(days = 0)
+		fromDate = today - daysFrom
+		toDate = today + timedelta(days=0)
+		orderList =  myapi.getOrderList(fromDate,toDate)
+		if(orderList is not None and orderList["Success"] is not None ):
+			unfilteredOrderList = orderList["Success"]
+			orderListDf = pd.json_normalize(unfilteredOrderList)
+			#pd.set_option('display.max_columns', 500)
+			#print(orderListDf)
+			pendingOrdersDf = orderListDf.loc[( \
+				((orderListDf["status"].str.contains("Requested",na=False, case=False))) \
+				| ((orderListDf["status"].str.contains("Queued",na=False, case=False))) \
+				| ((orderListDf["status"].str.contains("Ordered",na=False, case=False))) \
+			) ].copy()
+			#print("Pending orders")
+			#print(pendingOrdersDf)
+			pendingOrdersDf["product"] = pendingOrdersDf["product_type"]
+			pendingOrdersDf = pendingOrdersDf[["stock_code","product","expiry_date","action","price","quantity","strike_price","right"]]
+			pendingOrdersList = pendingOrdersDf.to_dict(orient='records')
+
+	listOfPositions = []
+	listOfPositions = openPositionsList
+	listOfPositions = listOfPositions + pendingOrdersList
+	listOfPositions.append(newPosition)
+	#print("list of positions")
+	#print(listOfPositions)
+	marginDict = myapi.marginCalculator(listOfPositions,"NFO")
+	print(marginDict)
+	return (marginDict,200, {'Content-Type': 'application/json'})
+
 @app.route('/getBrokerages', methods=['GET', 'POST'])
 @cross_origin()
 def getBrokerages():
@@ -606,5 +701,6 @@ if __name__ == '__main__':
 	#app.run(debug=True, ssl_context=context)
 	app.run(debug=True)
 	socketio.run(app, debug = True)
+
 
 	

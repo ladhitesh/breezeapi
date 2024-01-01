@@ -41,24 +41,50 @@ $(document).ready(function() {
 	// Set default `pagecontainer` for all popups (optional, but recommended for screen readers and iOS*)
 	$.fn.popup.defaults.pagecontainer = '#page'
 	
-	
-	
 })
+
 $(initIfConnected)
 
-async function initIfConnected(){
+function initIfConnected(){
 	if (isApiConnected){
 		//populate existing data
-		await populateOpenPositions()
-		await populateOrderList()
+		populateOpenPositions()
+		populateOrderList()
+		populateWatchList()
 		refreshMargins()
-		socket.on('order_notification', orderNotification)
-		//attachObservers()
+		//sio.on('1SEC',ltpUpdateListener)
 	}
-	
 }
 
+function myDynaRowWriter(rowIndex, record, columns, cellWriter) {
+	var tr = '';
+	// grab the record's attribute for each column
+	for (var i = 0, len = columns.length; i < len; i++) {
+		tr += cellWriter(columns[i], record);
+	}
+	return '<tr rowindex="'+rowIndex+'" draggable="true" ondragstart="hideMarketDepth();start()"  ondragover="dragover()" >' + tr + '</tr>';
+};
+
+
+//Table row drag drop start
+var row;
+function start(){  
+	row = event.target; 
+}
+
+function dragover(){
+	var e = event; e.preventDefault(); 
+	let children= Array.from(e.target.parentNode.parentNode.children);
+	if(children.indexOf(e.target.parentNode)>children.indexOf(row))
+		e.target.parentNode.after(row);
+	else
+		e.target.parentNode.before(row);
+}
+//Table row drag drop end
+
 function attachLtpObservers(){
+	//const currentDate = new Date(); const milliseconds = currentDate. getMilliseconds(); console. log(milliseconds); 
+	//console.log("attached")
 	//console.log($("[priceType^='op-']")[0])
 	openPositionLtpObjArr = $("[priceType^='op-']").get()
 	for(elementIndex in openPositionLtpObjArr){
@@ -73,59 +99,7 @@ function attachLtpObservers(){
 	}
 }
 
-function myDynaRowWriter(rowIndex, record, columns, cellWriter) {
-	var tr = '';
-
-	// grab the record's attribute for each column
-	for (var i = 0, len = columns.length; i < len; i++) {
-		tr += cellWriter(columns[i], record);
-	}
-
-	return '<tr rowindex="'+rowIndex+'" draggable="true" ondragstart="hideMarketDepth();start()"  ondragover="dragover()" >' + tr + '</tr>';
-};
-
-
-//Table row drag drop start
-var row;
-
-function start(){  
-	row = event.target; 
-}
-
-function dragover(){
-	var e = event;
-	e.preventDefault(); 
-
-	let children= Array.from(e.target.parentNode.parentNode.children);
-
-	if(children.indexOf(e.target.parentNode)>children.indexOf(row))
-		e.target.parentNode.after(row);
-	else
-		e.target.parentNode.before(row);
-}
-
-//Table row drag drop end
-
-
-
-async function callApi(url){
-	var resultData
-	console.log("calling url:" + url)
-	await fetch(url,{method : "GET"})
-		.then((res) => { 
-								if (res.ok) { return res.json(); }
-								throw new Error('Error in fetching api response');
-		})
-		.then((data) => {
-								//console.log("response text:"+JSON.stringify(data,undefined, 4))
-								//$('#output')[0].innerHTML = "<pre>"+JSON.stringify(data,undefined, 4)+"</pre>";
-								resultData = data
-		})
-		.catch(error => { console.log(error);throw error });
-	return resultData
-}
-
-async function makeOrderRecord(hiddenDivObj,orderId,orderTime,stock,action,qty,price,stoploss,orderType,orderStatus){
+function makeOrderRecord(hiddenDivObj,orderId,orderTime,stock,action,qty,price,stoploss,orderType,orderStatus){
 	var orderId = orderId
 	var orderTime = orderTime
 	var stock = stock
@@ -134,9 +108,9 @@ async function makeOrderRecord(hiddenDivObj,orderId,orderTime,stock,action,qty,p
 	var price = price
 	var orderType = orderType
 	var orderStatus = orderStatus
+
 	modifyButton=""
 	if(orderStatus.toLowerCase() == "ordered" || orderStatus.toLowerCase() == "requested" ){
-	
 		modifyButton = `<img id='modifyOrdBtn-${orderId}' onClick='populateModifyOrder(this,"${action}","${qty}","${price}","${stoploss}")' src='/static/images/modify.png' width='20' height='20' />`
 	}
 	if(orderStatus.toLowerCase() != "executed"){
@@ -162,7 +136,7 @@ async function makeOrderRecord(hiddenDivObj,orderId,orderTime,stock,action,qty,p
 	return record
 }
 
-async function makePositionRecord(hiddenDivObj,stock,action,qty,price){	
+function makePositionRecord(hiddenDivObj,stock,action,qty,price){	
 	var action = action
 	var qty = qty
 	var price = price
@@ -170,10 +144,11 @@ async function makePositionRecord(hiddenDivObj,stock,action,qty,price){
 
 	var showChart = `&nbsp;<img onClick='loadOptionsData("${hiddenDivObj.id}")' src='/static/images/chart.png' width='18' height='18' alt='Show Chart' style='display:inline'>`
 	
-	var ltpDiv = document.createElement('div');
-	ltpDiv.id = hiddenDivObj.dataset.token + '-price'
-	ltpDiv.setAttribute("priceType","op-"+stock)
-	ltpDiv.innerHTML = price
+	//var ltpDiv = document.createElement('div');
+	//ltpDiv.id = hiddenDivObj.dataset.token + '-price'
+	//ltpDiv.setAttribute("priceType","op-"+stock)
+	//ltpDiv.innerHTML = price
+	//record.ltp=ltpDiv.outerHTML;
 
 	record = new Object();
 	record.hiddenColumn=hiddenDivObj.outerHTML;
@@ -181,7 +156,7 @@ async function makePositionRecord(hiddenDivObj,stock,action,qty,price){
 	record.type=action
 	record.qty=qty
 	record.price=price
-	record.ltp=ltpDiv.outerHTML;
+	
 	record.pnl=""
 	record.x=exitButton	
 	return record
@@ -203,173 +178,243 @@ function calculateLivePnl(mutationRecord){
 	}catch(e){console.log(e)}
 }
 
-async function getStockToken(stockCode,exchangeCode,product,expiry,strike,right){
-	var stockTokenArr
-	//product = hiddenDivObj.dataset.product
-	//right = hiddenDivObj.dataset.right
-	if(right == "CE"){right="Call"}else if (right=="PE"){right="Put"}
-	
-	var stockTokenParams = new URLSearchParams({
-			'stockCode' : stockCode,
-			'exchangeCode' : exchangeCode,
-			'productType' : product,
-			'expiryDate' : expiry,
-			'strike' : strike,
-			'rightType' : right
-		})
-	var stockTokenUrl = baseServerUrl + '/getStockToken?'+stockTokenParams
-	await callApi(stockTokenUrl).then(result => {stockTokenArr=result});
-	//console.log(stockTokenArr)
-	return stockTokenArr
-}
-
-async function populateOpenPositions(){
+function populateOpenPositions(){
 	$("#openPositions tbody").empty();
-	var openPositionsJsonArr;
-	var openPositionsUrl = baseServerUrl + '/getOpenPositions'
-	await callApi(openPositionsUrl).then(result => {openPositionsJsonArr=result});
 	
-	openPositionsJsonArr = openPositionsJsonArr["Success"]
-	//console.log(openPositionsJsonArr)
-	//console.log("openposition ^^^")
-	const positionRecords = []
-	for( openPositionIndex in openPositionsJsonArr){
-		
-		action = openPositionsJsonArr[openPositionIndex]["action"]
-		if(action == "NA")
-			continue;
-		
-		quantity = openPositionsJsonArr[openPositionIndex]["quantity"]
-		price = openPositionsJsonArr[openPositionIndex]["average_price"]
-		
-		//stock name
-		product = openPositionsJsonArr[openPositionIndex]["product_type"].toLowerCase()
-		if(product=="options"){fnotype="OPT"}
-		if(product=="futures"){fnotype="FUT"}
-		
-		stockCode = openPositionsJsonArr[openPositionIndex]["stock_code"]
-		expiry = openPositionsJsonArr[openPositionIndex]["expiry_date"]
-		strike = openPositionsJsonArr[openPositionIndex]["strike_price"]
-		exchangecode = openPositionsJsonArr[openPositionIndex]["exchange_code"]
-		right = openPositionsJsonArr[openPositionIndex]["right"]
-		if(right == "Call"){rightShort = "CE"} else if(right=="Put"){rightShort="PE"}
-		
-		stockName = fnotype+'-'+stockCode+'-'+expiry
-		if(product == "options")
-			stockName = stockName + '-'+strike+'-'+rightShort
-
-		//console.log(stockName)
-		var hiddenDivObj = document.createElement("div");
-		hiddenDivObj.setAttribute("id","op-"+stockName)
-		hiddenDivObj.setAttribute("data-stockcode",stockCode)
-		hiddenDivObj.setAttribute("data-code",stockName)
-		hiddenDivObj.setAttribute("data-expiry",expiry)
-		hiddenDivObj.setAttribute("data-strike",strike)
-		hiddenDivObj.setAttribute("data-right",rightShort)
-		hiddenDivObj.setAttribute("data-fnotype",fnotype)
-		hiddenDivObj.setAttribute("data-product",product)
-		hiddenDivObj.setAttribute("data-exchangecode",exchangecode)
-		
-		var stockTokenDict
-		await getStockToken(stockCode,exchangecode,product,expiry,strike,right).then(result => stockTokenDict = result);
-		const token = stockTokenDict["quotesToken"].split("!")[1]
-		console.log("token for openposition: "+token)
-		hiddenDivObj.setAttribute("data-token",token)
-		
-		await makePositionRecord(hiddenDivObj,stockName,action,quantity,price).then(result => {positionRecords[openPositionIndex]=result});
-		console.log("subscribing to token:"+token)
-		socket.emit('subscribeQuotes', token, "1second")
-		socket.on(token+"-1second", function (ohlcvData){
-			ohlcvDataDict = JSON.parse(ohlcvData);
-			selectorStr = '[id='+token+'-price]'
-			ltpElemArr = $(selectorStr);
-			for(elementIndex in ltpElemArr){
-				ltpElemArr[elementIndex].innerHTML = ohlcvDataDict["close"]
-			}
-		});
-
-	}
+	fetchOpenPositions().then(result => {
+		let openPositionsJsonArr = result;	
+		//console.log(openPositionsJsonArr)
+		const positionRecords = []
+		for( openPositionIndex in openPositionsJsonArr){
+			
+			action = openPositionsJsonArr[openPositionIndex]["action"]
+			if(action == "NA")
+				continue;
+			
+			quantity = openPositionsJsonArr[openPositionIndex]["quantity"]
+			price = openPositionsJsonArr[openPositionIndex]["average_price"]
+			
+			//stock name
+			product = openPositionsJsonArr[openPositionIndex]["product_type"].toLowerCase()
+			if(product=="options"){fnotype="OPT"}
+			if(product=="futures"){fnotype="FUT"}
+			
+			stockCode = openPositionsJsonArr[openPositionIndex]["stock_code"]
+			expiry = openPositionsJsonArr[openPositionIndex]["expiry_date"]
+			strike = openPositionsJsonArr[openPositionIndex]["strike_price"]
+			exchangecode = openPositionsJsonArr[openPositionIndex]["exchange_code"]
+			right = openPositionsJsonArr[openPositionIndex]["right"]
+			if(right == "Call"){rightShort = "CE"} else if(right=="Put"){rightShort="PE"}
+			
+			stockName = fnotype+'-'+stockCode+'-'+expiry
+			if(product == "options")
+				stockName = stockName + '-'+strike+'-'+rightShort
 	
-	obj = new Object();
-	obj.records = positionRecords;
-	if(openPositionsJsonArr != null){
-		obj.queryRecordCount = openPositionsJsonArr.length + 1;
-		obj.totalRecordCount = openPositionsJsonArr.length + 1;
-	}
-	var openPositionsTable = $('#openPositions').data('dynatable');
-	openPositionsTable.records.updateFromJson(obj)
-	openPositionsTable.dom.update();
-	attachLtpObservers();
+			//console.log(stockName)
+			let hiddenDivObj = document.createElement("div");
+			hiddenDivObj.setAttribute("id","op-"+stockName)
+			hiddenDivObj.setAttribute("data-stockcode",stockCode)
+			hiddenDivObj.setAttribute("data-code",stockName)
+			hiddenDivObj.setAttribute("data-expiry",expiry)
+			hiddenDivObj.setAttribute("data-strike",strike)
+			hiddenDivObj.setAttribute("data-right",rightShort)
+			hiddenDivObj.setAttribute("data-fnotype",fnotype)
+			hiddenDivObj.setAttribute("data-product",product)
+			hiddenDivObj.setAttribute("data-exchangecode",exchangecode)
+
+			
+
+
+			
+			//let stockTokenDict = fetchStockToken(stockCode,exchangecode,product,expiry,strike,right);
+			//const token = stockTokenDict["quotesToken"].split("!")[1]
+			//console.log("token for openposition: "+token)
+			//hiddenDivObj.setAttribute("data-token",token)
+			
+			positionRecords[openPositionIndex] = makePositionRecord(hiddenDivObj,stockName,action,quantity,price);
+
+			
+			const opRecord = positionRecords[openPositionIndex];
+			const hiddenId = "op-"+stockName
+			fetchStockToken(stockCode,exchangecode,product,expiry,strike,right)
+				.then(result => {
+					let token = result
+					//console.log("token for orderlist: "+token)
+					$('#'+hiddenId)[0].dataset['token'] = token
+					//console.log($('#'+hiddenId))
+					//console.log(opRecord)
+					
+					var ltpDiv = document.createElement('div');
+					ltpDiv.id = token + '-price'
+					ltpDiv.setAttribute("priceType",hiddenId)
+					ltpDiv.innerHTML = "0.00"
+					//console.log(ltpDiv.outerHTML)
+
+					opRecord.hiddenColumn=$('#'+hiddenId)[0].outerHTML;
+					opRecord.ltp=ltpDiv.outerHTML;
+					openPositionsTable.dom.update();
+					
+					console.log("subscribing to token:"+token)
+					subscribeApiTickData(token, apiLtpListener)
+				});
+			
+			//console.log("subscribing to token:"+token)
+			//socket.emit('subscribeQuotes', token, "1second")
+			//socket.on(token+"-1second", apiLtpListener);
+			//subscribeApiTickData(token, apiLtpListener)
+		}
+		
+		obj = new Object();
+		obj.records = positionRecords;
+		if(openPositionsJsonArr != null){
+			obj.queryRecordCount = openPositionsJsonArr.length + 1;
+			obj.totalRecordCount = openPositionsJsonArr.length + 1;
+		}
+		var openPositionsTable = $('#openPositions').data('dynatable');
+		openPositionsTable.records.updateFromJson(obj)
+		openPositionsTable.dom.update();
+		//console.log("attaching")
+		//const currentDate = new Date(); const milliseconds = currentDate. getMilliseconds(); console. log(milliseconds); 
+		setTimeout(attachLtpObservers,3000);
+	});
 		
 }
 
+function populateWatchList(){
+	/*let wlCountStr = localStorage.getItem("watchlistCount")
+	console.log(wlCountStr)
+	if(wlCountStr == null){
+			return;
+	}else {
+		wlCount = parseInt(wlCountStr)
+	}
+	console.log(wlCount)
+	for(i = 1;i<=wlCount;i++){
+		let wlKey = "wl"+i;
+		console.log(wlKey)
+		let wl = localStorage.getItem(wlKey);
+		//console.log("fetched from local storage:"+wl)
+		let wlObj = JSON.parse(wl)
+		//console.log(wlObj)
+		let hiddenDivObj = new DOMParser().parseFromString(wlObj.hiddenDivObj, 'text/html').querySelector("div");
+		//console.log(hiddenDivObj)
+		//console.log(hiddenDivObj.outerHTML)
+		addToWatchList(wlObj.hiddenDivId,hiddenDivObj,wlObj.token,wlObj.stockName)
+	}
+	*/
+	console.log(localStorage.length)
+	for(i = 0;i<localStorage.length;i++){
+		let key = localStorage.key(i);
+		console.log(key)
+		if (key.includes("wl-")){
+			
+			let wl = localStorage.getItem(key);
+			//console.log("fetched from local storage:"+wl)
+			let wlObj = JSON.parse(wl)
+			//console.log(wlObj)
+			let hiddenDivObj = new DOMParser().parseFromString(wlObj.hiddenDivObj, 'text/html').querySelector("div");
+			//console.log(hiddenDivObj)
+			//console.log(hiddenDivObj.outerHTML)
+			addToWatchList(wlObj.hiddenDivId,hiddenDivObj,wlObj.token,wlObj.stockName)
+		}
+	}
+}
 
-async function populateOrderList(){
+function subscribeApiTickData(token, callback){
+	socket.emit('subscribeQuotes', token, "1second")
+	socket.on(token+"-1second", callback);
+	
+}
+
+function unsubscribeApiTickData(token, interval){
+	socket.emit('unsubscribeQuotes', token, '1second')
+}
+
+
+
+function ltpUpdateListener(ohlcvData){
+	//ohlcvDataDict = parseTicks(ohlcvData);
+	ohlcvDataDict = JSON.parse(ohlcvData);
+	let mytoken = ohlcvDataDict["token"]
+	selectorStr = '[id='+mytoken+'-price]'
+	ltpElemArr = $(selectorStr);
+	for(elementIndex in ltpElemArr){
+		ltpElemArr[elementIndex].innerHTML = ohlcvDataDict["close"]
+	}
+}
+
+function apiLtpListener(ohlcvData){
+	ohlcvDataDict = JSON.parse(ohlcvData);
+	let mytoken = ohlcvDataDict["token"]
+	selectorStr = '[id='+mytoken+'-price]'
+	ltpElemArr = $(selectorStr);
+	for(elementIndex in ltpElemArr){
+		ltpElemArr[elementIndex].innerHTML = ohlcvDataDict["close"]
+	}
+}
+
+function populateOrderList(){
 	$("#orderList tbody").empty();
-	var orderListJsonArr;
-	var orderListUrl = baseServerUrl + '/getOrderList'
-	await callApi(orderListUrl).then(result => {orderListJsonArr=result});
-	
-	
-	//console.log(orderListJsonArr["Success"])
-	orderListJsonArr = orderListJsonArr["Success"]
-	
-	const orderRecords = []
-	for( orderIndex in orderListJsonArr){
+	let orderDate = moment().format("DD-MM-YYYY");
+	//orderDate = '08-12-2023'
+	fetchOrderList(orderDate).then(result => {
+		let orderListJsonArr = result;	
+		//console.log(orderListJsonArr)
+		const orderRecords = []
+		for( orderIndex in orderListJsonArr){
+			orderId = orderListJsonArr[orderIndex]["order_id"]
+			orderTime = moment(orderListJsonArr[orderIndex]["order_datetime"],"DD-MMM-YYYY HH:mm:ss").format("HH:mm:ss")
+			quantity = orderListJsonArr[orderIndex]["quantity"]
+			price = orderListJsonArr[orderIndex]["price"]
+			status = orderListJsonArr[orderIndex]["status"]
+			if(status=="Executed")
+				price = orderListJsonArr[orderIndex]["average_price"]
+			action = orderListJsonArr[orderIndex]["action"]
+			orderType = orderListJsonArr[orderIndex]["order_type"]
+			pendingQuantity = orderListJsonArr[orderIndex]["pending_quantity"]
+			//stock name
+			product = orderListJsonArr[orderIndex]["product_type"].toLowerCase()
+			if(product=="options"){fnotype="OPT"}
+			if(product=="futures"){fnotype="FUT"}
+			stockCode = orderListJsonArr[orderIndex]["stock_code"]
+			expiry = orderListJsonArr[orderIndex]["expiry_date"]
+			strike = orderListJsonArr[orderIndex]["strike_price"]
+			exchangecode = orderListJsonArr[orderIndex]["exchange_code"]
+			stoploss = orderListJsonArr[orderIndex]["stoploss"]
+			right = orderListJsonArr[orderIndex]["right"]
+			if(right == "Call"){right = "CE"} else if(right=="Put"){right="PE"}
+										  
+			stockName = fnotype+'-'+stockCode+'-'+expiry
+			if(product == "options")
+				stockName = stockName + '-'+strike+'-'+right
+			//console.log(stockName)
+			var hiddenDivObj = document.createElement("div");
+			hiddenDivObj.setAttribute("id","ol-"+orderId)
+			hiddenDivObj.setAttribute("orderId",orderId)
+			hiddenDivObj.setAttribute("data-stockcode",stockCode)
+			hiddenDivObj.setAttribute("data-code",stockName)
+			hiddenDivObj.setAttribute("data-expiry",expiry)
+			hiddenDivObj.setAttribute("data-strike",strike)
+			hiddenDivObj.setAttribute("data-right",right)
+			hiddenDivObj.setAttribute("data-fnotype",fnotype)
+			hiddenDivObj.setAttribute("data-product",product)
+			hiddenDivObj.setAttribute("data-exchangecode",exchangecode)
 
+			
+			orderRecords[orderIndex] =  makeOrderRecord(hiddenDivObj,orderId,orderTime,stockName,action,quantity,price,stoploss,orderType,status);
+			//console.log(orderRecords[orderIndex].id)
+		}
 		
-		orderId = orderListJsonArr[orderIndex]["order_id"]
-		orderTime = moment(orderListJsonArr[orderIndex]["order_datetime"],"DD-MMM-YYYY HH:mm:ss").format("HH:mm:ss")
-		quantity = orderListJsonArr[orderIndex]["quantity"]
-		price = orderListJsonArr[orderIndex]["price"]
-		status = orderListJsonArr[orderIndex]["status"]
-		if(status=="Executed")
-			price = orderListJsonArr[orderIndex]["average_price"]
-		action = orderListJsonArr[orderIndex]["action"]
-		orderType = orderListJsonArr[orderIndex]["order_type"]
-		pendingQuantity = orderListJsonArr[orderIndex]["pending_quantity"]
-		//stock name
-		product = orderListJsonArr[orderIndex]["product_type"].toLowerCase()
-		if(product=="options"){fnotype="OPT"}
-		if(product=="futures"){fnotype="FUT"}
-		stockCode = orderListJsonArr[orderIndex]["stock_code"]
-		expiry = orderListJsonArr[orderIndex]["expiry_date"]
-		strike = orderListJsonArr[orderIndex]["strike_price"]
-		exchangecode = orderListJsonArr[orderIndex]["exchange_code"]
-		stoploss = orderListJsonArr[orderIndex]["stoploss"]
-		right = orderListJsonArr[orderIndex]["right"]
-		if(right == "Call"){right = "CE"} else if(right=="Put"){right="PE"}
-									  
-		stockName = fnotype+'-'+stockCode+'-'+expiry
-		if(product == "options")
-			stockName = stockName + '-'+strike+'-'+right
-		//console.log(stockName)
-		var hiddenDivObj = document.createElement("div");
-		hiddenDivObj.setAttribute("id","ol-"+orderId)
-		hiddenDivObj.setAttribute("orderId",orderId)
-		hiddenDivObj.setAttribute("data-stockcode",stockCode)
-		hiddenDivObj.setAttribute("data-code",stockName)
-		hiddenDivObj.setAttribute("data-expiry",expiry)
-		hiddenDivObj.setAttribute("data-strike",strike)
-		hiddenDivObj.setAttribute("data-right",right)
-		hiddenDivObj.setAttribute("data-fnotype",fnotype)
-		hiddenDivObj.setAttribute("data-product",product)
-		hiddenDivObj.setAttribute("data-exchangecode",exchangecode)
-		await makeOrderRecord(hiddenDivObj,orderId,orderTime,stockName,action,quantity,price,stoploss,orderType,status).then(result => {orderRecords[orderIndex]=result});
-		//console.log(orderRecords[orderIndex].id)
-	
-	}
-	
-	obj = new Object();
-	obj.records = orderRecords;
-	if(orderListJsonArr != null){
-		obj.queryRecordCount = orderListJsonArr.length;
-		obj.totalRecordCount = orderListJsonArr.length;
-	}
-	var orderListTable = $('#orderList').data('dynatable');
-	orderListTable.records.updateFromJson(obj)
-	orderListTable.dom.update();
-
+		obj = new Object();
+		obj.records = orderRecords;
+		if(orderListJsonArr != null){
+			obj.queryRecordCount = orderListJsonArr.length;
+			obj.totalRecordCount = orderListJsonArr.length;
+		}
+		var orderListTable = $('#orderList').data('dynatable');
+		orderListTable.records.updateFromJson(obj)
+		orderListTable.dom.update();
+	});
 }
 
 
@@ -379,10 +424,12 @@ async function modifyOrder(){
 	hiddenDivId = $("#hiddenDataColumnId")[0].innerText
 	if(hiddenDivId == ""){
 		console.log("hiddenDataColumnId is empty. Do not have data to place order.")
-		captionObj = $("#orderMessages")[0]
-		captionObj.innerHTML="Select stock from watchlist to place order."
+		captionObj = $(".orderMessages")
+		captionObj.html("Select stock from watchlist to place order.")
 		return
 	}
+	//clear order messages
+	$(".orderMessages").html("processing modify order...")
 	
 	hiddenDivObj = $("#"+hiddenDivId)[0]
 	var hiddenOlDivObj = null;
@@ -414,13 +461,13 @@ async function modifyOrder(){
 	console.log(modifyOrderUrl)
 	await callApi(modifyOrderUrl).then(result => {orderResultJsonArr=result});
 	errorStatus = orderResultJsonArr["Error"]
-	captionObj = $("#orderMessages")[0]
+	captionObj = $(".orderMessages")
 	if(errorStatus != null && errorStatus != ""){
-		captionObj.innerHTML=errorStatus
+		captionObj.html(errorStatus)
 		return;
 	}
 	else{
-		captionObj.innerHTML=orderResultJsonArr["Success"]["message"]
+		captionObj.html(orderResultJsonArr["Success"]["message"])
 	}
 
 	orderId = orderResultJsonArr["Success"]["order_id"]
@@ -444,8 +491,7 @@ async function modifyOrder(){
 		orderType = "market"
 	
 	
-	await makeOrderRecord(hiddenOlDivObj,orderId,orderTime,stockName,action,quantity,price,stoploss,orderType,orderStatus)
-		.then(result => {myRecords[recordIndex]=result});
+	myRecords[recordIndex] = makeOrderRecord(hiddenOlDivObj,orderId,orderTime,stockName,action,quantity,price,stoploss,orderType,orderStatus);
 	
 	obj = new Object();
 	obj.records = myRecords;
@@ -455,7 +501,8 @@ async function modifyOrder(){
 	orderListTable.dom.update();
 
 	//reset
-	clearOrder()
+	//sticky modify window
+	//clearOrder()
 }
 
 async function addOrder(newOrSquareoff){
@@ -464,8 +511,8 @@ async function addOrder(newOrSquareoff){
 	hiddenDivId = $("#hiddenDataColumnId")[0].innerText
 	if(hiddenDivId == ""){
 		console.log("hiddenDataColumnId is empty. Do not have data to place order.")
-		captionObj = $("#orderMessages")[0]
-		captionObj.innerHTML="Select stock from watchlist to place order."
+		captionObj = $(".orderMessages")
+		captionObj.html("Select stock from watchlist to place order.")
 		return
 	}
 	
@@ -483,6 +530,8 @@ async function addOrder(newOrSquareoff){
 
 	//reset immediately after reading values to avoid duplicate orders
 	clearOrder()
+	captionObj = $(".orderMessages")
+	captionObj.html("processing add new order...")
 	
 	var orderId = moment().format("DDMMYYYYHHmmss")
 	
@@ -510,14 +559,14 @@ async function addOrder(newOrSquareoff){
 	console.log(newOrderUrl)
 	await callApi(newOrderUrl).then(result => {orderResultJsonArr=result});
 	errorStatus = orderResultJsonArr["Error"]
-	captionObj = $("#orderMessages")[0]
+	
 	if(errorStatus != null && errorStatus != ""){
-		captionObj.innerHTML=errorStatus
+		captionObj.html(errorStatus)
 		clearOrder()
 		return;
 	}
 	else{
-		captionObj.innerHTML=orderResultJsonArr["Success"]["message"]
+		captionObj.html(orderResultJsonArr["Success"]["message"])
 	}
 
 	orderId = orderResultJsonArr["Success"]["order_id"]
@@ -544,8 +593,7 @@ async function addOrder(newOrSquareoff){
 		orderType = "market"
 	
 	
-	await makeOrderRecord(hiddenOlDivObj,orderId,orderTime,stockName,action,quantity,price,stoploss,orderType,orderStatus)
-		.then(result => {myRecords[recordIndex]=result});
+	myRecords[recordIndex] = makeOrderRecord(hiddenOlDivObj,orderId,orderTime,stockName,action,quantity,price,stoploss,orderType,orderStatus);
 
 	myRecords = myRecords.concat(existingRecords);
 	
@@ -557,63 +605,66 @@ async function addOrder(newOrSquareoff){
 	orderListTable.dom.update();
 }
 
-async function cancelOrder(cancelOrderId){
-	var captionObj = $("#orderMessages")[0]
+
+
+
+function cancelOrder(cancelOrderId){
+	var captionObj = $(".orderMessages")
 	var orderStatus = $("#status-"+cancelOrderId)[0]
 	if(orderStatus.innerText.toLowerCase() == "cancelled")	{
-		captionObj.innerHTML="Order is already cancelled:"+cancelOrderId
+		captionObj.html("Order is already cancelled:"+cancelOrderId)
 		orderStatus.parentNode.nextSibling.innerHTML=""
 		return
 	}
 		
-	
-	var cancelOrderParams = new URLSearchParams({
-			'orderId' : cancelOrderId
-		})		
-		var orderResultJsonArr = null
-		var cancelOrderUrl = baseServerUrl + '/cancelOrder?' + cancelOrderParams
-		console.log(cancelOrderUrl)
-		await callApi(cancelOrderUrl).then(result => {orderResultJsonArr=result});
+	sendCancelOrder(cancelOrderId).then(result => {		
+		let orderResultJsonArr = result
 		errorStatus = orderResultJsonArr["Error"]
-		
 		if(errorStatus != null && errorStatus != ""){		
-			captionObj.innerHTML=errorStatus
+			captionObj.html(errorStatus)
 		}else{
-			captionObj.innerHTML=orderResultJsonArr["Success"]["message"]
+			captionObj.html(orderResultJsonArr["Success"]["message"])
 			cancelTdObj = orderStatus.parentNode.nextSibling
 			modifyTdObj = cancelTdObj.nextSibling
 			cancelTdObj.innerHTML=""
-			modifyTdObj.innerHTML=""
-			
+			modifyTdObj.innerHTML=""			
 		}
-
+	});
 }
 function populateModifyOrder(modifyButtonObj,action,qty,price,sl){
 	trObj = $(modifyButtonObj).closest("tr")[0]
 	hiddenDivObj = trObj.firstChild.firstChild
 	modifyOrderId = hiddenDivObj.getAttribute('orderid')
-	$('#hiddenOrderId')[0].innerText=modifyOrderId
-	$('#hiddenDataColumnId')[0].innerText=hiddenDivObj.getAttribute("id")
-	$('#orderStock')[0].innerText=hiddenDivObj.dataset.code
-	$('#orderAction')[0].innerText = action;
+	let bgColor = "red"
+	if(action.toLowerCase()=="buy"){
+		bgColor="#85EA27"
+	}
+	
+	$('#hiddenOrderId').text(modifyOrderId);
+	$('#hiddenDataColumnId').text(hiddenDivObj.getAttribute("id"));
+	$('#orderStock').text(hiddenDivObj.dataset.code);
+	$('#orderAction').text(action);
+	$('#orderAction').closest("td").css("background-color",bgColor);
 	$('#orderQty')[0].valueAsNumber = qty;
 	$('#orderPrice')[0].valueAsNumber = price;
 	$('#orderSl')[0].valueAsNumber = sl;
 	$('#orderButton')[0].value="Modify"
 	$('#orderButton')[0].onclick=modifyOrder
+	$('#order_popup').dialog('open')
 	
 }
 function clearOrder(){
-	$("#hiddenOrderId")[0].innerText=""
-	$("#hiddenDataColumnId")[0].innerText=""
-	$('#orderStock')[0].innerText=""
-	$('#orderAction')[0].innerText = "";
+	$("#hiddenOrderId").text("")
+	$("#hiddenDataColumnId").text("")
+	$('#orderStock').text("")
+	$('#orderAction').text("")
 	$('#orderQty')[0].valueAsNumber = 1;
 	$('#orderPrice')[0].valueAsNumber = 0;
 	$('#orderSl')[0].valueAsNumber = 0;
 	$('#orderButton')[0].value="Order"
-
+	$("#orderAction").closest("td").css("background-color","")
 	try{
+		$('#margin')[0].innerHTML = "0.00"
 		$('#charges')[0].innerHTML = "0.00"
 		$('#charges_content #total_brokerage')[0].innerHTML = "0.00"
 		$('#charges_content #brokerage')[0].innerHTML = "0.00"
@@ -639,7 +690,7 @@ function clearWatchList(){
 		  		hiddenDivObj = col.firstChild
 				token = hiddenDivObj.dataset.token
 				console.log("unsubscribe token: "+token)
-				response = socket.emit('unsubscribeQuotes', token, "1second")	
+				unsubscribeApiTickData(token,"1second")
 				//console.log(response)
 				break;
 			}catch(e){console.log(e)}			
@@ -654,29 +705,43 @@ function clearWatchList(){
 	watchListTable.dom.update();
 	//$("#watchList tbody").empty();
 }
+
+
 			
-async function getWatchListStocks(){
-
-	var fnOJsonArr
-	searchStr = $('#seachStock')[0].value
-	fnoStocksUrl = baseServerUrl + '/getFnOStocks?' + new URLSearchParams({'searchStr': searchStr})
-	await callApi(fnoStocksUrl).then(result => {fnOJsonArr=result});
-	
-	$("#stock-selection").empty()
-
-	fnOJsonArr.forEach(function(eachStock) { 
-		optionObj = $('<option/>')
-		for (const [key, value] of Object.entries(eachStock)) {	
-			optionObj.attr("data-"+key,value)
-			//console.log(key, value);
-		}
-		optionObj.attr("value",eachStock.token).text(eachStock.code).appendTo('#stock-selection');
+function getWatchListStocks(){
+	let searchStr = $('#seachStock')[0].value
+	fetchStocks(searchStr).then( fnOJsonArr => {
+		//console.log(fnOJsonArr)
+		$("#stock-selection").empty()
+		fnOJsonArr.forEach(function(eachStock) { 
+			let optionObj = $('<option/>')
+			for (const [key, value] of Object.entries(eachStock)) {	
+				optionObj.attr("data-"+key,value)
+				//console.log(key, value);
+			}
+			optionObj.attr("value",eachStock.token).text(eachStock.code).appendTo('#stock-selection');
+		});
 	});
-
 }
 
-function addToWatchList() {
-	var watchListTable = $('#watchList').data('dynatable');
+function makeWatchListRecord(hiddenDivId,hiddenDivObj,token,stockName){
+	buyAction = `<img width='40' height='25' src="/static/images/buy1.png" alt="Buy" onClick='buyStock("${stockName}","${hiddenDivId}")'/> `
+	sellAction = `<img width='40' height='25' src="/static/images/sell1.png" alt="Sell" onClick='sellStock("${stockName}","${hiddenDivId}")'/> `
+	remove = "<img width='20' height='18' src='/static/images/bin.png' alt='Remove' onClick='removeFromWatchList(this)'/>"
+	
+	var showChart = "&nbsp;<img onClick='loadOptionsData(\""+hiddenDivId+"\")' src='/static/images/chart.png' width='18' height='18' alt='Show Chart' style='display:inline'>"
+	var showMarketDepth = `&nbsp;<img  style='display:inline' onClick='showMarketDepth("${hiddenDivId}")' src='/static/images/bidask.png' width='18' height='18' alt='Show Market Depth' />`
+	var marketDepthTable = `<div id='marketDepth-${hiddenDivId}'></div>`
+	
+	wlRecord = new Object();
+	wlRecord.hiddenColumn=hiddenDivObj.outerHTML
+	wlRecord.stock=stockName + showMarketDepth + showChart + marketDepthTable
+	wlRecord.price = "<div id='"+token+"-price'></div>"
+	wlRecord.action = buyAction + sellAction
+	wlRecord.x = remove
+	return wlRecord
+}
+function watchStock(){
 	var selectedStock = $('#stock-selection').find(":selected")[0]
 	if(selectedStock.value == 0)
 		return;
@@ -695,8 +760,25 @@ function addToWatchList() {
 	}
 	
 	hiddenDivObj.setAttribute("id",hiddenDivId)
+	addToWatchList(hiddenDivId,hiddenDivObj,token,stockName)
+	
+	//add to localstorage
+	watchListObj = new Object();
+	watchListObj.hiddenDivId = hiddenDivId
+	watchListObj.token = token
+	watchListObj.stockName = stockName
+	watchListObj.hiddenDivObj = hiddenDivObj.outerHTML
+	wlKey = "wl-" + token
+	localStorage.setItem(wlKey, JSON.stringify(watchListObj));
+}
+function addToWatchList(hiddenDivId,hiddenDivObj,token,stockName) {
+	var watchListTable = $('#watchList').data('dynatable');
+	
+	wlRecord = makeWatchListRecord(hiddenDivId,hiddenDivObj,token,stockName)
+	myRecords = [new Object()];
+	myRecords[0] = wlRecord
 
-	buyAction = `<img width='40' height='25' src="/static/images/buy1.png" alt="Buy" onClick='buyStock("${stockName}","${hiddenDivId}")'/> `
+	/*buyAction = `<img width='40' height='25' src="/static/images/buy1.png" alt="Buy" onClick='buyStock("${stockName}","${hiddenDivId}")'/> `
 	sellAction = `<img width='40' height='25' src="/static/images/sell1.png" alt="Sell" onClick='sellStock("${stockName}","${hiddenDivId}")'/> `
 	remove = "<img width='20' height='18' src='/static/images/bin.png' alt='Remove' onClick='removeFromWatchList(this)'/>"
 	
@@ -711,8 +793,8 @@ function addToWatchList() {
 	myRecords[0].price = "<div id='"+token+"-price'></div>"
 	myRecords[0].action = buyAction + sellAction
 	myRecords[0].x = remove	
-
-
+	*/
+	
 	existingRecords = watchListTable.records.getFromTable()
 	myRecords = myRecords.concat(existingRecords);
 	obj = new Object();
@@ -722,8 +804,10 @@ function addToWatchList() {
 
 	watchListTable.records.updateFromJson(obj);
 	watchListTable.dom.update();
-	const inputToken = token
-	subscribeQuotesFeed(inputToken)
+	
+	//const inputToken = token
+	//subscribeQuotesFeed(inputToken)
+	subscribeApiTickData(token,apiLtpListener)
 	
 }
 
@@ -733,22 +817,33 @@ function removeFromWatchList(removeButtonObj) {
 	token = hiddenDivObj.getAttribute('data-token')
 	ltpElemArr = $('#'+token+'-price');
 	if(ltpElemArr.length < 2)
-		response = socket.emit('unsubscribeQuotes', token, "1second")
+		unsubscribeApiTickData(token, "1second")
 	$(removeButtonObj).closest("tr").remove();
+	localStorage.removeItem("wl-"+token)
 }
 function buyStock(stockToBuy,hiddenDivId){
 	clearOrder()
-	$("#orderStock")[0].innerText = stockToBuy
-	$("#orderAction")[0].innerText = "Buy"
-	$($("#orderAction")[0]).css("color","green")
+	$("#orderStock").text(stockToBuy)
+	$("#orderAction").text("Buy")
+	$("#orderAction").closest("td").css("background-color","#85EA27")
+	//$("#orderAction").css("color","green")
 	$("#hiddenDataColumnId")[0].innerText = hiddenDivId
 	$('#orderButton')[0].value="Buy"
+	let token = $('#'+hiddenDivId).get()[0].dataset.token
+	//console.log($('#'+token+'-price'))
+	let ltp = $('#'+token+'-price')[0].innerText
+	if($("input:radio[name='orderType']:checked").first().val()=="market"){
+		ltp = "0"
+	}
+	$("#orderPrice")[0].value = ltp
 	let lotsize = $('#'+hiddenDivId).get()[0].dataset.lotsize;
 	$("#orderQty")[0].valueAsNumber = lotsize
 	$("#orderQty")[0].step = lotsize;
 	$("#orderQty")[0].min = lotsize;
 	$('#orderButton')[0].onclick=function() { addOrder('new') }
 	getBrokerages();
+	calculateMargin();
+	$('#order_popup').dialog('open')
 }
 
 //adjust this function to call squareoff api
@@ -757,30 +852,50 @@ function squareoffStock(stockToSell,hiddenDivId,qty){
 	$("#orderStock")[0].innerText = stockToSell
 	$("#orderAction")[0].innerText = "Sell"
 	$("#orderQty")[0].valueAsNumber = qty;
-	$($("#orderAction")[0]).css("color","red")
+	$("#orderAction").closest("td").css("background-color","red")
+	//$($("#orderAction")[0]).css("color","red")
+	let token = $('#'+hiddenDivId).get()[0].dataset.token
+	let ltp = $('#'+token+'-price')[0].innerText
+	if($("input:radio[name='orderType']:checked").first().val()=="market"){
+		ltp = "0"
+	}
+	$("#orderPrice")[0].value = ltp
 	$("#hiddenDataColumnId")[0].innerText = hiddenDivId
 	$('#orderButton')[0].value="squareoff"
 	$('#orderButton')[0].onclick=function(){addOrder('squareoff')}
 	getBrokerages();
+	calculateMargin();
+	$('#order_popup').dialog('open')
 }
 
 function sellStock(stockToSell,hiddenDivId){
 	clearOrder()
 	$("#orderStock")[0].innerText = stockToSell
 	$("#orderAction")[0].innerText = "Sell"
-	$($("#orderAction")[0]).css("color","red")
+	$("#orderAction").closest("td").css("background-color","red")
+	//$($("#orderAction")[0]).css("color","red")
 	$("#hiddenDataColumnId")[0].innerText = hiddenDivId
 	$('#orderButton')[0].value="Sell"
+	let token = $('#'+hiddenDivId).get()[0].dataset.token
+	let ltp = $('#'+token+'-price')[0].innerText
+	if($("input:radio[name='orderType']:checked").first().val()=="market"){
+		ltp = "0"
+	}
+	$("#orderPrice")[0].value = ltp
 	let lotsize = $('#'+hiddenDivId).get()[0].dataset.lotsize;
 	$("#orderQty")[0].valueAsNumber = lotsize
 	$("#orderQty")[0].step = lotsize;
 	$("#orderQty")[0].min = lotsize;
 	$('#orderButton')[0].onclick=function() { addOrder('new')}
 	getBrokerages();
+	calculateMargin();
+	$('#order_popup').dialog('open')
 }
+
+/*
 function subscribeQuotesFeed(token){
 	//console.log("subscribing to quotes feed for token: "+token)
-	response = socket.emit('subscribeQuotes', token, "1second")
+	//response = socket.emit('subscribeQuotes', token, "1second")
 	//console.log(response)
 
 	const inputToken = token
@@ -793,7 +908,10 @@ function subscribeQuotesFeed(token){
 		}
 	});
 	
+	//subscribeApiTickData(token,apiLtpListener)
+	
 }
+*/
 
 
 
@@ -813,8 +931,10 @@ function orderNotification(notificationData){
 	//update status
 	$('#status-'+orderId)[0].innerText = orderStatus
 	if(orderStatus.toLowerCase() == "executed"){
-		$('#cancelOrdBtn-'+orderId)[0].remove();
-		$('#modifyOrdBtn-'+orderId)[0].remove();
+		try{
+			$('#cancelOrdBtn-'+orderId)[0].remove();
+			$('#modifyOrdBtn-'+orderId)[0].remove();
+		}catch(e){}
 		//$('#price-'+orderId)[0].innerText = orderStatus
 		refreshOpenPositions();
 	}
@@ -822,65 +942,45 @@ function orderNotification(notificationData){
 	//$('#price-'+orderId)[0].innerText = orderStatus
 }
 
-async function getRealisedPnl(){
-	var pnlResultJsonArr = null
-	var fromDateStr = $($("#fromDatepicker")).val()
-	var toDateStr = $($("#toDatepicker")).val()
-	
-	var realisedPnlParams = new URLSearchParams({
-			'fromDate' : fromDateStr,
-			'toDate' : toDateStr
-		})
-	var realisedPnlUrl = baseServerUrl + '/getRealisedPnL?' + realisedPnlParams
-	//console.log(realisedPnlUrl)
-	await callApi(realisedPnlUrl).then(result => {pnlResultJsonArr=result});
-	//console.log(pnlResultJsonArr)
-	errorStatus = pnlResultJsonArr["Error"]
-	if(errorStatus != null && errorStatus != ""){
-		if(errorStatus == "No Data Found"){
-			realisedPnl = "0";
-			realisedPnlWithTaxes = "0";
-		}
-		else{return;}
-	}
-	else{
-		realisedPnl = pnlResultJsonArr["Success"]["realised_pnl"]
-		realisedPnlWithTaxes = pnlResultJsonArr["Success"]["realised_pnl_with_taxes"]
-	}
 
-	$("#realisedPnl")[0].innerHTML=realisedPnl;
-	$("#realisedPnlWithTaxes")[0].innerHTML=realisedPnlWithTaxes;
+
+function populateRealisedPnl(){
+	let fromDateStr = $($("#fromDatepicker")).val()
+	let toDateStr = $($("#toDatepicker")).val()
+	
+	fetchRealisedPnl(fromDateStr,toDateStr).then(result => {
+		let pnlResultJsonArr = result
+		//console.log(pnlResultJsonArr)
+		if(pnlResultJsonArr == null){
+			realisedPnl = "0.00";
+			realisedPnlWithTaxes = "0.00";
+		}
+		else{
+			realisedPnl = pnlResultJsonArr["realised_pnl"]
+			realisedPnlWithTaxes = pnlResultJsonArr["realised_pnl_with_taxes"]
+		}
+	
+		$("#realisedPnl")[0].innerHTML=realisedPnl;
+		$("#realisedPnlWithTaxes")[0].innerHTML=realisedPnlWithTaxes;
+	});
 }
 
-async function refreshMargins(){
-	
-	marginResultJsonArr = null
-	var marginUrl = baseServerUrl + '/getMargin'
-	console.log(marginUrl)
-	await callApi(marginUrl).then(result => {marginResultJsonArr=result});
-	//console.log(pnlResultJsonArr)
-	errorStatus = marginResultJsonArr["Error"]
-	if(errorStatus != null && errorStatus != ""){
-		if(errorStatus == "Not connected"){
-			allocatedMargin = "NA";
-			availableMargin = "NA";
-			mtm = "NA"
-		}
-		else{return;}
-	}
-	else{
-		allocatedMargin = marginResultJsonArr["Success"]["amount_allocated"]
-		availableMargin = marginResultJsonArr["Success"]["cash_limit"]
-		mtm = 0
-		if ($.isArray(marginResultJsonArr["Success"]["limit_list"]) &&  marginResultJsonArr["Success"]["limit_list"].length>0){
-			mtm = marginResultJsonArr["Success"]["limit_list"][0]["amount"]
-		}
-	}
-
-	$("#allocatedMargin")[0].innerHTML=allocatedMargin;
-	$("#availableMargin")[0].innerHTML=availableMargin;
-	$("#mtm")[0].innerHTML=mtm;
-	
+function refreshMargins(){
+	fetchMargins().then(result => {
+			let marginResultJsonArr=result
+			//console.log(marginResultJsonArr)
+			if(marginResultJsonArr != null){
+				allocatedMargin = marginResultJsonArr["amount_allocated"]
+				availableMargin = marginResultJsonArr["cash_limit"]
+				mtm = "0.00"
+				if ($.isArray(marginResultJsonArr["limit_list"]) &&  marginResultJsonArr["limit_list"].length>0){
+					mtm = marginResultJsonArr["limit_list"][0]["amount"]
+				}
+			}
+			$("#allocatedMargin")[0].innerHTML=allocatedMargin;
+			$("#availableMargin")[0].innerHTML=availableMargin;
+			$("#mtm")[0].innerHTML=mtm;
+	});
 }
 
 function hideMarketDepth(){
@@ -951,62 +1051,92 @@ function handleOrderTypeChange(obj){
 		$("#orderSl")[0].valueAsNumber=0;
 		$("#orderPrice").attr("readonly",true)
 		$("#orderSl").attr("readonly",true)
-	}else{
+	}else if(obj.value=="limit"){
+		$("#orderSl")[0].valueAsNumber=0;
+		$("#orderPrice").attr("readonly",false)
+		$("#orderSl").attr("readonly",true)
+	}
+	else if(obj.value=="stoploss"){
+		$("#orderSl")[0].valueAsNumber=0;
 		$("#orderPrice").attr("readonly",false)
 		$("#orderSl").attr("readonly",false)
 	}
 }
 
-async function getBrokerages(){
+function refreshMarginAndCharges(){
+	calculateMargin()
+	getBrokerages()
+}
+
+function getBrokerages(){
 	//validate order related data
-	hiddenDivId = $("#hiddenDataColumnId")[0].innerText
+	let hiddenDivId = $("#hiddenDataColumnId")[0].innerText
 	if(hiddenDivId == ""){
 		return
 	}
-	
 	hiddenDivObj = $("#"+hiddenDivId)[0];
-	hiddenDivObj = $(hiddenDivObj).clone()[0];
-
-	var hiddenOlDivObj = null;
-	var hiddenOrderId = $("#hiddenOrderId")[0].innerText
 	
-	var quantity = $('#orderQty')[0].value;
-	var action = $('#orderAction')[0].innerText;;
-	var price = $('#orderPrice')[0].value;
-	var stoploss = $('#orderSl')[0].value;
-	
-	//call api for brokerage
-	var brokerageParams = new URLSearchParams({
-		'stockCode' : hiddenDivObj.dataset.stockcode,
-		'exchangeCode' : hiddenDivObj.dataset.exchangecode,
-		'product' : hiddenDivObj.dataset.product, 
-		'strike' : hiddenDivObj.dataset.strike,
-		'expiryDate' : hiddenDivObj.dataset.expiry,
-		'action' : action.toLowerCase(),
-		'rightType' : hiddenDivObj.dataset.right,
-		'price' : price,
-		'quantity' : quantity,
-		'stoploss' : stoploss
-	})
-
-	var brokerageResultJsonArr = null
-	let brokeragePath = '/getBrokerages'
-	let brokerageUrl = baseServerUrl + brokeragePath + '?' + brokerageParams
-	console.log(brokerageUrl)
-	await callApi(brokerageUrl).then(result => {brokerageResultJsonArr=result});
-	errorStatus = brokerageResultJsonArr["Error"]
-	if(errorStatus != null && errorStatus != ""){
-		return;
-	}
-	brokerageDict = brokerageResultJsonArr["Success"]	
-	$('#charges')[0].innerHTML = brokerageDict["total_brokerage"]
-	$('#charges_content #total_brokerage')[0].innerHTML = brokerageDict["total_brokerage"]
-	$('#charges_content #brokerage')[0].innerHTML = brokerageDict["brokerage"]
-	$('#charges_content #stamp_duty')[0].innerHTML = brokerageDict["stamp_duty"]
-	$('#charges_content #stt')[0].innerHTML = brokerageDict["stt"]
-	$('#charges_content #gst')[0].innerHTML = brokerageDict["gst"]
-	$('#charges_content #exchange_turnover_charges')[0].innerHTML = brokerageDict["exchange_turnover_charges"]
-	$('#charges_content #sebi_charges')[0].innerHTML = brokerageDict["sebi_charges"]
-	$('.tooltip').tooltipster('content',$('#charges_content')[0].innerHTML)
+	let quantity = $('#orderQty')[0].value;
+	let action = $('#orderAction')[0].innerText.toLowerCase();
+	let price = $('#orderPrice')[0].value;
+	let stoploss = $('#orderSl')[0].value;
+	let stockCode = hiddenDivObj.dataset.stockcode;
+	let exchangeCode = hiddenDivObj.dataset.exchangecode;
+	let product = hiddenDivObj.dataset.product;
+	let strike = hiddenDivObj.dataset.strike;
+	let expiryDate = hiddenDivObj.dataset.expiry;
+	let rightType = hiddenDivObj.dataset.right;
+	$('#charges')[0].innerHTML = "..."
+	fetchBrokerage(stockCode,exchangeCode,product,strike,expiryDate,action,rightType,price,quantity,stoploss)
+		.then(result => {
+			let brokerageDict=result;
+			if(brokerageDict == null){
+				$('#charges')[0].innerHTML = "0.00"
+				return;
+			}
+				
+			$('#charges')[0].innerHTML = brokerageDict["total_brokerage"]
+			$('#charges_content #total_brokerage')[0].innerHTML = brokerageDict["total_brokerage"]
+			$('#charges_content #brokerage')[0].innerHTML = brokerageDict["brokerage"]
+			$('#charges_content #stamp_duty')[0].innerHTML = brokerageDict["stamp_duty"]
+			$('#charges_content #stt')[0].innerHTML = brokerageDict["stt"]
+			$('#charges_content #gst')[0].innerHTML = brokerageDict["gst"]
+			$('#charges_content #exchange_turnover_charges')[0].innerHTML = brokerageDict["exchange_turnover_charges"]
+			$('#charges_content #sebi_charges')[0].innerHTML = brokerageDict["sebi_charges"]
+			$('.tooltip').tooltipster('content',$('#charges_content')[0].innerHTML)
+		});
 }
+
+function calculateMargin(){
+		//validate order related data
+	let hiddenDivId = $("#hiddenDataColumnId")[0].innerText
+	if(hiddenDivId == ""){
+		return
+	}
+	hiddenDivObj = $("#"+hiddenDivId)[0];
+	
+	let quantity = $('#orderQty')[0].value;
+	let action = $('#orderAction')[0].innerText.toLowerCase();
+	let price = $('#orderPrice')[0].value;
+	let stoploss = $('#orderSl')[0].value;
+	let stockCode = hiddenDivObj.dataset.stockcode;
+	let exchangeCode = hiddenDivObj.dataset.exchangecode;
+	let product = hiddenDivObj.dataset.product;
+	let strike = hiddenDivObj.dataset.strike;
+	let expiryDate = hiddenDivObj.dataset.expiry;
+	let rightType = hiddenDivObj.dataset.right;
+	let includeOpenPositions = $('#includeOpenPositions')[0].checked
+	$('#margin')[0].innerHTML = "..."
+	fetchMarginCalculation(stockCode,exchangeCode,product,strike,expiryDate,action,rightType,price,quantity,includeOpenPositions)
+		.then(result => {
+			let marginCalculationDict=result;
+			if(marginCalculationDict == null){
+				$('#margin')[0].innerHTML = "0.00"
+				return;
+			}
+			//marginCalculationDict = marginCalculationDict['Success']	
+			$('#margin')[0].innerHTML = marginCalculationDict["span_margin_required"]
+		});
+}
+
 

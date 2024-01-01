@@ -90,8 +90,8 @@ class  MyBreezeApi():
 		#print(codeArr)
 		if fnoType == "FUT":
 			expiry = codeArr[2]
-			strike = "NA"
-			right = "NA"
+			strike = ""
+			right = ""
 			product = "futures"
 		else:
 			codeArrRevSplit = codeArr[2].rsplit("-", 2)
@@ -100,6 +100,7 @@ class  MyBreezeApi():
 			strike = codeArrRevSplit[1]
 			right = codeArrRevSplit[2]
 			product="options"
+		#print(df_row)
 		df_row["fnoType"] = fnoType
 		df_row["expiry"] = expiry
 		df_row["strike"] = strike
@@ -220,16 +221,27 @@ class  MyBreezeApi():
     {'Success': {'order_id': '202310201500017588', 'message': 'Your Order Canceled Successfully'}, 'Status': 200, 'Error': None}
     '''
     
-	def getOrderList(self):
-		today = datetime.now()    
-		daysFrom = timedelta(days = 0)
-		fromDate = today - daysFrom
-		todayStr = today.strftime('%Y-%m-%dT23:00:00.000Z')
+	def getOrderList(self,fromDate,toDate):
+		#if today is holiday and you put an order, it gets scheduled for next working day
+		#this future day hack is to fetch that order so it can be viewed, modified, or cancelled on holidays
+		moveBackDays = 0
+		moveAheadDays = 0
+		if(fromDate.weekday() == 6):
+			moveBackDays = 1
+		if(toDate.weekday() == 5):
+			moveAheadDays = 2
+		else:
+			if(toDate.weekday() == 6):
+				moveAheadDays = 1
+		if(not moveBackDays == 0) or not (moveAheadDays == 0):
+			fromDate = fromDate - timedelta(days = moveBackDays)
+			toDate = toDate + timedelta(days = moveAheadDays)
+		toDateStr = toDate.strftime('%Y-%m-%dT23:00:00.000Z')
 		fromDateStr = fromDate.strftime('%Y-%m-%dT01:00:00.000Z')
-		print("fetching orders from: "+fromDateStr+" to "+todayStr)		
+		print("fetching orders from: "+fromDateStr+" to "+toDateStr)		
 		orderList = self.api.get_order_list(exchange_code="NFO",
 														from_date=fromDateStr,
-														to_date=todayStr)
+														to_date=toDateStr)
 		#print(orderList)
 		return orderList
     
@@ -305,6 +317,9 @@ class  MyBreezeApi():
 
 	def getMargin(self,exchangeCode):
 		return self.api.get_margin(exchangeCode)
+
+	def marginCalculator(self,list, exchangeCode):
+		return self.api.margin_calculator(list,exchangeCode)
 
 	def getNseStocks(self,stockName):
 		nseSecuritiesDf = pd.read_csv(self.nseFile, sep=',', engine='python')
