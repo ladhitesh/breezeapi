@@ -135,7 +135,7 @@ $(document).ready(function() {
 							}
 						}
 					],
-		minWidth: 600,
+		minWidth: 550,
 		minHeight: 300,
 		autoOpen: false,
 		title: "Order",
@@ -432,7 +432,12 @@ $( function() {
 						<td colspan="3" style="color:white;font-weight:bold;height:40px;">
 							<div id="hiddenDataColumnId" style="display:none" ></div>
 							<div id="hiddenOrderId" style="display:none" ></div>
-							<span id="orderAction"></span>&nbsp;<span id="orderStock"></span>
+							<span id="orderAction"></span>&nbsp;<span id="orderStock"></span><BR/>				
+						</td>
+					</tr>
+					<tr>
+						<td colspan="3" style="vertical-align:bottom;height:25px;margin-top:0px;color:black;font-weight:bold;font-size:14px;">
+							LTP: &#8377;<span class="order-ltp" id=""></span>
 						</td>
 					</tr>
 					<tr style="height:30px;vertical-align:bottom">
@@ -453,9 +458,9 @@ $( function() {
 					<tr style="height:70px">
 					<td colspan="2" style="color:black">
 						<div style="display:inline-block;width:50px">Margin: </div><div id="margin" style="display:inline-block;width:70px">0.00</div>
-						<div style="display:inline-block;width:60px" >Charges: </div><span style="display:inline;" class="tooltip" >tooltip</span><div id="charges" style="display:inline-block;width:70px;color:black" >0.00</div>
+						<div style="display:inline-block;width:60px" >Charges: </div><span style="display:inline;" class="tooltip" >tooltip</span><div id="charges" style="display:inline-block;width:50px;color:black" >0.00</div>
 						<img onClick="refreshMarginAndCharges()" src="/static/images/refresh.png" width="20" height="20">
-						<div style="display:inline-block;width:120px;text-align:right;"><input type="checkbox" id="includeOpenPositions" name="op" style="margin:0px;width:20px">open positions</div>
+						<div style="display:inline-block;width:115px;text-align:left;"><input type="checkbox" id="includeOpenPositions" name="op" style="margin:0px;width:20px">open positions</div>
 					</td>
 					<td style="text-align:right"><input id="orderButton" type="button" onClick="addOrder()" style="display:inline;text-align:center;height:30px;width:70px" value="Order"/></td>
 				</tr>

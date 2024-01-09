@@ -281,31 +281,10 @@ function populateOpenPositions(){
 }
 
 function populateWatchList(){
-	/*let wlCountStr = localStorage.getItem("watchlistCount")
-	console.log(wlCountStr)
-	if(wlCountStr == null){
-			return;
-	}else {
-		wlCount = parseInt(wlCountStr)
-	}
-	console.log(wlCount)
-	for(i = 1;i<=wlCount;i++){
-		let wlKey = "wl"+i;
-		console.log(wlKey)
-		let wl = localStorage.getItem(wlKey);
-		//console.log("fetched from local storage:"+wl)
-		let wlObj = JSON.parse(wl)
-		//console.log(wlObj)
-		let hiddenDivObj = new DOMParser().parseFromString(wlObj.hiddenDivObj, 'text/html').querySelector("div");
-		//console.log(hiddenDivObj)
-		//console.log(hiddenDivObj.outerHTML)
-		addToWatchList(wlObj.hiddenDivId,hiddenDivObj,wlObj.token,wlObj.stockName)
-	}
-	*/
-	console.log(localStorage.length)
+	//console.log(localStorage.length)
 	for(i = 0;i<localStorage.length;i++){
 		let key = localStorage.key(i);
-		console.log(key)
+		//console.log(key)
 		if (key.includes("wl-")){
 			
 			let wl = localStorage.getItem(key);
@@ -639,7 +618,7 @@ function populateModifyOrder(modifyButtonObj,action,qty,price,sl){
 	if(action.toLowerCase()=="buy"){
 		bgColor="#85EA27"
 	}
-	
+	$(".order-ltp").attr("id",hiddenDivObj.dataset.token + '-price')
 	$('#hiddenOrderId').text(modifyOrderId);
 	$('#hiddenDataColumnId').text(hiddenDivObj.getAttribute("id"));
 	$('#orderStock').text(hiddenDivObj.dataset.code);
@@ -664,6 +643,8 @@ function clearOrder(){
 	$('#orderButton')[0].value="Order"
 	$("#orderAction").closest("td").css("background-color","")
 	try{
+		$(".order-ltp").text("")
+		$(".order-ltp").attr("id","")
 		$('#margin')[0].innerHTML = "0.00"
 		$('#charges')[0].innerHTML = "0.00"
 		$('#charges_content #total_brokerage')[0].innerHTML = "0.00"
@@ -835,6 +816,8 @@ function buyStock(stockToBuy,hiddenDivId){
 	if($("input:radio[name='orderType']:checked").first().val()=="market"){
 		ltp = "0"
 	}
+	//console.log($(".order-ltp"))
+	$(".order-ltp").attr("id",token + '-price')
 	$("#orderPrice")[0].value = ltp
 	let lotsize = $('#'+hiddenDivId).get()[0].dataset.lotsize;
 	$("#orderQty")[0].valueAsNumber = lotsize
@@ -859,6 +842,7 @@ function squareoffStock(stockToSell,hiddenDivId,qty){
 	if($("input:radio[name='orderType']:checked").first().val()=="market"){
 		ltp = "0"
 	}
+	$(".order-ltp").attr("id",token + '-price')
 	$("#orderPrice")[0].value = ltp
 	$("#hiddenDataColumnId")[0].innerText = hiddenDivId
 	$('#orderButton')[0].value="squareoff"
@@ -881,6 +865,7 @@ function sellStock(stockToSell,hiddenDivId){
 	if($("input:radio[name='orderType']:checked").first().val()=="market"){
 		ltp = "0"
 	}
+	$(".order-ltp").attr("id",token + '-price')
 	$("#orderPrice")[0].value = ltp
 	let lotsize = $('#'+hiddenDivId).get()[0].dataset.lotsize;
 	$("#orderQty")[0].valueAsNumber = lotsize

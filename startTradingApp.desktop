@@ -1,0 +1,16 @@
+[Desktop Entry]
+Version=1.0 
+#put file in $XDG_DATA_DIRS/applications for e.g ~/.local/share/applications OR /usr/share/applications
+Name=TradingApp Server
+GenericName=Flask application
+Comment=Launch Flask Application server
+#put file in $XDG_DATA_DIRS/icons for e.g ~/.local/share/icons OR /usr/share/icons
+Icon=tradingAppServer.png
+#Exec=sh -c "uxterm -bg black -fg white -fa 'Cousine' -fs 8 -geometry 150x20 -e /usr/bin/bash -c /home/ladhitesh4trading/startTradingAppServer.sh""
+#Path=/home/ladhitesh4trading
+#put file in $PATH OR /usr/local/bin
+Exec=startTradingAppServer
+Terminal=true
+Type=Application
+Categories=Application;Web Server;
+Keywords=trading

@@ -180,13 +180,14 @@ function oneSecChannelListener(data){
 
 function oneMinChannelListener(data){
 	let ohlcvDataDict = parseTicks(data);
-	console.log("received 1 min data for token:" + ohlcvDataDict["token"])
+	//console.log("received 1 min data for token:" + ohlcvDataDict["token"])
 	let dataInterval = ohlcvDataDict["interval"]
 	let dataToken = ohlcvDataDict["token"]
 	if(allSubscriptions[dataInterval] != null && allSubscriptions[dataInterval].findIndex(obj => obj.token==dataToken)!=-1){
 		refChartFeedDataListener(ohlcvDataDict);
 		optionChartFeedDataListener(ohlcvDataDict);
-	}else{console.log("ignoring token as not subscribed to this interval")}
+	}
+	//else{console.log("ignoring token as not subscribed to this interval")}
 }
 
 function fiveMinChannelListener(data){
@@ -197,7 +198,8 @@ function fiveMinChannelListener(data){
 	if(allSubscriptions[dataInterval] != null && allSubscriptions[dataInterval].findIndex(obj => obj.token==dataToken)!=-1){
 		refChartFeedDataListener(ohlcvDataDict);
 		optionChartFeedDataListener(ohlcvDataDict);
-	}else{console.log("ignoring token as not subscribed to this interval")}
+	}
+	else{console.log("ignoring token as not subscribed to this interval")}
 }
 
 function thirtyMinChannelListener(data){
@@ -208,7 +210,8 @@ function thirtyMinChannelListener(data){
 	if(allSubscriptions[dataInterval] != null && allSubscriptions[dataInterval].findIndex(obj => obj.token==dataToken)!=-1){
 		refChartFeedDataListener(ohlcvDataDict);
 		optionChartFeedDataListener(ohlcvDataDict);
-	}else{console.log("ignoring token as not subscribed to this interval")}
+	}
+	else{console.log("ignoring token as not subscribed to this interval")}
 }
 
 function ltpListener(ohlcvDataDict){

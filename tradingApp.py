@@ -1,7 +1,7 @@
 
 # A very simple Flask Hello World app for you to get started with...
 
-from flask import Flask, request, redirect, session, jsonify, render_template, send_from_directory, url_for
+from flask import Flask, request, redirect, session, jsonify, render_template, send_from_directory, url_for, abort
 import os
 from flask_cors import CORS, cross_origin
 from breeze_connect import BreezeConnect
@@ -17,7 +17,7 @@ import pandas as pd
 import configapi
 
 app = Flask(__name__)
-socketio = SocketIO(app)
+socketio = SocketIO(app,logger=False, engineio_logger=False)
 
 cors = CORS(app)
 app.config["SESSION_PERMANENT"] = False
@@ -86,24 +86,34 @@ def spoofTicks(data,count,interval):
 
 @socketio.event
 def disconnect():
-	clientSid = request.sid
-	clientSubs = session.get(request.sid,"")
-	print('Client disconnected : '+clientSid)
-	print("unsubscribing from "+clientSubs)
-	subsPair = clientSubs.split(";")
-	for subs in subsPair:
-		if subs != "":
-			tokenIntervalPair = subs.split("-")
-			token = tokenIntervalPair[0]
-			interval = tokenIntervalPair[1]
-			unsubscribeQuotes(token,interval)
-	clientMDSubs = session.get("md-"+request.sid,"")
-	print("unsubscribing md from "+clientMDSubs)
-	subsMDPair = clientMDSubs.split(";")
-	for subs in subsMDPair:
-		print(unsubscribeMarketDepth(subs))
+	try:
+		clientSid = request.sid
+		clientSubs = session.get(request.sid,"")
+		app.logger.info('Client disconnected : '+clientSid)
+		app.logger.info("unsubscribing from "+clientSubs)
+		subsPair = clientSubs.split(";")
+		for subs in subsPair:
+			if subs != "":
+				tokenIntervalPair = subs.split("-")
+				token = tokenIntervalPair[0]
+				interval = tokenIntervalPair[1]
+				unsubscribeQuotes(token,interval)
+		clientMDSubs = session.get("md-"+request.sid,"")
+		app.logger.info("unsubscribing md from "+clientMDSubs)
+		subsMDPair = clientMDSubs.split(";")
+		for subs in subsMDPair:
+			print(unsubscribeMarketDepth(subs))
+		app.logger.info("disconnect successful")
+	except:
+		app.logger.error("Exception in disconnect caught successfully")
 			
-
+@socketio.on_error_default
+def default_error_handler(e):
+	app.logger.error("socketio default error handler")
+	app.logger.error(e)	
+	app.logger.error("event:" + request.event["message"]) # "my error event"
+	app.logger.error("event args as below:")
+	app.logger.error(request.event["args"])    # (data,)
 			
 def getApiSessionFromFile():
 	apiSession = ""
@@ -160,8 +170,8 @@ def connectApi():
 			with open(file_path, 'x') as fp:
 				fp.close()
 		except Exception as e:
-			print(e)
-			print('File already exists')
+			app.logger.info(e)
+			app.logger.info('File already exists')
 	
 	if apiSession != "no-breezeapi-session":
 		try:
@@ -173,7 +183,7 @@ def connectApi():
 			userId = myapi.user_id
 			sessionKey = myapi.session_key
 		except Exception as e:
-			print(e)
+			app.logger.error(e)
 			invalidSessionMsg = ". Session invalid. Create new session from login url."
 	
 	loginUrl = "<a href='/login'>Login</a>"
@@ -507,7 +517,7 @@ def getHistoricalData():
         hDataJsonDict = json.loads('{"Error":"Not connected"}')
         return (hDataJsonDict,200, {'Content-Type': 'application/json'})
 
-    if not hDataJsonDict["Success"] or hDataJsonDict["Error"]:
+    if not hDataJsonDict.get("Success") or hDataJsonDict.get("Error"):
         print("Invalid Historical data")
         print(hDataJsonDict)
         return (hDataJsonDict,200, {'Content-Type': 'application/json'})
@@ -617,7 +627,7 @@ def marginCalculator():
 	#print("list of positions")
 	#print(listOfPositions)
 	marginDict = myapi.marginCalculator(listOfPositions,"NFO")
-	print(marginDict)
+	#print(marginDict)
 	return (marginDict,200, {'Content-Type': 'application/json'})
 
 @app.route('/getBrokerages', methods=['GET', 'POST'])
@@ -645,7 +655,7 @@ def getBrokerages():
 			rightTypeEnum = breezeapi.RightType.from_str(rightTypeStr)
 			rightTypeStr = rightTypeEnum.name
 	brokerageDict = myapi.getBrokerages(exchangeCode,stockCode,product,orderType,priceStr,action,quantity,expiryDate,rightTypeStr,strike)
-	print(brokerageDict)
+	#print(brokerageDict)
 	return (brokerageDict,200, {'Content-Type': 'application/json'})
 
 def feedData(data):
@@ -692,8 +702,9 @@ def feedData(data):
 	if interval != "":
 		eventName = token + "-" + interval
 		data['token'] = token
-	#print("emited data for eventName:" + eventName)
+	#print("emited data for eventName:" + eventName
 	socketio.emit(eventName, json.dumps(data))
+
 
 
 if __name__ == '__main__':

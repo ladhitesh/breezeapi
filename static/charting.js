@@ -72,19 +72,27 @@ $(document).ready(function() {
 	});
 	
 	if(isApiConnected){
-		
-		//socket.emit('subscribeQuotes', 'NIFTY BANK', '1second')
-		//socket.on('NIFTY BANK-1second', refChartTickListener);
-		//sio.emit('join', '4.1!NIFTY BANK');
-		let refChart = $("#refChart")[0];
-		futuresOptionNodeList = refChart.querySelectorAll("option[product='futures']");
-		//console.log(futuresOptionNodeList)
-		for (let i = 0; i < futuresOptionNodeList.length; i++) {
-			updateRefChartSelectOptions(futuresOptionNodeList[i])
+
+		//update expiry and token details for non index stocks
+		$("#refChart option[product='futures']").each(function() {
+			updateRefChartSelectOptions($(this))
+				.then(result => {
+					if($(this).is(':selected')){
+						//load ref chart once token and expiry is updated
+						currentRefChartToken = $(this).attr("token")
+						console.log("loading default selected ref chart: " + currentRefChartToken)	
+						loadReferenceChart(true);
+						chart.timeScale().fitContent();
+					}});
+		});
+
+		//load ref chart id selected chart is not index or futures
+		if($("#refChart :selected").attr("product")!= "futures"){
+			currentRefChartToken = $("#refChart :selected").attr("token")
+			console.log("loading default selected ref chart: " + currentRefChartToken)	
+			loadReferenceChart(true);
+			chart.timeScale().fitContent();
 		}
-		currentRefChartToken = $("#refChart :selected")[0].getAttribute("token")
-		loadReferenceChart(true);
-		chart.timeScale().fitContent();
 		
 	}
 	intervalLookup = {}
@@ -102,16 +110,20 @@ $(document).ready(function() {
 currentRefChartToken = null;
 
 function updateRefChartSelectOptions(option){
-	searchStr = "FUT " + option.value
+	searchStr = "FUT " + option.val()
+	//searchStr = "FUT " + option.value
 	//console.log(searchStr)
-	fetchStocks(searchStr).then(result => {
+	return fetchStocks(searchStr).then(result => {
 			let token = result[0]["token"]
 			//console.log(token)
 			let expiry = result[0]["expiry"]
 			//let expiry1806Format = moment(expiry,"DD-MMM-YYYY").format("YYYY-MM-DD")+"T19:30:00.000Z"
-			option.setAttribute("token",token)
-			option.setAttribute("expiry",expiry)
-			option.text = (option.text + " " + expiry)
+			//option.setAttribute("token",token)
+			//option.setAttribute("expiry",expiry)
+			//option.text = (option.text + " " + expiry)
+			option.attr("token",token)
+			option.attr("expiry",expiry)
+			option.text(option.text() + " " + expiry)
 		});
 }
 
@@ -240,10 +252,10 @@ function getRefChartStockSelectHTMLElement(){
 	let secondRowStockNameSelectHtml = "<select id='refChart' style='color:black;background-color:#fcfcde;text-align:left;display:inline-block;width:230px;font-size:12px;padding:0px;margin:0px;border:0px;font-weight:bold' onchange='updateReferenceChart();'>"
 	const secondRowStockNameSelect = new DOMParser().parseFromString(secondRowStockNameSelectHtml, 'text/html').querySelector("select");
 
-	let secondRowOption1Html = "<option value='CNXBAN' token='NIFTY BANK' exchangeCode='NSE' product='' expiry='' selected>BANKNIFTY</option>";
+	let secondRowOption1Html = "<option value='CNXBAN' token='NIFTY BANK' exchangeCode='NSE' product='' expiry='' >BANKNIFTY</option>";
 	const secondRowOption1 = new DOMParser().parseFromString(secondRowOption1Html, 'text/html').querySelector("option");
 
-	let secondRowOption2Html = "<option value='CNXBAN' exchangeCode='NFO' product='futures'>BANKNIFTY FUT</option>";
+	let secondRowOption2Html = "<option value='CNXBAN' exchangeCode='NFO' product='futures' selected>BANKNIFTY FUT</option>";
 	const secondRowOption2 = new DOMParser().parseFromString(secondRowOption2Html, 'text/html').querySelector("option");
 
 	let secondRowOption3Html = "<option value='NIFTY' token='NIFTY 50' exchangeCode='NSE' product='equity' expiry=''>NIFTY 50</option>";
@@ -304,7 +316,11 @@ function loadReferenceChart(refChartVisible){
 		let token = selectedRefChartOption.getAttribute("token")
 		let product = selectedRefChartOption.getAttribute("product")
 		let expiry = selectedRefChartOption.getAttribute("expiry")
-		let expiryFormatted = moment(expiry,"DD-MMM-YYYY").format("YYYY-MM-DD")+"T00:00:00.000Z"
+		//console.log("expiry: " + expiry)
+		let expiryFormatted = ""
+		if(expiry != null && expiry != ""){
+			expiryFormatted = moment(expiry,"DD-MMM-YYYY").format("YYYY-MM-DD")+"T00:00:00.000Z"
+		}
 		
 		if (refChartVisible!= undefined && !refChartVisible){
 			//socket.emit('unsubscribeQuotes', token, interval)
