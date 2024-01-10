@@ -909,7 +909,8 @@ function orderNotification(notificationData){
 	stockCode = notificationDataDict["stockCode"];
 	//console.log("order notification: "+orderId+"-->"+orderStatus)
 	const options = {
-    body: orderId + " " + orderStatus,
+    //body: orderId + " " + orderStatus,
+    body: "",
     icon: "/static/images/alert.jpg",
   };
   new Notification(stockCode + " " + orderStatus, options);
