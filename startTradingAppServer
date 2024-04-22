@@ -1,0 +1,5 @@
+cd /home/hitesh/hitesh/breezeapi/
+source .venv/bin/activate
+echo "Starting the trading server"
+./start_server.sh
+read -p "Exit ?"

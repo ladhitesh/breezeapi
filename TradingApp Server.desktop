@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=TradingApp Server
+Exec=bash -c startTradingAppServer
+Comment=Launch Flask Application server
+Terminal=true
+PrefersNonDefaultGPU=false
+Icon=tradingAppServer.png
+Type=Application
+Name[en_IN]=TradingApp Server
+Hidden=false
+NoDisplay=false
