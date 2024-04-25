@@ -15,6 +15,13 @@ from icecream import ic
 import json
 import pandas as pd
 import configapi
+import sys
+
+if sys.version_info >= (3, 8):
+    from importlib import metadata
+else:
+    from importlib_metadata import metadata
+
 
 app = Flask(__name__)
 socketio = SocketIO(app,logger=False, engineio_logger=False)
@@ -27,6 +34,8 @@ app.config['CORS_HEADERS'] = 'Content-Type'
 app.api_key = configapi.API_KEY
 app.secret_key = configapi.SECRET_KEY
 app.login_url = configapi.LOGIN_URL + urllib.parse.quote_plus(app.api_key)
+
+app.breezeapi_version = metadata.version('breeze_connect')
 
 myapi = breezeapi.MyBreezeApi(app.api_key)
 
@@ -246,7 +255,8 @@ def getCustomerDetails(apiSession):
     userId = customerDetailsJsonDict["Success"]["idirect_userid"]
     userName = customerDetailsJsonDict["Success"]["idirect_user_name"]
     lastLogin = customerDetailsJsonDict["Success"]["idirect_lastlogin_time"]
-    customerDetails = userId + "-" + userName + "-last login: " + lastLogin
+    version = app.breezeapi_version
+    customerDetails = userId + "-" + userName + "-last login: " + lastLogin + " (breeze_connect:" + version + ")"
     return customerDetails
 
 @app.route('/getStockToken', methods=['GET', 'POST'])
