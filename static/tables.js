@@ -962,7 +962,11 @@ function refreshMargins(){
 				if ($.isArray(marginResultJsonArr["limit_list"]) &&  marginResultJsonArr["limit_list"].length>0){
 					mtm = marginResultJsonArr["limit_list"][0]["amount"]
 				}
-			}
+			}else{
+                allocatedMargin = 0
+                availableMargin = 0
+                mtm=0;
+            }
 			$("#allocatedMargin")[0].innerHTML=allocatedMargin;
 			$("#availableMargin")[0].innerHTML=availableMargin;
 			$("#mtm")[0].innerHTML=mtm;

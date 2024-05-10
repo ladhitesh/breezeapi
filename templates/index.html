@@ -75,13 +75,55 @@ caption {
 .marketDepth tbody tr td:nth-child(2), .marketDepth tbody tr td:nth-child(5) { width: 30px }
 .marketDepth tbody tr td:nth-child(1), .marketDepth tbody tr td:nth-child(2),.marketDepth tbody tr td:nth-child(3) { color: blue }
 .marketDepth tbody tr td:nth-child(4), .marketDepth tbody tr td:nth-child(5),.marketDepth tbody tr td:nth-child(6) { color: red }
+
+#order_popup {display:none;background:white;border:solid 1px black;}
+#order_popup table {font-size:14px}
+#order_popup table tbody tr td #orderQty {font-size:18px;margin-bottom:0px;display:inline;text-align:start;width:120px;height:40px;margin-right:15px}
+#order_popup table tbody tr td #orderPrice {font-size:18px;margin-bottom:0px;text-align:start;width:120px;height:40px;margin-right:15px}
+#order_popup table tbody tr td #orderSl {font-size:18px;margin-bottom:0px;text-align:start;width:120px;height:40px;margin-right:15px}
+
+#order_popup input[type="radio"] {vertical-align:top;margin-top:0px;margin-right:3px}
+
+#order_popup #margin_text {display:inline-block;width:50px}
+#order_popup #charges_text {display:inline-block;width:60px}
+#order_popup #op_text {display:inline-block;width:115px;text-align:left;}
+#order_popup #margin {display:inline-block;width:70px}
+#order_popup #charges {display:inline-block;width:50px;color:black}
+#order_popup #includeOpenPositions {margin:0px;width:20px}
+#order_popup #orderButton {display:inline;text-align:center;height:30px;width:70px}
+#order_popup table tbody tr td:has(#orderButton){text-align:right}
+#order_popup table tbody tr td:has(.order-ltp) {vertical-align:bottom;height:25px;margin-top:0px;color:black;font-weight:bold;font-size:14px;}
+
+#index_ticker div:nth-child(1) {display:inline-block;width:70px;border:solid 0px;padding-left:50px}
+#index_ticker div:nth-child(1)>div {display:inline;padding-right:0px;border:solid 0px;color:brown}
+#index_ticker div:nth-child(2) {display:inline-block;width:120px;border:solid 0px;}
+#index_ticker div:nth-child(2)>div {display:inline;padding-right:0px;border:solid 0px;color:brown}
+#index_ticker div:nth-child(3) {display:inline-block;width:130px}
+#index_ticker div:nth-child(3)>div {display:inline;color:brown}
+
+#info_panel tr:nth-child(1) {background-color:#f9f9f9;border:solid 1px #777}
+#info_panel tr:nth-child(2) {background-color:#f9f9f9;border:solid 1px #777}
+#info_panel #allocatedMargin_text { display:inline;margin-bottom:0px;height:30px}
+#info_panel #allocatedMargin { display:inline-block;width:80px;color:gray;}
+#info_panel #availableMargin_text { display:inline}
+#info_panel #availableMargin { display:inline-block;width:80px;color:gray;}
+#info_panel #mtm_text { display:inline}
+#info_panel #mtm { display:inline-block;width:80px;color:gray;}
+#info_panel #refreshMargins_text { display:inline;margin-bottom:0px;height:30px; }
+
+#info_panel #fromDatepicker {width:100px;margin-bottom:0px;height:30px}
+#info_panel #toDatepicker {width:100px;margin-bottom:0px;height:30px}
+#info_panel #pnl_text {color:purple;font-weight:bold;size:14px}
+#info_panel #realisedPnl {width:60px;color:gray;font-weight:bold;size:12px}
+#info_panel #realisedPnlWithTaxes_text {color:purple;font-weight:bold;size:14px}
+#info_panel #realisedPnlWithTaxes {width:60px;color:gray;font-weight:bold;size:12px}
 	
 input[type=number]::-webkit-inner-spin-button, 
 input[type=number]::-webkit-outer-spin-button {
   opacity: 1;
 }
 
-.tooltip_templates { display: none; }
+.tooltip_templates { display: none;}
 </style>
 	
 
@@ -203,14 +245,10 @@ $( function() {
 		<tr style="height:20px"><td></td>
 		</tr>
 		<tr>
-			<td>
-				<div style="display:inline-block;width:70px;border:solid 0px;padding-left:50px"><span onclick="subscribeDirectOHLCV('INDIA VIX')">Vix</span>
-					<div style="display:inline;padding-right:0px;border:solid 0px;color:brown" id="INDIA VIX-price">0.00</div></div>
-				<div style="display:inline-block;width:120px;border:solid 0px;"><span onclick="subscribeDirectOHLCV('NIFTY 50')">Nifty 50</span>
-					<div style="display:inline;padding-right:0px;border:solid 0px;color:brown" id="NIFTY 50-price">0.00</div></div>
-				<div style="display:inline-block;width:130px"><span onclick="subscribeDirectOHLCV('NIFTY BANK')">Banknifty</span>  
-					<div style="display:inline;color:brown" id="NIFTY BANK-price">0.00</div>
-				</div>
+			<td id="index_ticker">
+				<div><span onclick="subscribeDirectOHLCV('INDIA VIX')">Vix: </span><div id="INDIA VIX-price">0.00</div></div>
+				<div><span onclick="subscribeDirectOHLCV('NIFTY 50')">Nifty 50: </span><div id="NIFTY 50-price">0.00</div></div>
+				<div><span onclick="subscribeDirectOHLCV('NIFTY BANK')">Banknifty: </span><div id="NIFTY BANK-price">0.00</div></div>
 				<BR/>
 				<div style="display:inline-block;width:100px">Intervals(mins)</div>
 				<button onClick="resetInterval(event,'1minute')">1</button>
@@ -222,26 +260,26 @@ $( function() {
 				<button onClick="setChartRange(5)">5</button>
 			</td>
 			<td>
-				<table width="97%">
-					<tr style="background-color:#f9f9f9;border:solid 1px #777">
+				<table width="97%" id="info_panel">
+					<tr>
 						<td colspan = "7">
-							<div style="display:inline;margin-bottom:0px;height:30px">Allocated: </div>
-							<div id="allocatedMargin" style="display:inline-block;width:80px;color:gray;">0</div>
-							<div style="display:inline">Available: </div>
-							<div id="availableMargin" style="display:inline-block;width:80px;color:gray;">0</div>
-							<div style="display:inline">MTM: </div>
-							<div id="mtm" style="display:inline-block;width:80px;color:gray;">0</div>
-							<div style="display:inline;margin-bottom:0px;height:30px"><img onClick="refreshMargins()" src="/static/images/refresh.png" width="20" height="20"></div>
+							<div id="allocatedMargin_text">Allocated: </div>
+							<div id="allocatedMargin">0</div>
+							<div id="availableMargin_text">Available: </div>
+							<div id="availableMargin">0</div>
+							<div id="mtm_text">MTM: </div>
+							<div id="mtm">0</div>
+							<div id="refreshMargins_text"><img onClick="refreshMargins()" src="/static/images/refresh.png" width="20" height="20"></div>
 						</td>
 					</tr>
-					<tr style="background-color:#f9f9f9;border:solid 1px #777">
-						<td>From :<input type="text" id="fromDatepicker" style="width:100px;margin-bottom:0px;height:30px"></td>
-						<td>To :<input type="text" id="toDatepicker" style="width:100px;margin-bottom:0px;height:30px"></td>
+					<tr>
+						<td>From :<input type="text" id="fromDatepicker" ></td>
+						<td>To :<input type="text" id="toDatepicker" ></td>
 						<td><input onclick="populateRealisedPnl()" type="button" value="Get PnL">
-						<td style="color:purple;font-weight:bold;size:14px">&nbsp;&nbsp;&nbsp;PnL:&nbsp;&nbsp;</td>
-						<td><div id="realisedPnl" style="width:60px;color:gray;font-weight:bold;size:12px">NA</div></td>
-						<td style="color:purple;font-weight:bold;size:14px">&nbsp;&nbsp;&nbsp;PnL(Taxes):&nbsp;&nbsp;</td>
-						<td><div id="realisedPnlWithTaxes" style="width:60px;color:gray;font-weight:bold;size:12px">NA</div></td>
+						<td id="pnl_text" >&nbsp;&nbsp;&nbsp;PnL:&nbsp;&nbsp;</td>
+						<td><div id="realisedPnl" >NA</div></td>
+						<td id="realisedPnlWithTaxes_text" >&nbsp;&nbsp;&nbsp;PnL(Taxes):&nbsp;&nbsp;</td>
+						<td><div id="realisedPnlWithTaxes" >NA</div></td>
 					</tr>
 				</table>			
 			</td>
@@ -295,51 +333,6 @@ $( function() {
 					<caption class="orderMessages" style="text-align:left;color:red">Select stock from watchlist to place order.</caption>
 					<tbody></tbody>
 				</table>
-				<!--
-				<table border="1" bordercolor="black" class="dynatable-header">
-					<caption id="orderMessages" style="text-align:left;color:red">Select stock from watchlist to place order.</caption>
-					<tr><th>Stock</th><th>B/S</th><th>M/L</th><th>Qty</th><th>Price</th><th>SL</th><th></th><th></th></tr>
-				<tr>
-					<td style="width:225px">
-						<div style="display:inline;font-size:12px;">
-						<div id="hiddenDataColumnId" style="display:none" ></div>
-						<div id="hiddenOrderId" style="display:none" ></div>
-						<div id="orderStock" style="padding:3px;text-align:center;color:blue;font-size:12px;display:inline"></div>
-					</td>
-					<td style="width:30px">	
-						<div id="orderAction" style="padding:3px;text-align:center;color:black;font-size:12px;display:inline;font-weight:bold"></div>
-					</td>
-					<td style="margin-bottom:0px;padding:0px;text-align:center;color:black;font-size:8px;font-weight:bold">
-						<div style="margin-bottom:0px;padding:0px;font-size:10px;text-align:left">&nbsp;M&nbsp;&nbsp;&nbsp;L</div>
-						<input onchange="handleOrderTypeChange(this)" style="margin-top:0px;" type="radio" value="market" name="orderType"   />&nbsp;
-						<input onchange="handleOrderTypeChange(this)" style="margin-top:0px;" type="radio" value="limit" name="orderType" checked="checked"/>
-					</td>
-					<td>
-						<input id="orderQty" type="number" style="margin-bottom:0px;display:inline;text-align:center;width:70px;height:30px" value="0" min="0" required/>
-					</td>
-					<td>
-						<input id="orderPrice" type="number" style="margin-bottom:0px;text-align:center;width:70px;height:30px" value="0" step=0.05 min="0" required/>
-					</td>
-					<td>
-						<input id="orderSl" type="number" style="margin-bottom:0px;text-align:center;width:70px;height:30px" value="0" step=0.05 min="0" required/>
-					</td>
-					<td>
-						<input id="orderButton" type="button" onClick="addOrder()" style=";display:inline;text-align:center;height:30px" value="Order"/>
-						<img onClick="$('#order_popup').dialog('open')" src="/static/images/popup.svg" width="20" height="20"/>
-					</td>
-					<td>
-						<input id="clearButton" type="button" onClick="clearOrder()" style=";display:inline;text-align:center;height:30px" value="Clear"/>
-					</td>
-				</tr>
-				<tr>
-					<td colspan="8" style="color:black">
-						<div style="display:inline-block;width:50px">Margin: </div><div id="margin" style="display:inline-block;width:70px">0.00</div>
-						<div style="display:inline-block;width:60px" >Charges: </div><span style="display:inline;" class="tooltip" >tooltip</span><div id="charges" style="display:inline-block;width:70px;color:black" >0.00</div>
-						<img onClick="refreshMarginAndCharges()" src="/static/images/refresh.png" width="20" height="20">
-						<div style="display:inline-block;width:180px;text-align:right;"><input type="checkbox" id="includeOpenPositions" name="op" style="margin:0px;width:20px">open positions</div>
-					</td>
-				</tr>
-				</table> -->
 			</div>
 			<BR/>
 				<table id="orderList" style='margin-bottom:2px'class="table table-striped table-bordered" cellspacing="0" width="100%">
@@ -361,110 +354,70 @@ $( function() {
 			</table>
 
 		<BR/><BR/><BR/>
-<script type='text/javascript' src="/static/api.js"></script>
+<script type='text/javascript' src="/static/myapi.js"></script>
 <script type='text/javascript' src="/static/dataprovider.js"></script>
 <script type='text/javascript' src="/static/tables.js"></script>
 <script type='text/javascript' src="/static/charting.js"></script>
 
 <div class="tooltip_templates">
     <span id="charges_content">
-      <div>
-			<div style="font-size:12px"><span style="display:inline-block;width:100px">Brokerage:</span><span style="display:inline" id="brokerage">0</span></div>
-			<div style="font-size:12px"><span style="display:inline-block;width:100px">Stamp Duty:</span><span style="display:inline" id="stamp_duty">0</span></div>
-			<div style="font-size:12px"><span style="display:inline-block;width:100px">STT:</span><span style="display:inline" id="stt">0</span></div>		
-			<div style="font-size:12px"><span style="display:inline-block;width:100px">GST:</span><span style="display:inline" id="gst">0</span></div>
-			<div style="font-size:12px"><span style="display:inline-block;width:160px">Exchange Turnover Charges:</span><span style="display:inline" id="exchange_turnover_charges">0</span></div>
-			<div style="font-size:12px"><span style="display:inline-block;width:160px">Sebi Charges:</span><span style="display:inline" id="sebi_charges">0</span></div>
-			<div style="font-size:12px"><span style="display:inline-block;width:160px">Total Brokerage:</span><span style="display:inline" id="total_brokerage">0</span></div>
+      <div >
+			<div><span style="display:inline-block;width:160px">Brokerage:</span><span style="display:inline" id="brokerage">0</span></div>
+			<div><span style="display:inline-block;width:160px">Stamp Duty:</span><span style="display:inline" id="stamp_duty">0</span></div>
+			<div><span style="display:inline-block;width:160px">STT:</span><span style="display:inline" id="stt">0</span></div>		
+			<div><span style="display:inline-block;width:160px">GST:</span><span style="display:inline" id="gst">0</span></div>
+			<div><span style="display:inline-block;width:160px">Exng. Turnover Chrgs:</span><span style="display:inline" id="exchange_turnover_charges">0</span></div>
+			<div><span style="display:inline-block;width:160px">Sebi Charges:</span><span style="display:inline" id="sebi_charges">0</span></div>
+			<div><span style="display:inline-block;width:160px">Total Brokerage:</span><span style="display:inline" id="total_brokerage">0</span></div>
 		</div>
     </span>
 </div>
-			<div id="order_popup" style="display:none;background:white;border:solid 1px black;">
-				<!--
-			    <table border="1" bordercolor="black" class="dynatable-header">
-					<caption class="orderMessages" style="text-align:left;color:red">Select stock from watchlist to place order.</caption>
-					<tr><th>Stock</th><th>B/S</th><th>M/L</th><th>Qty</th><th>Price</th><th>SL</th><th></th><th></th></tr>
-				<tr>
-					<td style="width:225px">
-						<div style="display:inline;font-size:12px;">
-						<div id="hiddenDataColumnId" style="display:none" ></div>
-						<div id="hiddenOrderId" style="display:none" ></div>
-						<div id="orderStock" style="padding:3px;text-align:center;color:blue;font-size:12px;display:inline"></div>
-					</td>
-					<td style="width:30px">	
-						<div id="orderAction" style="padding:3px;text-align:center;color:black;font-size:12px;display:inline;font-weight:bold"></div>
-					</td>
-					<td style="margin-bottom:0px;padding:0px;text-align:center;color:black;font-size:8px;font-weight:bold">
-						<div style="margin-bottom:0px;padding:0px;font-size:10px;text-align:left">&nbsp;M&nbsp;&nbsp;&nbsp;L</div>
-						<input onchange="handleOrderTypeChange(this)" style="margin-top:0px;" type="radio" value="market" name="orderType"   />&nbsp;
-						<input onchange="handleOrderTypeChange(this)" style="margin-top:0px;" type="radio" value="limit" name="orderType" checked="checked"/>
-					</td>
-					<td>
-						<input id="orderQty" type="number" style="margin-bottom:0px;display:inline;text-align:center;width:70px;height:30px" value="0" min="0" required/>
-					</td>
-					<td>
-						<input id="orderPrice" type="number" style="margin-bottom:0px;text-align:center;width:70px;height:30px" value="0" step=0.05 min="0" required/>
-					</td>
-					<td>
-						<input id="orderSl" type="number" style="margin-bottom:0px;text-align:center;width:70px;height:30px" value="0" step=0.05 min="0" required/>
-					</td>
-					<td>
-						<input id="orderButton" type="button" onClick="addOrder()" style=";display:inline;text-align:center;height:30px" value="Order"/>
-						
-					</td>
-					<td>
-						<input id="clearButton" type="button" onClick="clearOrder()" style=";display:inline;text-align:center;height:30px" value="Clear"/>
-					</td>
-				</tr>
-				<tr>
-					<td colspan="8" style="color:black">
-						<div style="display:inline-block;width:50px">Margin: </div><div id="margin" style="display:inline-block;width:70px">0.00</div>
-						<div style="display:inline-block;width:60px" >Charges: </div><span style="display:inline;" class="tooltip" >tooltip</span><div id="charges" style="display:inline-block;width:70px;color:black" >0.00</div>
-						<img onClick="refreshMarginAndCharges()" src="/static/images/refresh.png" width="20" height="20">
-						<div style="display:inline-block;width:180px;text-align:right;"><input type="checkbox" id="includeOpenPositions" name="op" style="margin:0px;width:20px">open positions</div>
-					</td>
-				</tr>
-				</table> -->
-				<table style="font-size:14px">
-					<caption class="orderMessages" style="text-align:left;color:red">Select stock from watchlist to place order.</caption>
-					<tbody>
-					<tr>
-						<td colspan="3" style="color:white;font-weight:bold;height:40px;">
-							<div id="hiddenDataColumnId" style="display:none" ></div>
-							<div id="hiddenOrderId" style="display:none" ></div>
-							<span id="orderAction"></span>&nbsp;<span id="orderStock"></span><BR/>				
-						</td>
-					</tr>
-					<tr>
-						<td colspan="3" style="vertical-align:bottom;height:25px;margin-top:0px;color:black;font-weight:bold;font-size:14px;">
-							LTP: &#8377;<span class="order-ltp" id=""></span>
-						</td>
-					</tr>
-					<tr style="height:30px;vertical-align:bottom">
-						<td>Quantity</td>
-						<td>Price</td>
-						<td>Trigger Price</td>
-					</tr>
-				<tr>
-						<td><input id="orderQty" type="number" style="font-size:18px;margin-bottom:0px;display:inline;text-align:start;width:120px;height:40px;margin-right:15px" value="0" min="0" required/></td>
-						<td><input id="orderPrice" type="number" style="font-size:18px;margin-bottom:0px;text-align:start;width:120px;height:40px;margin-right:15px" value="0" step=0.05 min="0" required/></td>
-						<td><input id="orderSl" type="number" style="font-size:18px;margin-bottom:0px;text-align:start;width:120px;height:40px;margin-right:15px" value="0" step=0.05 min="0" required readonly/></td>
-					</tr><tr class="">
-						<td></td>
-						<td><input onchange="handleOrderTypeChange(this)" style="vertical-align:top;margin-top:0px;margin-right:3px" type="radio" value="market" name="orderType"   />Market&nbsp;
-						<input onchange="handleOrderTypeChange(this)" style="vertical-align:top;margin-top:0px;margin-right:3px" type="radio" value="limit" name="orderType" checked="checked"/>Limit</td>
-						<td><input onchange="handleOrderTypeChange(this)" style="vertical-align:top;margin-top:0px;margin-right:3px" type="radio" value="stoploss" name="orderType"/>Stoploss</td>
-					</tr>
-					<tr style="height:70px">
-					<td colspan="2" style="color:black">
-						<div style="display:inline-block;width:50px">Margin: </div><div id="margin" style="display:inline-block;width:70px">0.00</div>
-						<div style="display:inline-block;width:60px" >Charges: </div><span style="display:inline;" class="tooltip" >tooltip</span><div id="charges" style="display:inline-block;width:50px;color:black" >0.00</div>
-						<img onClick="refreshMarginAndCharges()" src="/static/images/refresh.png" width="20" height="20">
-						<div style="display:inline-block;width:115px;text-align:left;"><input type="checkbox" id="includeOpenPositions" name="op" style="margin:0px;width:20px">open positions</div>
-					</td>
-					<td style="text-align:right"><input id="orderButton" type="button" onClick="addOrder()" style="display:inline;text-align:center;height:30px;width:70px" value="Order"/></td>
-				</tr>
-				</tbody></table>
-  		</div>
+
+<div id="order_popup">
+    <table>
+	    <caption class="orderMessages" style="text-align:left;color:red"></caption>
+	    <tbody>
+	    <tr>
+		    <td colspan="3" style="color:white;font-weight:bold;height:40px;">
+			    <div id="hiddenDataColumnId" style="display:none" ></div>
+			    <div id="hiddenOrderId" style="display:none" ></div>
+			    <span id="orderAction"></span>&nbsp;<span id="orderStock"></span><BR/>				
+		    </td>
+	    </tr>
+	    <tr>
+		    <td colspan="3" >
+			    LTP: &#8377;<span class="order-ltp" id=""></span>
+		    </td>
+	    </tr>
+	    <tr style="height:30px;vertical-align:bottom">
+		    <td>Quantity</td>
+		    <td>Price</td>
+		    <td>Trigger Price</td>
+	    </tr>
+        <tr>
+		    <td><input id="orderQty" type="number"  value="0" min="0" required/></td>
+		    <td><input id="orderPrice" type="number"  value="0" step=0.05 min="0" required/></td>
+		    <td><input id="orderSl" type="number"  value="0" step=0.05 min="0" required readonly/></td>
+	    </tr>
+        <tr>
+		    <td></td>
+		    <td><input onchange="handleOrderTypeChange(this)" type="radio" value="market" name="orderType"   />Market&nbsp;
+		    <input onchange="handleOrderTypeChange(this)" type="radio" value="limit" name="orderType" checked="checked"/>Limit</td>
+		    <td><input onchange="handleOrderTypeChange(this)" type="radio" value="stoploss" name="orderType"/>Stoploss</td>
+	    </tr>
+	    <tr style="height:70px">
+	        <td colspan="2" style="color:black">
+		        <div id="margin_text" >Margin: </div><div id="margin" >0.00</div>
+		        <div id="charges_text">Charges: </div><span style="display:inline;" class="tooltip" >tooltip</span><div id="charges">0.00</div>
+		        <img onClick="refreshMarginAndCharges()" src="/static/images/refresh.png" width="20" height="20">
+		        <div id="op_text"><input type="checkbox" id="includeOpenPositions" name="op" >open positions</div>
+	        </td>
+	        <td><input id="orderButton" type="button" onClick="addOrder()"  value="Order"/></td>
+        </tr>
+        </tbody>
+    </table>
+</div>
+
+
 	</body>
 </html>
