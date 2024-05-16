@@ -10,7 +10,8 @@ import glob
 import urllib
 from flask_socketio import SocketIO, emit, SocketIOTestClient
 import time
-from breezeapi import breezeapi
+from brokerapi import breezeApiAdapter
+from brokerapi import brokerApiConnect
 from icecream import ic
 import json
 import pandas as pd
@@ -37,7 +38,9 @@ app.login_url = configapi.LOGIN_URL + urllib.parse.quote_plus(app.api_key)
 
 app.breezeapi_version = metadata.version('breeze_connect')
 
-myapi = breezeapi.MyBreezeApi(app.api_key)
+#myapi = breezeApiAdapter.BreezeApiAdapter()
+brokerapi = brokerApiConnect.BrokerApiConnect()
+myapi = brokerapi.initialize()
 
 #@app.after_request
 #def after_request(response):
@@ -123,15 +126,6 @@ def default_error_handler(e):
 	app.logger.error("event:" + request.event["message"]) # "my error event"
 	app.logger.error("event args as below:")
 	app.logger.error(request.event["args"])    # (data,)
-			
-def getApiSessionFromFile():
-	apiSession = ""
-	file_path = './bzapisessions/*'
-	files = sorted(glob.iglob(file_path), key=os.path.getctime, reverse=True)
-	if len(files) > 0:
-		apiSession = os.path.basename(files[0])
-	return apiSession
-
 
 @app.route('/login', methods=['GET', 'POST'])
 @cross_origin()
@@ -142,6 +136,11 @@ def login():
 	#return oauth.breezeapi.authorize_redirect(redirect_uri)
 	return redirect(app.login_url)
 
+'''
+This method is getting called from broker api login page after successful login.
+This is redirect url registered with broker api.
+DO NOT CHANGE. BE CAREFUL
+'''
 @app.route('/authorize', methods=['GET', 'POST'])
 def authorize():
 	print("inside authorize")
@@ -156,9 +155,10 @@ def authorize():
 	print("token :"+str(token))
 	print("profile :"+str(profile))
 	'''
-	queryParams = request.args.to_dict()
-	apiSession = queryParams.get('apisession','')
-	return redirect('/connect?apisession=' + apiSession)
+	#queryParams = request.args.to_dict()
+	#apiSession = queryParams.get('apisession','')
+	#return redirect('/connect?apisession=' + apiSession)
+	return redirect(url_for('connectApi',**request.args))
 	
 
 @app.route('/connect', methods=['GET', 'POST'])
@@ -170,30 +170,14 @@ def connectApi():
 	sessionKey = ""
 	loginMessage = "Not logged in."
 	invalidSessionMsg = ""
-	if apiSession == "no-breezeapi-session":
-		apiSession = getApiSessionFromFile()
-	else:
-		try:
-			file_path = './bzapisessions/'+apiSession
-			# create file
-			with open(file_path, 'x') as fp:
-				fp.close()
-		except Exception as e:
-			app.logger.info(e)
-			app.logger.info('File already exists')
-	
-	if apiSession != "no-breezeapi-session":
-		try:
-			myapi.onMessage = feedData
-			myapi.connect(apiSession,app.secret_key)
-			session["apisession"] = apiSession
-			return redirect("/", code=302)
-			loginMessage = getCustomerDetails(apiSession)
-			userId = myapi.user_id
-			sessionKey = myapi.session_key
-		except Exception as e:
-			app.logger.error(e)
-			invalidSessionMsg = ". Session invalid. Create new session from login url."
+	try:
+		myapi.onMessage = feedData
+		sessionToken = brokerapi.connect(queryParams)
+		session["apisession"] = sessionToken
+		return redirect("/", code=302)
+	except Exception as e:
+		app.logger.error(e)
+		invalidSessionMsg = ". Session invalid. Create new session from login url."
 	
 	loginUrl = "<a href='/login'>Login</a>"
 	output = loginUrl +"<br/>Most recent session:"+apiSession+invalidSessionMsg
@@ -203,15 +187,14 @@ def connectApi():
 @app.route('/', methods=['GET', 'POST'])
 @cross_origin()
 def oneClick():
-	if not myapi.isConnected:
+	if not brokerapi.isConnected():
 		return redirect("/connect", code=302)
 	apiSession = session.get("apisession","")
 	if apiSession == "" or apiSession == "no-breezeapi-session":
 		print("api connected but session destroyed/tab closed.")
 		print("getting apisession from file")
-		apiSession = getApiSessionFromFile()
 		return redirect("/connect", code=302)
-	loginMessage = getCustomerDetails(apiSession)
+	loginMessage = getCustomerDetails()
 	userId = myapi.user_id
 	sessionKey = myapi.session_key
 	output = "Most recent session:"+apiSession
@@ -223,14 +206,14 @@ def getFnOStocks():
 	queryParams = request.args.to_dict()
 	searchStr = queryParams.get('searchStr','OPT CNXBAN 43800')
 	seachStrList = searchStr.split(' ')
-	fnoStocksDict = myapi.getFnOStocks(*seachStrList)
+	fnoStocksDict = brokerapi.getStocks(*seachStrList)
 	return (json.dumps(fnoStocksDict),200, {'Content-Type': 'application/json'})
 
 
 @app.route('/getExistingSessions', methods=['GET', 'POST'])
 @cross_origin()
 def getExistingSessions():
-    existingSession = os.listdir('./bzapisessions')
+    existingSession = os.listdir('./idirectsessiontokens')
     outputResponse = "{\"msg\" : \"Existing api sessions=" + str(existingSession) + "\"}"
     return (outputResponse,200, {'Content-Type': 'application/json'})
 
@@ -249,15 +232,21 @@ def clearSessionFiles():
             os.remove("./breezeapi/bzapisessions/" + apiSession)
     return redirect("/getExistingSessions", code=302)
 
-def getCustomerDetails(apiSession):
-    customerDetailsJsonDict = myapi.getCustomerDetails(apiSession)
-    print(customerDetailsJsonDict)
-    userId = customerDetailsJsonDict["Success"]["idirect_userid"]
-    userName = customerDetailsJsonDict["Success"]["idirect_user_name"]
-    lastLogin = customerDetailsJsonDict["Success"]["idirect_lastlogin_time"]
-    version = app.breezeapi_version
-    customerDetails = userId + "-" + userName + "-last login: " + lastLogin + " (breeze_connect:" + version + ")"
-    return customerDetails
+def getCustomerDetails():
+	customerDetailsJsonDict = brokerapi.getCustomerDetails()
+	print("printing customer details")
+	print(customerDetailsJsonDict)
+	if (customerDetailsJsonDict["Success"] != None):
+		userId = customerDetailsJsonDict["Success"]["idirect_userid"]
+		userName = customerDetailsJsonDict["Success"]["idirect_user_name"]
+		lastLogin = customerDetailsJsonDict["Success"]["idirect_lastlogin_time"]
+	else:
+		userId = customerDetailsJsonDict["Error"]
+		userName = ""
+		lastLogin = ""
+	version = app.breezeapi_version
+	customerDetails = userId + "-" + userName + "-last login: " + lastLogin + " (breeze_connect:" + version + ")"
+	return customerDetails
 
 @app.route('/getStockToken', methods=['GET', 'POST'])
 @cross_origin()
@@ -355,7 +344,7 @@ def placeOrder():
 		if product == "options":
 			strike = queryParams.get("strike","NA")
 			rightTypeStr = queryParams.get("rightType","NA")
-			rightTypeEnum = breezeapi.RightType.from_str(rightTypeStr)
+			rightTypeEnum = breezeApiAdapter.RightType.from_str(rightTypeStr)
 			rightTypeStr = rightTypeEnum.name
 	result = myapi.placeOrder(stockCode,exchangeCode,product,action,orderType,stoploss,quantity,priceStr, expiryDate,rightTypeStr,strike)
 	if result is None:
@@ -386,7 +375,7 @@ def squareoff():
 		if product == "options":
 			strike = queryParams.get("strike","NA")
 			rightTypeStr = queryParams.get("rightType","NA")
-			rightTypeEnum = breezeapi.RightType.from_str(rightTypeStr)
+			rightTypeEnum = breezeApiAdapter.RightType.from_str(rightTypeStr)
 			rightTypeStr = rightTypeEnum.name
 	result = myapi.squareOff(stockCode,exchangeCode,product,action,orderType,stoploss,quantity,priceStr, expiryDate,rightTypeStr,strike)
 	if result is None:
@@ -577,7 +566,7 @@ def marginCalculator():
 	newPosition["strike_price"] = queryParams.get("strike","")
 	rightTypeStr = queryParams.get("rightType","")
 	if not rightTypeStr == "":
-		rightTypeEnum = breezeapi.RightType.from_str(rightTypeStr)
+		rightTypeEnum = breezeApiAdapter.RightType.from_str(rightTypeStr)
 		rightTypeStr = rightTypeEnum.name
 	newPosition["right"] = rightTypeStr
 	includeOpenPostions = queryParams.get("includeOpenPositions","")
@@ -662,7 +651,7 @@ def getBrokerages():
 		if product == "options":
 			strike = queryParams.get("strike","NA")
 			rightTypeStr = queryParams.get("rightType","NA")
-			rightTypeEnum = breezeapi.RightType.from_str(rightTypeStr)
+			rightTypeEnum = breezeApiAdapter.RightType.from_str(rightTypeStr)
 			rightTypeStr = rightTypeEnum.name
 	brokerageDict = myapi.getBrokerages(exchangeCode,stockCode,product,orderType,priceStr,action,quantity,expiryDate,rightTypeStr,strike)
 	#print(brokerageDict)
@@ -687,7 +676,7 @@ def feedData(data):
 			if data.get('right_type') != None:
 				product = "options"
 				strikePrice = str(data['strike_price']).split('.')[0]
-				rightType = breezeapi.RightType.from_str(data['right_type']).name
+				rightType = breezeApiAdapter.RightType.from_str(data['right_type']).name
 				#print(exchangeCode, stockCode, product,expiryDate,strikePrice,rightType)
 				(quotesToken, marketDepthToken) = myapi.getTokenFromStockName(exchangeCode, stockCode, product,expiryDate,strikePrice,rightType)
 				token = quotesToken.split('!')[1]

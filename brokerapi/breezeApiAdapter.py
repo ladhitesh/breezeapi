@@ -11,7 +11,14 @@ import json
 import os
 import pandas as pd
 import time
+import glob
 from enum import Enum
+from .brokerApiAdapter import BrokerApiAdapter
+
+
+import sys
+sys.path.append(".")
+import configapi
 
 class RightType(Enum):
     call = "CE"
@@ -26,11 +33,11 @@ class RightType(Enum):
         else:
             raise NotImplementedError
 
-class  MyBreezeApi():
+class  BreezeApiAdapter(BrokerApiAdapter):
 
-	def __init__(self,api_key):
+	def __init__(self):
 		#global api, securityMasterResponse, securityMasterZipFile, nseFile, foNseFile, bseFile, stockScriptdf
-		self.api = BreezeConnect(api_key=api_key)
+		self.api = BreezeConnect(configapi.API_KEY)
 		self.isConnected = False
 
 		if os.path.exists("securityMaster.zip"):
@@ -67,9 +74,31 @@ class  MyBreezeApi():
 		if(self.onMessage!=None):
 			self.onMessage(ticks)
 
+	def getSessionTokenFromFile(self):
+		sessionToken = ""
+		file_path = './idirectsessiontokens/*'
+		files = sorted(glob.iglob(file_path), key=os.path.getctime, reverse=True)
+		if len(files) > 0:
+			sessionToken = os.path.basename(files[0])
+		return sessionToken
     
-	def connect(self,api_session,api_secret):
-		self.api.generate_session(api_secret=api_secret,session_token=api_session)
+	def connect(self,params):
+		sessionToken = params.get(configapi.SESSION_TOKEN_NAME,"no-breezeapi-session")
+		if sessionToken == "no-breezeapi-session":
+			sessionToken = self.getSessionTokenFromFile()
+			if sessionToken == "no-breezeapi-session":
+				raise Exception("No valid sessionToken exist")
+		else:
+			try:
+				file_path = './idirectsessiontokens/'+sessionToken
+				os.makedirs(os.path.dirname(file_path), exist_ok=True)
+				# create file
+				with open(file_path, 'x') as fp:
+					fp.close()
+			except Exception as e:
+				print(e)
+				print('File already exists')
+		self.api.generate_session(api_secret=configapi.SECRET_KEY,session_token=sessionToken)
 		self.api.ws_connect()
 		# Assign the callbacks.
 		self.api.on_ticks = self.on_ticks
@@ -77,10 +106,15 @@ class  MyBreezeApi():
 		print("USERID-->" + self.api.user_id)
 		self.user_id = self.api.user_id
 		self.session_key = self.api.session_key
+		self.session_token = sessionToken
 		self.isConnected = True
+		return sessionToken
+	
+	def isApiConnected(self):
+		return self.isConnected
 		
-	def getCustomerDetails(self, apiSession):
-		customerDetails = self.api.get_customer_details(apiSession)
+	def getCustomerDetails(self):
+		customerDetails = self.api.get_customer_details(self.session_token)
 		return customerDetails
 
 	def addFnOStocksAdditionalColumns(self,df_row):

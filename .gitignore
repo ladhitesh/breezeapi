@@ -2,3 +2,4 @@
 /securityMaster.zip
 **/__pycache__/
 
+.vscode/settings.json
