@@ -15,25 +15,25 @@ class TestBrokerApiAdapter(BrokerApiAdapter):
     def getStocks(self):
         print("fetched stocks from test broker api")
 
-    def placeOrder(self):
+    def placeOrder(self,params):
         print("placed order using test broker api")
 
-    def modifyOrder(self):
+    def modifyOrder(self,params):
         print("modified order using test broker api")
 
-    def cancelOrder(self):
+    def cancelOrder(self,orderRef):
         print("cancelled order using test broker api")
 
-    def squareoffOrder(self):
+    def squareoffOrder(self,params):
         print("squared off order using test broker api")
 
-    def getOrderList(self):
+    def getOrdersList(self,params):
         print("order list using test broker api")
 
-    def getTradeList(self):
+    def getTradesList(self):
         print("trade list using test broker api")
 
-    def getOpenPositionList(self):
+    def getOpenPositionsList(self):
         print("open position list using test broker api")
 
     def getBrokerages(self):

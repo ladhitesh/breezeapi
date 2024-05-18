@@ -8,6 +8,9 @@ class BrokerApiAdapter():
     def connect(self) -> None:
         pass
 
+    def registerFeedCallback(self,callbackFn) -> None:
+        pass
+
     def isApiConnected(self) -> None:
         pass
 
@@ -17,32 +20,56 @@ class BrokerApiAdapter():
     def getStocks(self):
         pass
 
-    def placeOrder(self):
+    def placeOrder(self,params):
         pass
 
-    def modifyOrder(self):
+    def modifyOrder(self,params):
         pass
 
-    def cancelOrder(self):
+    def cancelOrder(self,orderRef):
         pass
 
-    def squareOffOrder(self):
+    def squareOffOrder(self,params):
         pass
 
-    def getOrderList(self):
+    def getOrdersList(self,params):
         pass
 
-    def getTradeList(self):
+    def getTradesList(self,params):
         pass
 
-    def getOpenPositionList(self):
+    def getOpenPositionsList(self):
         pass
 
     def getBrokerages(self):
         pass
 
-    def getPnl(self):
+    def getPnl(self,params):
         pass
 
     def getMtm(self):
+        pass
+
+    def getMargin(self,params):
+        pass
+
+    def marginCalculator(self,params):
+        pass
+
+    def getHistoricalData(self,params):
+        pass
+
+    def getTokenFromStockName(self,params):
+        pass
+
+    def subscribeQuotesFeed(token,interval):
+        pass
+    
+    def unsubscribeQuotesFeed(token,interval):
+        pass
+
+    def subscribeMarketDepth(token):
+        pass
+
+    def unsubscribeMarketDepth(token):
         pass

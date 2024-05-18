@@ -38,16 +38,16 @@ class testBrokerApiConnect(unittest.TestCase):
         self.brokerapi.squareOffOrder()
         self.assertTrue(True)
 
-    def test_getOrderList(self):
-        self.brokerapi.getOrderList()
+    def test_getOrdersList(self):
+        self.brokerapi.getOrdersList()
         self.assertTrue(True)
 
-    def test_getTradeList(self):
-        self.brokerapi.getTradeList()
+    def test_getTradesList(self):
+        self.brokerapi.getTradesList()
         self.assertTrue(True)
 
-    def test_getOpenPositionList(self):
-        self.brokerapi.getOpenPositionList()
+    def test_getOpenPositionsList(self):
+        self.brokerapi.getOpenPositionsList()
         self.assertTrue(True)
 
     def test_getBrokerages(self):

@@ -25,6 +25,9 @@ class  BrokerApiConnect():
     def connect(self,params):
         return self.brokerApi.connect(params)
     
+    def registerFeedCallback(self,callbackFn) -> None:
+        self.brokerApi.registerFeedCallback(callbackFn)
+    
     def isConnected(self):
         return self.brokerApi.isApiConnected()
 
@@ -34,34 +37,58 @@ class  BrokerApiConnect():
     def getStocks(self, *searchList):
         return self.brokerApi.getFnOStocks(*searchList)
 
-    def placeOrder(self):
-        self.brokerApi.placeOrder()
+    def placeOrder(self,params):
+        return self.brokerApi.placeOrder(params)
 
-    def modifyOrder(self):
-        self.brokerApi.modifyOrder()
+    def modifyOrder(self,params):
+        return self.brokerApi.modifyOrder(params)
 
-    def cancelOrder(self):
-        self.brokerApi.cancelOrder()
+    def cancelOrder(self,orderRef):
+        return self.brokerApi.cancelOrder(orderRef)
 
-    def squareOffOrder(self):
-        self.brokerApi.squareoffOrder()
+    def squareOffOrder(self,params):
+        return self.brokerApi.squareOffOrder(params)
 
-    def getOrderList(self):
-        self.brokerApi.getOrderList()
+    def getOrdersList(self,params):
+        return self.brokerApi.getOrdersList(params)
 
-    def getTradeList(self):
-        self.brokerApi.getTradeList()
+    def getTradesList(self,params):
+        return self.brokerApi.getTradesList(params)
 
-    def getOpenPositionList(self):
-        self.brokerApi.getOpenPositionList()
+    def getOpenPositionsList(self):
+        return self.brokerApi.getOpenPositionsList()
 
-    def getBrokerages(self):
-        self.brokerApi.getBrokerages()
+    def getBrokerages(self,params):
+        return self.brokerApi.getBrokerages(params)
 
-    def getPnl(self):
-        self.brokerApi.getPnl()
+    def getPnl(self,params):
+        return self.brokerApi.getPnl(params)
 
     def getMtm(self):
         self.brokerApi.getMtm()
+
+    def getMargin(self,params):
+        return self.brokerApi.getMargin(params)
+    
+    def marginCalculator(self,params):
+        return self.brokerApi.marginCalculator(params)
+    
+    def getHistoricalData(self,params):
+        return self.brokerApi.getHistoricalData(params)
+    
+    def getTokenFromStockName(self,params):
+        return self.brokerApi.getTokenFromStockName(params)
+    
+    def subscribeQuotesFeed(self,token,interval):
+        return self.brokerApi.subscribeQuotes(token,interval)
+    
+    def unsubscribeQuotesFeed(self,token,interval):
+        return self.brokerApi.unsubscribeQuotes(token,interval)
+
+    def subscribeMarketDepth(self,token):
+        return self.brokerApi.subscribeMarketDepth(token)
+
+    def unsubscribeMarketDepth(self,token):
+        return self.brokerApi.unsubscribeMarketDepth(token)
 
 
