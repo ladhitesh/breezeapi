@@ -156,7 +156,7 @@ def authorize():
 	print("profile :"+str(profile))
 	'''
 	#queryParams = request.args.to_dict()
-	#apiSession = queryParams.get('apisession','')
+	#apiSession = queryParams.get(configapi.SESSION_TOKEN_NAME,'')
 	#return redirect('/connect?apisession=' + apiSession)
 	return redirect(url_for('connectApi',**request.args))
 	
@@ -165,7 +165,7 @@ def authorize():
 @cross_origin()
 def connectApi():		
 	queryParams = request.args.to_dict()
-	apiSession = queryParams.get('apisession','no-breezeapi-session')
+	apiSession = queryParams.get(configapi.SESSION_TOKEN_NAME,'no-breezeapi-session')
 	userId = ""
 	sessionKey = ""
 	loginMessage = "Not logged in."
@@ -174,7 +174,7 @@ def connectApi():
 		#myapi.onMessage = feedData
 		brokerapi.registerFeedCallback(feedData)
 		sessionToken = brokerapi.connect(queryParams)
-		session["apisession"] = sessionToken
+		session[configapi.SESSION_TOKEN_NAME] = sessionToken
 		return redirect("/", code=302)
 	except Exception as e:
 		app.logger.error(e)
@@ -190,7 +190,7 @@ def connectApi():
 def oneClick():
 	if not brokerapi.isConnected():
 		return redirect("/connect", code=302)
-	apiSession = session.get("apisession","")
+	apiSession = session.get(configapi.SESSION_TOKEN_NAME,"")
 	if apiSession == "" or apiSession == "no-breezeapi-session":
 		print("api connected but session destroyed/tab closed.")
 		print("getting apisession from file")
@@ -221,7 +221,7 @@ def getExistingSessions():
 @app.route('/getCurrentSession', methods=['GET'])
 @cross_origin()
 def getCurrentSession():
-    return session["apisession"]
+    return session[configapi.SESSION_TOKEN_NAME]
 
 @app.route('/clearSessionFiles', methods=['GET', 'POST'])
 @cross_origin()
@@ -361,11 +361,11 @@ def getBrokerages():
 	return (brokerageDict,200, {'Content-Type': 'application/json'})
 
 def subscribeQuotesFeed(token,interval):
-	subscriptionStatus = brokerapi.subscribeQuotes(token,interval)
+	subscriptionStatus = brokerapi.subscribeQuotesFeed(token,interval)
 	return (subscriptionStatus,200, {'Content-Type': 'application/json'})
 
 def unsubscribeQuotesFeed(token,interval):
-	unsubscriptionStatus = brokerapi.unsubscribeQuotes(token,interval)
+	unsubscriptionStatus = brokerapi.unsubscribeQuotesFeed(token,interval)
 	return (unsubscriptionStatus,200, {'Content-Type': 'application/json'})
 
 def subscribeMarketDepth(token):

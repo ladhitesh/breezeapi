@@ -62,7 +62,7 @@ caption {
 	font-size:14px;
 }
 .marketDepth { border-collapse: collapse; width:300px; }
-.marketDepth th { background-color: "#ADD8E6"; !important; }
+.marketDepth th { background-color: "#ADD8E6";  }
 .marketDepth th, .marketDepth td {
 	font-size:10px !important;
 	border: solid 1px #777; 
@@ -71,10 +71,12 @@ caption {
 }
 
 .marketDepth thead tr th { color: white !important;}
-.marketDepth tbody tr td:nth-child(1), .marketDepth tbody tr td:nth-child(4) { width: 50px }
+/*.marketDepth tbody tr td:nth-child(1), .marketDepth tbody tr td:nth-child(4) { width: 50px }*/
 .marketDepth tbody tr td:nth-child(2), .marketDepth tbody tr td:nth-child(5) { width: 30px }
+.marketDepth tbody tr td:nth-child(3), .marketDepth tbody tr td:nth-child(6) { width: 30px }
 .marketDepth tbody tr td:nth-child(1), .marketDepth tbody tr td:nth-child(2),.marketDepth tbody tr td:nth-child(3) { color: blue }
 .marketDepth tbody tr td:nth-child(4), .marketDepth tbody tr td:nth-child(5),.marketDepth tbody tr td:nth-child(6) { color: red }
+.marketDepth tbody tr td:nth-child(3), .marketDepth tbody tr td:nth-child(6) {text-align: right};
 
 #order_popup {display:none;background:white;border:solid 1px black;}
 #order_popup table {font-size:14px}

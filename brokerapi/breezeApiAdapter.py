@@ -93,17 +93,33 @@ class  BreezeApiAdapter(BrokerApiAdapter):
 						rightType = RightType.from_str(ticks['right_type']).name
 						#print(ticks)
 						#print(exchangeCode, stockCode, product,expiryDate,strikePrice,rightType)
-						(quotesToken, marketDepthToken) = self.getTokenFromStockName(exchangeCode, stockCode, product,expiryDate,strikePrice,rightType)
+						params={}
+						params['exchangeCode'] = exchangeCode
+						params['stockCode'] = stockCode
+						params['productType'] = product
+						params['expiryDate'] = expiryDate
+						params['strike'] = strikePrice
+						params['rightType'] = rightType
+						
+						(quotesToken, marketDepthToken) = self.getTokenFromStockName(params)
 						token = quotesToken.split('!')[1]
 					else:
 						#print(ticks)
 						#print(exchangeCode, stockCode, product,expiryDate,strikePrice,rightType)
-						(quotesToken, marketDepthToken) = self.getTokenFromStockName(exchangeCode, stockCode, product,expiryDate,"","")
+						params={}
+						params['exchangeCode'] = exchangeCode
+						params['stockCode'] = stockCode
+						params['productType'] = product
+						params['expiryDate'] = expiryDate
+						(quotesToken, marketDepthToken) = self.getTokenFromStockName(params)
 						token = quotesToken.split('!')[1]
 						#print(token,stockCode)
 				elif ticks.get('exchange_code') == "NSE":
 					#print(exchangeCode, stockCode, "","","","")
-					(quotesToken, marketDepthToken) = self.getTokenFromStockName(exchangeCode, stockCode, "","","","")
+					params={}
+					params['exchangeCode'] = exchangeCode
+					params['stockCode'] = stockCode
+					(quotesToken, marketDepthToken) = self.getTokenFromStockName(params)
 					token = quotesToken.split('!')[1]
 			elif ticks.get('quotes') == "Market Depth":
 				#Market Data
@@ -545,10 +561,10 @@ class  BreezeApiAdapter(BrokerApiAdapter):
 	def getTokenFromStockName(self,params):
 		stockCode = params.get("stockCode","CNXBAN")
 		exchangeCode = params.get("exchangeCode","NFO")
-		productType = params.get("productType","Options")
-		strike = params.get("strike")
-		expiryDateStr = params.get("expiryDate")
-		rightTypeStr = params.get("rightType")
+		productType = params.get("productType","")
+		strike = params.get("strike","")
+		expiryDateStr = params.get("expiryDate","")
+		rightTypeStr = params.get("rightType","")
 		#expiryDate = datetime.strptime(expiryDateStr, "%d-%b-%Y")
 		#rightType = breezeapi.RightType.from_str(rightTypeStr)
 		return self.api.get_stock_token_value(exchangeCode, stockCode, productType, expiryDateStr, strike, rightTypeStr, True, True)
