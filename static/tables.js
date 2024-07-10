@@ -629,6 +629,8 @@ function populateModifyOrder(modifyButtonObj,action,qty,price,sl){
 	$('#orderSl')[0].valueAsNumber = sl;
 	$('#orderButton')[0].value="Modify"
 	$('#orderButton')[0].onclick=modifyOrder
+	$('#orderButton').css("background-color",bgColor);
+	$('#orderButton').css("color","white");
 	$('#order_popup').dialog('open')
 	
 }
@@ -642,6 +644,8 @@ function clearOrder(){
 	$('#orderSl')[0].valueAsNumber = 0;
 	$('#orderButton')[0].value="Order"
 	$("#orderAction").closest("td").css("background-color","")
+	$('#orderButton').css("background-color","");
+	$('#orderButton').css("color","white");
 	try{
 		$(".order-ltp").text("")
 		$(".order-ltp").attr("id","")
@@ -806,7 +810,9 @@ function buyStock(stockToBuy,hiddenDivId){
 	clearOrder()
 	$("#orderStock").text(stockToBuy)
 	$("#orderAction").text("Buy")
-	$("#orderAction").closest("td").css("background-color","#85EA27")
+	//bgColor = "#85EA27"
+	bgColor = "#04AA6D"
+	$("#orderAction").closest("td").css("background-color",bgColor)
 	//$("#orderAction").css("color","green")
 	$("#hiddenDataColumnId")[0].innerText = hiddenDivId
 	$('#orderButton')[0].value="Buy"
@@ -824,6 +830,8 @@ function buyStock(stockToBuy,hiddenDivId){
 	$("#orderQty")[0].step = lotsize;
 	$("#orderQty")[0].min = lotsize;
 	$('#orderButton')[0].onclick=function() { addOrder('new') }
+	$('#orderButton').css("background-color",bgColor);
+	$('#orderButton').css("color","white");
 	getBrokerages();
 	calculateMargin();
 	$('#order_popup').dialog('open')
@@ -835,7 +843,8 @@ function squareoffStock(stockToSell,hiddenDivId,qty){
 	$("#orderStock")[0].innerText = stockToSell
 	$("#orderAction")[0].innerText = "Sell"
 	$("#orderQty")[0].valueAsNumber = qty;
-	$("#orderAction").closest("td").css("background-color","red")
+	bgColor = "red"
+	$("#orderAction").closest("td").css("background-color",bgColor)
 	//$($("#orderAction")[0]).css("color","red")
 	let token = $('#'+hiddenDivId).get()[0].dataset.token
 	let ltp = $('#'+token+'-price')[0].innerText
@@ -847,6 +856,8 @@ function squareoffStock(stockToSell,hiddenDivId,qty){
 	$("#hiddenDataColumnId")[0].innerText = hiddenDivId
 	$('#orderButton')[0].value="squareoff"
 	$('#orderButton')[0].onclick=function(){addOrder('squareoff')}
+	$('#orderButton').css("background-color",bgColor);
+	$('#orderButton').css("color","white");
 	getBrokerages();
 	calculateMargin();
 	$('#order_popup').dialog('open')
@@ -856,7 +867,8 @@ function sellStock(stockToSell,hiddenDivId){
 	clearOrder()
 	$("#orderStock")[0].innerText = stockToSell
 	$("#orderAction")[0].innerText = "Sell"
-	$("#orderAction").closest("td").css("background-color","red")
+	bgColor = "red"
+	$("#orderAction").closest("td").css("background-color",bgColor)
 	//$($("#orderAction")[0]).css("color","red")
 	$("#hiddenDataColumnId")[0].innerText = hiddenDivId
 	$('#orderButton')[0].value="Sell"
@@ -872,6 +884,8 @@ function sellStock(stockToSell,hiddenDivId){
 	$("#orderQty")[0].step = lotsize;
 	$("#orderQty")[0].min = lotsize;
 	$('#orderButton')[0].onclick=function() { addOrder('new')}
+	$('#orderButton').css("background-color",bgColor);
+	$('#orderButton').css("color","white");
 	getBrokerages();
 	calculateMargin();
 	$('#order_popup').dialog('open')
