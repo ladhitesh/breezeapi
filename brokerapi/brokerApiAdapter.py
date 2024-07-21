@@ -8,6 +8,12 @@ class BrokerApiAdapter():
     def connect(self) -> None:
         pass
 
+    def getLoginUrl(self) -> None:
+        pass
+
+    def getSessionTokenName(self) -> None:
+        pass
+    
     def registerFeedCallback(self,callbackFn) -> None:
         pass
 

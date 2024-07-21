@@ -1,0 +1,24 @@
+<html>
+	<head>
+        <script type="text/javascript">
+
+            function returnToOpener(){
+                console.log("posting message to opener")
+                obj = new Object()
+                obj.sessionKey = "{{ sessionKey }}"
+                obj.userId = "{{ userId }}"
+                obj.mode = "{{ mode }}"
+                obj.apiSession = "{{ sessionKey }}"
+                obj.loginMessage = "{{ loginMessage }}"
+                obj.error = "{{ error }}"
+                window.opener.postMessage(obj,"http://127.0.0.1:5000")
+                console.log("message posted to opener")
+            }
+            setTimeout(returnToOpener, 5000)
+        </script>
+
+    </head>
+    <body>
+
+    </body>
+</html>

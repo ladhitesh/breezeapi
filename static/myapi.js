@@ -21,6 +21,7 @@ $(document).ready(function() {
         console.log("websocket disconnected to api server")
    });
 	socket.on('order_notification', orderNotification)
+	socket.on('chart_session_key', processChartSessionKey)
 	
 });
 
@@ -197,6 +198,14 @@ function fetchOrderList(orderDate){
 function fetchStocks(searchStr){
 	let fnoStocksUrl = baseServerUrl + '/getFnOStocks?' + new URLSearchParams({'searchStr': searchStr})
 	return callApi(fnoStocksUrl)
+		.then(result => {
+			return result;
+		});
+}
+
+function fetchDPStocks(searchStr){
+	let dpStocksUrl = baseServerUrl + '/getDPStocks?' + new URLSearchParams({'searchStr': searchStr})
+	return callApi(dpStocksUrl)
 		.then(result => {
 			return result;
 		});

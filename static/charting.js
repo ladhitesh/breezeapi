@@ -71,6 +71,7 @@ $(document).ready(function() {
 		secondRowStockOHLCVDiv.innerHTML = futurePriceFormatted;
 	});
 	
+	/*
 	if(isApiConnected){
 
 		//update expiry and token details for non index stocks
@@ -95,6 +96,7 @@ $(document).ready(function() {
 		}
 		
 	}
+	*/
 	intervalLookup = {}
 	intervalLookup["1MIN"] = "1minute"
 	intervalLookup["5MIN"] = "5minute"
@@ -109,11 +111,34 @@ $(document).ready(function() {
 //will be set on document ready
 currentRefChartToken = null;
 
+function runWhenDataproviderConnected(){
+	//update expiry and token details for non index stocks
+	$("#refChart option[product='futures']").each(function() {
+		updateRefChartSelectOptions($(this))
+			.then(result => {
+				if($(this).is(':selected')){
+					//load ref chart once token and expiry is updated
+					currentRefChartToken = $(this).attr("token")
+					console.log("loading default selected ref chart: " + currentRefChartToken)	
+					loadReferenceChart(true);
+					chart.timeScale().fitContent();
+				}});
+	});
+
+	//load ref chart id selected chart is not index or futures
+	if($("#refChart :selected").attr("product")!= "futures"){
+		currentRefChartToken = $("#refChart :selected").attr("token")
+		console.log("loading default selected ref chart: " + currentRefChartToken)	
+		loadReferenceChart(true);
+		chart.timeScale().fitContent();
+	}
+}
+
 function updateRefChartSelectOptions(option){
 	searchStr = "FUT " + option.val()
 	//searchStr = "FUT " + option.value
 	//console.log(searchStr)
-	return fetchStocks(searchStr).then(result => {
+	return fetchDPStocks(searchStr).then(result => {
 			let token = result[0]["token"]
 			//console.log(token)
 			let expiry = result[0]["expiry"]

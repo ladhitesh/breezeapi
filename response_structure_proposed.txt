@@ -1,0 +1,43 @@
+user
+
+order
+orderId
+stockcode
+stockName
+expiry
+strike
+right
+fnotype
+product
+exchangecode
+order_datetime
+quantity
+price
+average_price
+order_status
+order_type
+pending_quantity
+stoploss
+
+
+
+websocket
+historical
+portfolio
+
+
+
+
+
+{
+    "status":"success",
+    "message":"error message"
+    "data": {}
+}
+
+order data 
+[
+    {
+    }
+]
+

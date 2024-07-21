@@ -1143,4 +1143,7 @@ function calculateMargin(){
 		});
 }
 
-
+function processChartSessionKey(data){
+	sessionKeyData = JSON.parse(data);
+	loginForChartData(sessionKeyData["userid"],sessionKeyData["sessionkey"])
+}

@@ -1,6 +1,7 @@
 
 # Import Libraries
-from breeze_connect import BreezeConnect, config
+import logging
+from kiteconnect import KiteConnect, config
 from io import BytesIO
 from zipfile import ZipFile
 from urllib.request import urlopen
@@ -11,7 +12,6 @@ import json
 import os
 import pandas as pd
 import time
-import urllib
 import glob
 from enum import Enum
 import sys
@@ -35,13 +35,13 @@ class RightType(Enum):
         else:
             raise NotImplementedError
 
-class  BreezeApiAdapter(BrokerApiAdapter):
+class  KiteApiAdapter(BrokerApiAdapter):
 
 	def __init__(self):
 		#global api, securityMasterResponse, securityMasterZipFile, nseFile, foNseFile, bseFile, stockScriptdf
-		self.api = BreezeConnect(configapi.IDIRECT_API_KEY)
+		self.api = KiteConnect(configapi.KITE_API_KEY)
 		self.isConnected = False
-
+		'''
 		if os.path.exists("securityMaster.zip"):
 			securityMasterCreateTimestamp = os.path.getctime("securityMaster.zip")
 			securityMasterCreateTimeDate = datetime.fromtimestamp(securityMasterCreateTimestamp).date()
@@ -69,7 +69,7 @@ class  BreezeApiAdapter(BrokerApiAdapter):
 				sep=',',
 				encoding='utf-8',
 			)
-
+		'''
 
 	# Callback to receive ticks.
 	def on_ticks(self,ticks):
@@ -139,7 +139,7 @@ class  BreezeApiAdapter(BrokerApiAdapter):
 
 	def getSessionTokenFromFile(self):
 		sessionToken = ""
-		file_path = './idirectsessiontokens/*'
+		file_path = './kitesessiontokens/*'
 		files = sorted(glob.iglob(file_path), key=os.path.getctime, reverse=True)
 		if len(files) > 0:
 			sessionToken = os.path.basename(files[0])
@@ -148,22 +148,18 @@ class  BreezeApiAdapter(BrokerApiAdapter):
 	def registerFeedCallback(self,callbackFn) -> None:
 		self.onMessage = callbackFn
     
-	def getLoginUrl(self):
-		loginUrl = configapi.IDIRECT_LOGIN_URL + urllib.parse.quote_plus(configapi.IDIRECT_API_KEY)
-		return loginUrl
-	
-	def getSessionTokenName(self):
-		return configapi.IDIRECT_SESSION_TOKEN_NAME
-
 	def connect(self,params):
-		sessionToken = params.get(configapi.IDIRECT_SESSION_TOKEN_NAME,"no-breezeapi-session")
-		if sessionToken == "no-breezeapi-session":
+		sessionToken = params.get(configapi.KITE_SESSION_TOKEN_NAME,"no-kiteapi-session")
+		self.api.generate_session(request_token=sessionToken,api_secret=configapi.KITE_SECRET_KEY)
+		if sessionToken == "no-kiteapi-session":
 			sessionToken = self.getSessionTokenFromFile()
-			if sessionToken == "no-breezeapi-session":
-				raise Exception("No valid sessionToken exist")
+			if sessionToken == "no-kiteapi-session":
+				raise Exception("No valid requestToken exist")
+			self.api = KiteConnect(api_key=configapi.KITE_API_KEY,access_token=sessionToken)
+			self.api.set_access_token(sessionToken)
 		else:
 			try:
-				file_path = './idirectsessiontokens/'+sessionToken
+				file_path = './kitesessiontokens/'+sessionToken
 				os.makedirs(os.path.dirname(file_path), exist_ok=True)
 				# create file
 				with open(file_path, 'x') as fp:
@@ -171,21 +167,25 @@ class  BreezeApiAdapter(BrokerApiAdapter):
 			except Exception as e:
 				print(e)
 				print('File already exists')
-		self.api.generate_session(api_secret=configapi.IDIRECT_SECRET_KEY,session_token=sessionToken)
-		self.api.ws_connect()
+		# do we need to generate session every time or store access oken and simply init kiteconnect
+		# data = self.api.generate_session(request_token=sessionToken,api_secret=configapi.SECRET_KEY)
+		#self.api.set_access_token(sessionToken)
+		
+		#self.api.ws_connect()
+		#initialize kiteticker for websockets
 		# Assign the callbacks.
 		self.api.on_ticks = self.on_ticks
 		self.api.subscribe_feeds(get_order_notification=True)
 		print("USERID-->" + self.api.user_id)
 		self.user_id = self.api.user_id
-		self.session_key = self.api.session_key
+		self.session_key = self.api.access_token
 		self.session_token = sessionToken
 		self.isConnected = True
 		return sessionToken
 	
 	def isApiConnected(self):
 		return self.isConnected
-	
+		
 	def getCustomerDetails(self):
 		customerDetails = self.api.get_customer_details(self.session_token)
 		return customerDetails
@@ -616,9 +616,6 @@ class  BreezeApiAdapter(BrokerApiAdapter):
 		self.api.ws_disconnect()
 
 	def getHistoricalData(self, params ):
-		pass
-
-	def getHistoricalData1(self, params ):
 		interval = params.get("interval","15minute")
 		fromDateStr = params.get("fromDate","2023-11-01T00:00:00.000Z")
 		toDateStr = params.get("toDate","2023-11-01T00:00:00.000Z")
@@ -746,7 +743,7 @@ def test():
 def main():
 	print("Hello World!")
 	global myapi
-	myapi = BreezeApiAdapter()
+	myapi = KiteApiAdapter()
 	test()
 
 

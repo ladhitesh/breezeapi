@@ -8,19 +8,15 @@ import configapi
 
 class  BrokerApiConnect():
 
-    brokerApi = BrokerApiAdapter()
+    
 
-    def __init__(self) -> None:
-        pass
-
-    def initialize(self):
-        BROKER_API_ENUM = configapi.BROKER
-        print("Initializing api to " + BROKER_API_ENUM)
-        if BROKER_API_ENUM == "ICICIDIRECT":
+    def __init__(self, broker) -> None:
+        self.BROKER = ({True : configapi.BROKER_DEFAULT, False: broker } [broker == None or broker == ""])
+        print("Initializing broker to " + self.BROKER)
+        if self.BROKER == configapi.BROKER_IDIRECT:
             self.brokerApi = BreezeApiAdapter()
-        if BROKER_API_ENUM == "test":
+        if self.BROKER == configapi.BROKER_TEST:
             self.brokerApi = TestBrokerApiAdapter()
-        return self.brokerApi
 
     def connect(self,params):
         return self.brokerApi.connect(params)
@@ -30,6 +26,20 @@ class  BrokerApiConnect():
     
     def isConnected(self):
         return self.brokerApi.isApiConnected()
+    
+    def getLoginUrl(self):
+        return self.brokerApi.getLoginUrl()
+    
+    def getSessionTokenName(self):
+        return self.brokerApi.getSessionTokenName()
+    
+    def getSessionTokenNameByBroker(self, broker):
+        sessionTokenName = configapi.IDIRECT_SESSION_TOKEN_NAME
+        if broker == configapi.BROKER_IDIRECT:
+            sessionTokenName = configapi.IDIRECT_SESSION_TOKEN_NAME
+        elif broker == configapi.BROKER_KITE:
+            sessionTokenName = configapi.KITE_SESSION_TOKEN_NAME
+        return sessionTokenName
 
     def getCustomerDetails(self):
         return self.brokerApi.getCustomerDetails()

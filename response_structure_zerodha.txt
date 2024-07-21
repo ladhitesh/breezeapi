@@ -1,0 +1,534 @@
+user 
+
+{
+    "status": "success",
+    "data": {
+        "user_type": "individual",
+        "email": "XXXXXX",
+        "user_name": "Kite Connect",
+        "user_shortname": "Connect",
+        "broker": "ZERODHA",
+        "exchanges": [
+            "NSE",
+            "NFO",
+            "BFO",
+            "CDS",
+            "BSE",
+            "MCX",
+            "BCD",
+            "MF"
+        ],
+        "products": [
+            "CNC",
+            "NRML",
+            "MIS",
+            "BO",
+            "CO"
+        ],
+        "order_types": [
+            "MARKET",
+            "LIMIT",
+            "SL",
+            "SL-M"
+        ],
+        "avatar_url": "abc",
+        "user_id": "XX0000",
+        "api_key": "XXXXXX",
+        "access_token": "XXXXXX",
+        "public_token": "XXXXXXXX",
+        "enctoken": "XXXXXX",
+        "refresh_token": '',
+        "silo": '',
+        "login_time": "2021-01-01 16:15:14",
+        "meta": {
+            "demat_consent": "physical"
+        }
+    }
+}
+
+
+
+
+
+
+order
+
+
+{
+  "status": "success",
+  "data": [
+    {
+      "placed_by": "XXXXXX",
+      "order_id": "100000000000000",
+      "exchange_order_id": "200000000000000",
+      "parent_order_id": null,
+      "status": "CANCELLED",
+      "status_message": null,
+      "status_message_raw": null,
+      "order_timestamp": "2021-05-31 09:18:57",
+      "exchange_update_timestamp": "2021-05-31 09:18:58",
+      "exchange_timestamp": "2021-05-31 09:15:38",
+      "variety": "regular",
+      "modified": false,
+      "exchange": "CDS",
+      "tradingsymbol": "USDINR21JUNFUT",
+      "instrument_token": 412675,
+      "order_type": "LIMIT",
+      "transaction_type": "BUY",
+      "validity": "DAY",
+      "product": "NRML",
+      "quantity": 1,
+      "disclosed_quantity": 0,
+      "price": 72,
+      "trigger_price": 0,
+      "average_price": 0,
+      "filled_quantity": 0,
+      "pending_quantity": 1,
+      "cancelled_quantity": 1,
+      "market_protection": 0,
+      "meta": {},
+      "tag": null,
+      "guid": "XXXXX"
+    },
+    {
+      "placed_by": "XXXXXX",
+      "order_id": "300000000000000",
+      "exchange_order_id": "400000000000000",
+      "parent_order_id": null,
+      "status": "COMPLETE",
+      "status_message": null,
+      "status_message_raw": null,
+      "order_timestamp": "2021-05-31 15:20:28",
+      "exchange_update_timestamp": "2021-05-31 15:20:28",
+      "exchange_timestamp": "2021-05-31 15:20:28",
+      "variety": "regular",
+      "modified": false,
+      "exchange": "NSE",
+      "tradingsymbol": "IOC",
+      "instrument_token": 415745,
+      "order_type": "LIMIT",
+      "transaction_type": "BUY",
+      "validity": "DAY",
+      "product": "CNC",
+      "quantity": 1,
+      "disclosed_quantity": 0,
+      "price": 109.4,
+      "trigger_price": 0,
+      "average_price": 109.4,
+      "filled_quantity": 1,
+      "pending_quantity": 0,
+      "cancelled_quantity": 0,
+      "market_protection": 0,
+      "meta": {},
+      "tag": null,
+      "guid": "XXXXXX"
+    },
+    {
+      "placed_by": "XXXXXX",
+      "order_id": "500000000000000",
+      "exchange_order_id": "600000000000000",
+      "parent_order_id": null,
+      "status": "COMPLETE",
+      "status_message": null,
+      "status_message_raw": null,
+      "order_timestamp": "2021-05-31 15:20:51",
+      "exchange_update_timestamp": "2021-05-31 15:20:52",
+      "exchange_timestamp": "2021-05-31 15:20:52",
+      "variety": "regular",
+      "modified": false,
+      "exchange": "NSE",
+      "tradingsymbol": "IOC",
+      "instrument_token": 415745,
+      "order_type": "MARKET",
+      "transaction_type": "SELL",
+      "validity": "DAY",
+      "product": "CNC",
+      "quantity": 1,
+      "disclosed_quantity": 0,
+      "price": 0,
+      "trigger_price": 0,
+      "average_price": 109.35,
+      "filled_quantity": 1,
+      "pending_quantity": 0,
+      "cancelled_quantity": 0,
+      "market_protection": 0,
+      "meta": {},
+      "tag": null,
+      "guid": "XXXX"
+    },
+    {
+      "placed_by": "XXXXXX",
+      "order_id": "220524001859672",
+      "exchange_order_id": null,
+      "parent_order_id": null,
+      "status": "REJECTED",
+      "status_message": "Insufficient funds. Required margin is 95417.84 but available margin is 74251.80. Check the orderbook for open orders.",
+      "status_message_raw": "RMS:Margin Exceeds,Required:95417.84, Available:74251.80 for entity account-XXXXX across exchange across segment across product ",
+      "order_timestamp": "2022-05-24 12:26:52",
+      "exchange_update_timestamp": null,
+      "exchange_timestamp": null,
+      "variety": "iceberg",
+      "modified": false,
+      "exchange": "NSE",
+      "tradingsymbol": "SBIN",
+      "instrument_token": 779521,
+      "order_type": "LIMIT",
+      "transaction_type": "BUY",
+      "validity": "TTL",
+      "validity_ttl": 2,
+      "product": "CNC",
+      "quantity": 200,
+      "disclosed_quantity": 0,
+      "price": 463,
+      "trigger_price": 0,
+      "average_price": 0,
+      "filled_quantity": 0,
+      "pending_quantity": 0,
+      "cancelled_quantity": 0,
+      "market_protection": 0,
+      "meta": {
+        "iceberg": {
+          "leg": 1,
+          "legs": 5,
+          "leg_quantity": 200,
+          "total_quantity": 1000,
+          "remaining_quantity": 800
+        }
+      },
+      "tag": "icebergord",
+      "tags": [
+        "icebergord"
+      ],
+      "guid": "XXXXXX"
+    },
+    {
+      "placed_by": "XXXXXX",
+      "order_id": "700000000000000",
+      "exchange_order_id": "800000000000000",
+      "parent_order_id": null,
+      "status": "COMPLETE",
+      "status_message": null,
+      "status_message_raw": null,
+      "order_timestamp": "2021-05-31 16:00:36",
+      "exchange_update_timestamp": "2021-05-31 16:00:36",
+      "exchange_timestamp": "2021-05-31 16:00:36",
+      "variety": "regular",
+      "modified": false,
+      "exchange": "MCX",
+      "tradingsymbol": "GOLDPETAL21JUNFUT",
+      "instrument_token": 58424839,
+      "order_type": "LIMIT",
+      "transaction_type": "BUY",
+      "validity": "DAY",
+      "product": "NRML",
+      "quantity": 1,
+      "disclosed_quantity": 0,
+      "price": 4854,
+      "trigger_price": 0,
+      "average_price": 4852,
+      "filled_quantity": 1,
+      "pending_quantity": 0,
+      "cancelled_quantity": 0,
+      "market_protection": 0,
+      "meta": {},
+      "tag": "connect test order1",
+      "tags": [
+        "connect test order1"
+      ],
+      "guid": "XXXXXXX"
+    },
+    {
+      "placed_by": "XXXXXX",
+      "order_id": "9000000000000000",
+      "exchange_order_id": "1000000000000000",
+      "parent_order_id": null,
+      "status": "COMPLETE",
+      "status_message": null,
+      "status_message_raw": null,
+      "order_timestamp": "2021-05-31 16:08:40",
+      "exchange_update_timestamp": "2021-05-31 16:08:41",
+      "exchange_timestamp": "2021-05-31 16:08:41",
+      "variety": "regular",
+      "modified": false,
+      "exchange": "MCX",
+      "tradingsymbol": "GOLDPETAL21JUNFUT",
+      "instrument_token": 58424839,
+      "order_type": "LIMIT",
+      "transaction_type": "BUY",
+      "validity": "DAY",
+      "product": "NRML",
+      "quantity": 1,
+      "disclosed_quantity": 0,
+      "price": 4854,
+      "trigger_price": 0,
+      "average_price": 4852,
+      "filled_quantity": 1,
+      "pending_quantity": 0,
+      "cancelled_quantity": 0,
+      "market_protection": 0,
+      "meta": {},
+      "tag": "connect test order2",
+      "tags": [
+        "connect test order2",
+        "XXXXX"
+      ],
+      "guid": "XXXXXX"
+    },
+    {
+      "placed_by": "XXXXXX",
+      "order_id": "98000000000000000",
+      "exchange_order_id": "67000000000000000",
+      "parent_order_id": null,
+      "status": "CANCELLED",
+      "status_message": null,
+      "status_message_raw": null,
+      "order_timestamp": "2023-06-12 14:00:58",
+      "exchange_update_timestamp": "2023-06-12 14:00:58",
+      "exchange_timestamp": "2023-06-12 14:00:58",
+      "variety": "auction",
+      "modified": false,
+      "exchange": "NSE",
+      "tradingsymbol": "BHEL",
+      "instrument_token": 112129,
+      "order_type": "LIMIT",
+      "transaction_type": "SELL",
+      "validity": "DAY",
+      "validity_ttl": 0,
+      "product": "CNC",
+      "quantity": 60,
+      "disclosed_quantity": 0,
+      "price": 85,
+      "trigger_price": 0,
+      "auction_number": "22",
+      "average_price": 0,
+      "filled_quantity": 0,
+      "pending_quantity": 60,
+      "cancelled_quantity": 0,
+      "market_protection": 0,
+      "meta": {},
+      "tag": null,
+      "guid": null
+    }
+  ]
+}
+
+
+market quote
+{
+    "status": "success",
+    "data": {
+      "NSE:INFY": {
+        "instrument_token": 408065,
+        "timestamp": "2021-06-08 15:45:56",
+        "last_trade_time": "2021-06-08 15:45:52",
+        "last_price": 1412.95,
+        "last_quantity": 5,
+        "buy_quantity": 0,
+        "sell_quantity": 5191,
+        "volume": 7360198,
+        "average_price": 1412.47,
+        "oi": 0,
+        "oi_day_high": 0,
+        "oi_day_low": 0,
+        "net_change": 0,
+        "lower_circuit_limit": 1250.7,
+        "upper_circuit_limit": 1528.6,
+        "ohlc": {
+          "open": 1396,
+          "high": 1421.75,
+          "low": 1395.55,
+          "close": 1389.65
+        },
+        "depth": {
+          "buy": [
+            {
+              "price": 0,
+              "quantity": 0,
+              "orders": 0
+            },
+            {
+              "price": 0,
+              "quantity": 0,
+              "orders": 0
+            },
+            {
+              "price": 0,
+              "quantity": 0,
+              "orders": 0
+            },
+            {
+              "price": 0,
+              "quantity": 0,
+              "orders": 0
+            },
+            {
+              "price": 0,
+              "quantity": 0,
+              "orders": 0
+            }
+          ],
+          "sell": [
+            {
+              "price": 1412.95,
+              "quantity": 5191,
+              "orders": 13
+            },
+            {
+              "price": 0,
+              "quantity": 0,
+              "orders": 0
+            },
+            {
+              "price": 0,
+              "quantity": 0,
+              "orders": 0
+            },
+            {
+              "price": 0,
+              "quantity": 0,
+              "orders": 0
+            },
+            {
+              "price": 0,
+              "quantity": 0,
+              "orders": 0
+            }
+          ]
+        }
+      }
+    }
+  }
+
+websocket streaming
+
+Bytes	Type	 
+0 - 4	int32	instrument_token
+4 - 8	int32	Last traded price (If mode is ltp, the packet ends here)
+8 - 12	int32	Last traded quantity
+12 - 16	int32	Average traded price
+16 - 20	int32	Volume traded for the day
+20 - 24	int32	Total buy quantity
+24 - 28	int32	Total sell quantity
+28 - 32	int32	Open price of the day
+32 - 36	int32	High price of the day
+36 - 40	int32	Low price of the day
+40 - 44	int32	Close price (If mode is quote, the packet ends here)
+44 - 48	int32	Last traded timestamp
+48 - 52	int32	Open Interest
+52 - 56	int32	Open Interest Day High
+56 - 60	int32	Open Interest Day Low
+60 - 64	int32	Exchange timestamp
+64 - 184	[]byte	Market depth entries
+
+historical data
+{
+  "status": "success",
+  "data": {
+    "candles": [
+      [
+        "2017-12-15T09:15:00+0530",
+        1704.5,
+        1705,
+        1699.25,
+        1702.8,
+        2499
+      ],
+      [
+        "2017-12-15T09:16:00+0530",
+        1702,
+        1702,
+        1698.15,
+        1698.15,
+        1271
+      ],
+      [
+        "2017-12-15T09:17:00+0530",
+        1698.15,
+        1700.25,
+        1698,
+        1699.25,
+        831
+      ],
+      [
+        "2017-12-15T09:18:00+0530",
+        1700,
+        1700,
+        1698.3,
+        1699,
+        771
+      ],
+      [
+        "2017-12-15T09:19:00+0530",
+        1699,
+        1700,
+        1698.1,
+        1699.8,
+        543
+      ],
+      [
+        "2017-12-15T09:20:00+0530",
+        1699.8,
+        1700,
+        1696.55,
+        1696.9,
+        802
+      ]
+    ]
+  }
+}
+
+portfolio
+{
+  "status": "success",
+  "data": [
+    {
+      "tradingsymbol": "GOLDBEES",
+      "exchange": "BSE",
+      "instrument_token": 151064324,
+      "isin": "INF204KB17I5",
+      "product": "CNC",
+      "price": 0,
+      "quantity": 2,
+      "used_quantity": 0,
+      "t1_quantity": 0,
+      "realised_quantity": 2,
+      "authorised_quantity": 0,
+      "authorised_date": "2021-06-08 00:00:00",
+      "opening_quantity": 2,
+      "collateral_quantity": 0,
+      "collateral_type": "",
+      "discrepancy": false,
+      "average_price": 40.67,
+      "last_price": 42.47,
+      "close_price": 42.28,
+      "pnl": 3.5999999999999943,
+      "day_change": 0.18999999999999773,
+      "day_change_percentage": 0.44938505203405327
+    },
+    {
+      "tradingsymbol": "IDEA",
+      "exchange": "NSE",
+      "instrument_token": 3677697,
+      "isin": "INE669E01016",
+      "product": "CNC",
+      "price": 0,
+      "quantity": 5,
+      "used_quantity": 0,
+      "t1_quantity": 0,
+      "realised_quantity": 5,
+      "authorised_quantity": 0,
+      "authorised_date": "2021-06-08 00:00:00",
+      "opening_quantity": 5,
+      "collateral_quantity": 0,
+      "collateral_type": "",
+      "discrepancy": false,
+      "average_price": 8.466,
+      "last_price": 10,
+      "close_price": 10.1,
+      "pnl": 7.6700000000000035,
+      "day_change": -0.09999999999999964,
+      "day_change_percentage": -0.9900990099009866
+    }
+  ]
+}
+

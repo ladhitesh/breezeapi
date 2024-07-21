@@ -33,7 +33,8 @@ $(document).ready(function() {
 		console.log("connected directly to breezeapi websocket for chart tick data")
 		console.log(sio)
 		//direct feed
-
+		//fetch expiry dates for futures dropdown
+		runWhenDataproviderConnected();
 		//subscribeDirectOHLCV('NIFTY BANK',{'stockCode':'CNXBAN'},ltpListener)
 		console.log("if this is reconnection, subscribing other tokens")
 		for(channel in allSubscriptions){
@@ -278,3 +279,22 @@ function parseTicks(ticks){
 	//console.log(ticksDict)
 	return ticksDict
 }
+
+dataproviderUserId = ""
+dataproviderSessionKey = ""
+dataproviderApiKey = "3n89Ig317824192Y999kB590u6g84q9a"
+
+function loginForChartData(myuserId,mysessionKey){
+	console.log("******************************login credentials for chart**********************")
+	console.log(myuserId)
+	console.log(mysessionKey)
+	dataproviderUserId = myuserId
+	dataproviderSessionKey = mysessionKey
+	sio.auth.user = myuserId;
+	sio.auth.token = mysessionKey;
+	sio.connect();
+}
+
+
+
+

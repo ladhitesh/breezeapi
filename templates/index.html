@@ -186,6 +186,8 @@ $(document).ready(function() {
 		collapsible: true
 		}
 	$('#order_popup').dialog(dialogOptions);
+	
+	updateUserDetails();
 })
 	 
 	 
@@ -200,18 +202,78 @@ $( function() {
 
 } );
 	
-	
+function updateUserDetails(){
+	userDetails = apiSession + " " + loginMessage
+	$("#userDetails").html(userDetails)
+	if(userDetails.includes("Not logged in")){
+		var outputObj = $("#output")
+		var currentMessage = outputObj.html()
+		outputObj.html(currentMessage+"<BR>Valid breeze session token does not exist. Kindly login")
+		//window.stop();
+		
+	}
+	else{
+		isApiConnected = true;
+		$("#connectStatus").css("background-color", "green");
+	}
+}
+
+
 </script>	
 
 <script type="text/javascript">
 	var apiSession="{{ apiSession }}"
 	var userId="{{ userId }}"
 	var sessionKey="{{ sessionKey }}"
+	var loginMessage="{{ loginMessage }}"
 	var isApiConnected = false;
+	console.log("d.javacsript"+loginMessage)
+
+	function openLoginPopup(mode,broker){
+		
+		loginpopup = window.open("/login?mode="+mode+"&broker="+broker,"loginpopup",popup=true)
+		window.addEventListener('message', (e) => {
+			console.log(`'popupmessage' event was fired.`);
+			console.log(e);
+			console.log(e.data);
+			console.log(e.data.error)
+			data = e.data;
+			if(data.error != ""){
+				var outputObj = $("#output")
+				var currentMessage = outputObj.html()
+				outputObj.html(currentMessage+"<BR/> login popupmessage:" + data.error)
+				loginpopup.close();
+				return
+			}
+			
+			loginpopup.close();
+			mode = data.mode
+			if (mode == "chart"){
+				console.log("chart login done")
+				chartSessionKey = data.sessionKey
+				chartUserId = data.userId
+				loginForChartData(chartUserId,chartSessionKey);
+			}else if (mode == "broker"){
+				console.log("broker login done")
+				apiSession=data.sessionKey
+				userId=data.userId
+				sessionKey=data.sessionKey
+				loginMessage=data.loginMessage
+				updateUserDetails();
+			}
+			});
+	}
+
 </script>
 	</head>
 	<body>
 		<div id="connectStatus" width="100%" style="background-color:red;height:5px">&nbsp;</div>
+		<div id="variousStatus" width="100%" style="background-color:yellow;height:20px">
+			<span style="margin-left: 10px;margin-right: 50px;"><a onclick="openLoginPopup('chart','IDIRECT')">Chart</a></span>
+			<span style="margin-left: 10px;margin-right: 50px;"><a onclick="openLoginPopup('broker','IDIRECT')">IDIRECT</a></span>
+			<span style="margin-left: 10px;margin-right: 50px;"><a onclick="openLoginPopup('broker','ZERODHA')">ZERODHA</a></span>
+			<span style="margin-left: 10px;margin-right: 50px;"><a onclick="openLoginPopup('broker','UPSTOX')">UPSTOX</a></span>
+		</div>
 		
 		
 		<table style="width:100%;border-color:black;border-top-width:10px !important">
@@ -226,10 +288,9 @@ $( function() {
 					{% endblock %}
 				</div>
 				<div id="userDetails" style="font-weight:bold;color:red;font-size:14;position:fixed;top:10;right:10">
-					{{ apiSession }}-{{ loginMessage }}
 				</div>
 				<script type="text/javascript">
-					if(document.getElementById("userDetails").innerHTML.trim().includes("Not logged in")){
+					/*if(document.getElementById("userDetails").innerHTML.trim().includes("Not logged in")){
 						var outputObj = document.getElementById("output")
 						var currentMessage = outputObj.innerHTML
 						outputObj.innerHTML=currentMessage+"<BR>Valid breeze session token does not exist. Kindly login"
@@ -239,7 +300,7 @@ $( function() {
 					else{
 						isApiConnected = true;
 						$("#connectStatus").css("background-color", "green");
-					}
+					}*/
 				</script>
 				
 			</td>
