@@ -215,6 +215,15 @@ function updateUserDetails(){
 	else{
 		isApiConnected = true;
 		$("#connectStatus").css("background-color", "green");
+		if (broker == 'zerodha') {
+			$("#zerodha").css("background-color", 'rgb(183, 250, 183)');
+		}
+		if (broker == 'idirect') {
+			$("#idirect").css("background-color", 'rgb(183, 250, 183)');
+		}
+		if (broker == 'upstox') {
+			$("#upstox").css("background-color", 'rgb(183, 250, 183)');
+		}
 	}
 }
 
@@ -227,6 +236,7 @@ function updateUserDetails(){
 	var sessionKey="{{ sessionKey }}"
 	var loginMessage="{{ loginMessage }}"
 	var isApiConnected = false;
+	var broker = 'idirect';
 	console.log("d.javacsript"+loginMessage)
 
 	function openLoginPopup(mode,broker){
@@ -269,10 +279,10 @@ function updateUserDetails(){
 	<body>
 		<div id="connectStatus" width="100%" style="background-color:red;height:5px">&nbsp;</div>
 		<div id="variousStatus" width="100%" style="background-color:yellow;height:20px">
-			<span style="margin-left: 10px;margin-right: 50px;"><a onclick="openLoginPopup('chart','IDIRECT')">Chart</a></span>
-			<span style="margin-left: 10px;margin-right: 50px;"><a onclick="openLoginPopup('broker','IDIRECT')">IDIRECT</a></span>
-			<span style="margin-left: 10px;margin-right: 50px;"><a onclick="openLoginPopup('broker','ZERODHA')">ZERODHA</a></span>
-			<span style="margin-left: 10px;margin-right: 50px;"><a onclick="openLoginPopup('broker','UPSTOX')">UPSTOX</a></span>
+			<span id="chartStatus" style="margin-left: 10px;margin-right: 50px; background-color:rgb(255, 191, 180);">&nbsp;<a onclick="openLoginPopup('chart','IDIRECT')">Chart</a>&nbsp;</span>
+			<span id="idirect" style="margin-left: 10px;margin-right: 50px; background-color:rgb(255, 191, 180);"><a onclick="openLoginPopup('broker','IDIRECT')">IDIRECT</a></span>
+			<span id="zerodha" style="margin-left: 10px;margin-right: 50px; background-color:rgb(255, 191, 180);"><a onclick="openLoginPopup('broker','ZERODHA')">ZERODHA</a></span>
+			<span id="upstox" style="margin-left: 10px;margin-right: 50px; background-color:rgb(255, 191, 180);"><a onclick="openLoginPopup('broker','UPSTOX')">UPSTOX</a></span>
 		</div>
 		
 		
@@ -383,7 +393,7 @@ function updateUserDetails(){
 			</table>
 			<BR/>
 			<div width="100%">
-				<input id="seachStock" style="margin-bottom:0px;height:30px" type="text" value="OPT CNXBAN 48000 CE" />
+				<input id="searchStock" style="margin-bottom:0px;height:30px" type="text" value="OPT CNXBAN 48000 CE" />
 				<input type="button" onClick="getWatchListStocks()" value="Fetch Stocks" />
 				<BR/>
 				<select id="stock-selection" style="width:300px;margin-bottom:0px;height:30px">

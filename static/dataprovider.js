@@ -15,6 +15,7 @@ $(document).ready(function() {
 	sio.on("connect_error", (err) => {
 		try{
 			let errorMessage = err.message
+			$('#chartStatus').css("background-color",'rgb(255, 191, 180)');
 			$('#output')[0].innerHTML = "<span style='color:red'>error connecting to direct data feed: " + errorMessage + "</span>"
 			console.log(`error connecting directly to breezeapi: ${errorMessage}`)
 			console.log(err)
@@ -23,12 +24,14 @@ $(document).ready(function() {
 		}catch(e){console.log(e)}
 	});
 	sio.on('disconnect', function () {
+		$('#chartStatus').css("background-color",'rgb(255, 191, 180)');
 		$('#output')[0].innerHTML = "<span style='color:red'>disconnected from direct data feed.Kindly reconnect.</span>"
 		setTimeout(function () {
 			console.log("disconnected from direct breezeapi websocket.")
 		}, 10000);
 	});
 	sio.on('connect', function () {
+		$('#chartStatus').css("background-color",'rgb(183, 250, 183)');
 		$('#output')[0].innerHTML = "<span style='color:black'>connected directly to breezeapi websocket for chart tick data</span>"
 		console.log("connected directly to breezeapi websocket for chart tick data")
 		console.log(sio)

@@ -1,5 +1,6 @@
 /configapi.py
 /securityMaster.zip
 **/__pycache__/
-
+/dataprovidersessiontokens
+/dataprovidersessiontokens/**
 .vscode/settings.json

@@ -211,6 +211,70 @@ function fetchDPStocks(searchStr){
 		});
 }
 
+async function sendModifyOrder(orderId,exchangeCode,price,quantity,stoploss){
+
+	var modifyOrderParams = new URLSearchParams({
+		'orderId' : orderId,
+		'exchangeCode' : exchangeCode,
+		'price' : price,
+		'quantity' : quantity,
+		'stoploss' : stoploss
+	})	
+	var modifyOrderUrl = baseServerUrl + '/modifyOrder?' + modifyOrderParams
+	console.log(modifyOrderUrl)
+	return await callApi(modifyOrderUrl)
+		.then(result => {
+			return result;
+		});
+}
+
+async function sendPlaceOrder(stockcode,exchangeCode,product,strike,expiry,action,right,price,quantity,stoploss){
+
+	var newOrderParams = new URLSearchParams({
+		'stockCode' : stockcode,
+		'exchangeCode' : exchangeCode,
+		'product' : product, 
+		'strike' : strike,
+		'expiryDate' : expiry,
+		'action' : action.toLowerCase(),
+		'rightType' : right,
+		'price' : price,
+		'quantity' : quantity,
+		'stoploss' : stoploss
+	})
+
+	var newOrderUrl = baseServerUrl + '/placeOrder?' + newOrderParams
+	console.log(newOrderUrl)
+	var output = null;
+	return await callApi(newOrderUrl)
+		.then(result => {
+			return result
+		});
+}
+
+async function sendSquareOffOrder(stockcode,exchangeCode,product,strike,expiry,action,right,price,quantity,stoploss){
+
+	var squareoffOrderParams = new URLSearchParams({
+		'stockCode' : stockcode,
+		'exchangeCode' : exchangeCode,
+		'product' : product, 
+		'strike' : strike,
+		'expiryDate' : expiry,
+		'action' : action.toLowerCase(),
+		'rightType' : right,
+		'price' : price,
+		'quantity' : quantity,
+		'stoploss' : stoploss
+	})
+
+	var squareoffOrderUrl = baseServerUrl + '/squareoff?' + squareoffOrderParams
+	console.log(squareoffOrderUrl)
+	return await callApi(squareoffOrderUrl)
+		.then(result => {
+			return result;
+		});
+}
+
 function sendCancelOrder(cancelOrderId){
 	let cancelOrderParams = new URLSearchParams({
 			'orderId' : cancelOrderId
@@ -276,3 +340,4 @@ async function fetchMarginCalculation(stockCode,exchangeCode,product,strike,expi
 	}
 	return marginCalculationResultJsonArr["Success"]	
 }
+

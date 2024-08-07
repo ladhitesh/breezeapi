@@ -46,12 +46,16 @@ $(document).ready(function() {
 $(initIfConnected)
 
 function initIfConnected(){
+	
+	searchStr = localStorage.getItem("searchStr")
+	$('#searchStock').val(searchStr)
+	populateWatchList()
+
 	if (isApiConnected){
 		//populate existing data
 		populateOpenPositions()
-		populateOrderList()
-		populateWatchList()
-		refreshMargins()
+		populateOrderList()		
+		refreshMargins()	
 		//sio.on('1SEC',ltpUpdateListener)
 	}
 }
@@ -397,8 +401,7 @@ function populateOrderList(){
 }
 
 
-
-async function modifyOrder(){
+function modifyOrder(){
 	//validate order related data
 	hiddenDivId = $("#hiddenDataColumnId")[0].innerText
 	if(hiddenDivId == ""){
@@ -428,63 +431,59 @@ async function modifyOrder(){
 		return;
 	}
 	var exchangeCode = hiddenOlDivObj.dataset.exchangecode
-	var modifyOrderParams = new URLSearchParams({
-		'orderId' : orderId,
-		'exchangeCode' : exchangeCode,
-		'price' : price,
-		'quantity' : quantity,
-		'stoploss' : stoploss
-	})
+
 	var orderResultJsonArr = null
-	var modifyOrderUrl = baseServerUrl + '/modifyOrder?' + modifyOrderParams
-	console.log(modifyOrderUrl)
-	await callApi(modifyOrderUrl).then(result => {orderResultJsonArr=result});
-	errorStatus = orderResultJsonArr["Error"]
-	captionObj = $(".orderMessages")
-	if(errorStatus != null && errorStatus != ""){
-		captionObj.html(errorStatus)
-		return;
-	}
-	else{
-		captionObj.html(orderResultJsonArr["Success"]["message"])
-	}
+	orderResultJsonArr = sendModifyOrder(orderId,exchangeCode,price,quantity,stoploss
+		).then(result => {
+			orderResultJsonArr = result
+			errorStatus = orderResultJsonArr["Error"]
+			captionObj = $(".orderMessages")
+			if(errorStatus != null && errorStatus != ""){
+				captionObj.html(errorStatus)
+				return;
+			}
+			else{
+				captionObj.html(orderResultJsonArr["Success"]["message"])
+			}
 
-	orderId = orderResultJsonArr["Success"]["order_id"]
-	var orderListTable = $('#orderList').data('dynatable');
-	var existingRecords = orderListTable.records.getFromTable()
-	
-	var myRecords = null;
-	var recordIndex = 0;
-	for(record in existingRecords){
-		hiddenColumnDiv = existingRecords[record].hiddenColumn	
-		if(hiddenColumnDiv.includes(hiddenOrderId)){
-			recordIndex = record
-			myRecords = existingRecords;
-		}
-	}
-	
-	//orderTime = moment().format("DD-MMM-YYYY HH:mm:ss")
-	orderTime = moment().format("HH:mm:ss")
-	orderType = "limit"
-	if (price == 0)
-		orderType = "market"
-	
-	
-	myRecords[recordIndex] = makeOrderRecord(hiddenOlDivObj,orderId,orderTime,stockName,action,quantity,price,stoploss,orderType,orderStatus);
-	
-	obj = new Object();
-	obj.records = myRecords;
-	obj.queryRecordCount = existingRecords.length;
-	obj.totalRecordCount = existingRecords.length;
-	orderListTable.records.updateFromJson(obj)
-	orderListTable.dom.update();
+			orderId = orderResultJsonArr["Success"]["order_id"]
+			var orderListTable = $('#orderList').data('dynatable');
+			var existingRecords = orderListTable.records.getFromTable()
+			
+			var myRecords = null;
+			var recordIndex = 0;
+			for(record in existingRecords){
+				hiddenColumnDiv = existingRecords[record].hiddenColumn	
+				if(hiddenColumnDiv.includes(hiddenOrderId)){
+					recordIndex = record
+					myRecords = existingRecords;
+				}
+			}
+			
+			//orderTime = moment().format("DD-MMM-YYYY HH:mm:ss")
+			orderTime = moment().format("HH:mm:ss")
+			orderType = "limit"
+			if (price == 0)
+				orderType = "market"
+			
+			
+			myRecords[recordIndex] = makeOrderRecord(hiddenOlDivObj,orderId,orderTime,stockName,action,quantity,price,stoploss,orderType,orderStatus);
+			
+			obj = new Object();
+			obj.records = myRecords;
+			obj.queryRecordCount = existingRecords.length;
+			obj.totalRecordCount = existingRecords.length;
+			orderListTable.records.updateFromJson(obj)
+			orderListTable.dom.update();
 
-	//reset
-	//sticky modify window
-	//clearOrder()
+			//reset
+			//sticky modify window
+			//clearOrder()
+			}
+		)
 }
 
-async function addOrder(newOrSquareoff){
+function addOrder(newOrSquareoff){
 	
 	//validate order related data
 	hiddenDivId = $("#hiddenDataColumnId")[0].innerText
@@ -516,64 +515,107 @@ async function addOrder(newOrSquareoff){
 	
 	//call api to place order and fetch order id
 	//new order
-	var newOrderParams = new URLSearchParams({
-		'stockCode' : hiddenDivObj.dataset.stockcode,
-		'exchangeCode' : hiddenDivObj.dataset.exchangecode,
-		'product' : hiddenDivObj.dataset.product, 
-		'strike' : hiddenDivObj.dataset.strike,
-		'expiryDate' : hiddenDivObj.dataset.expiry,
-		'action' : action.toLowerCase(),
-		'rightType' : hiddenDivObj.dataset.right,
-		'price' : price,
-		'quantity' : quantity,
-		'stoploss' : stoploss
-	})
+
+	newOrderStockCode = hiddenDivObj.dataset.stockcode
+	newOrderExchangeCode = hiddenDivObj.dataset.exchangecode
+	newOrderProduct = hiddenDivObj.dataset.product
+	newOrderStrike = hiddenDivObj.dataset.strike
+	newOrderExpiryDate = hiddenDivObj.dataset.expiry
+	newOrderAction = action
+	newOrderRightType = hiddenDivObj.dataset.right
+	newOrderPrice = price
+	newOrderQuantity = quantity
+	newOrderStoploss = stoploss
 
 	var orderResultJsonArr = null
-	let orderpath = '/placeOrder'
 	if(newOrSquareoff == "squareoff"){
-		orderpath = '/squareoff'
-	}
-	var newOrderUrl = baseServerUrl + orderpath + '?' + newOrderParams
-	console.log(newOrderUrl)
-	await callApi(newOrderUrl).then(result => {orderResultJsonArr=result});
-	errorStatus = orderResultJsonArr["Error"]
-	
-	if(errorStatus != null && errorStatus != ""){
-		captionObj.html(errorStatus)
-		clearOrder()
-		return;
+		orderResultJsonArr = sendSquareOffOrder(newOrderStockCode,newOrderExchangeCode,newOrderProduct,
+			newOrderStrike,newOrderExpiryDate,newOrderAction,newOrderRightType,
+			newOrderPrice,newOrderQuantity,newOrderStoploss
+		).then(result => {
+			orderResultJsonArr = result
+			errorStatus = orderResultJsonArr["Error"]
+			if(errorStatus != null && errorStatus != ""){
+				console.log("orderResultJsonArr:" + orderResultJsonArr)
+				captionObj.html(errorStatus)
+				clearOrder()
+				return;
+			}
+			else{
+				captionObj.html(orderResultJsonArr["Success"]["message"])
+			}
+		
+			orderId = orderResultJsonArr["Success"]["order_id"]
+			orderStatus = "Ordered"	
+		
+			hiddenOlDivObj = $(hiddenDivObj).clone()[0];
+			hiddenOlDivObj.setAttribute('id','ol-' + orderId)
+			//hardcoding fetch orderid from json response to place order
+			hiddenOlDivObj.setAttribute('orderId',orderId)
+			//orderTime = moment().format("DD-MMM-YYYY HH:mm:ss")
+			orderTime = moment().format("HH:mm:ss")
+			orderType = "limit"
+			if (price == 0)
+				orderType = "market"
+			newRecord = makeOrderRecord(hiddenOlDivObj,orderId,orderTime,stockName,action,quantity,price,stoploss,orderType,orderStatus);
+			refreshOrderListTable(newRecord)
+		} )
 	}
 	else{
-		captionObj.html(orderResultJsonArr["Success"]["message"])
-	}
-
-	orderId = orderResultJsonArr["Success"]["order_id"]
-	orderStatus = "Ordered"	
-
+		sendPlaceOrder(newOrderStockCode,newOrderExchangeCode,newOrderProduct,
+			newOrderStrike,newOrderExpiryDate,newOrderAction,newOrderRightType,
+			newOrderPrice,newOrderQuantity,newOrderStoploss
+		).then(result => {
+			orderResultJsonArr = result
+			errorStatus = orderResultJsonArr["Error"]
+			if(errorStatus != null && errorStatus != ""){
+				console.log("orderResultJsonArr:" + orderResultJsonArr)
+				captionObj.html(errorStatus)
+				clearOrder()
+				return;
+			}
+			else{
+				captionObj.html(orderResultJsonArr["Success"]["message"])
+			}
 		
+			orderId = orderResultJsonArr["Success"]["order_id"]
+			orderStatus = "Ordered"	
+		
+			hiddenOlDivObj = $(hiddenDivObj).clone()[0];
+			hiddenOlDivObj.setAttribute('id','ol-' + orderId)
+			//hardcoding fetch orderid from json response to place order
+			hiddenOlDivObj.setAttribute('orderId',orderId)
+			//orderTime = moment().format("DD-MMM-YYYY HH:mm:ss")
+			orderTime = moment().format("HH:mm:ss")
+			orderType = "limit"
+			if (price == 0)
+				orderType = "market"
+			newRecord = makeOrderRecord(hiddenOlDivObj,orderId,orderTime,stockName,action,quantity,price,stoploss,orderType,orderStatus);
+			refreshOrderListTable(newRecord)
+		} )
+	}
+	
+
+	//myRecords = myRecords.concat(existingRecords);
+	
+	//obj = new Object();
+	//obj.records = myRecords;
+	//obj.queryRecordCount = existingRecords.length + 1;
+	//obj.totalRecordCount = existingRecords.length + 1;
+	//orderListTable.records.updateFromJson(obj)
+	//orderListTable.dom.update();
+}
+
+function refreshOrderListTable(newRecord){
+
 	var orderListTable = $('#orderList').data('dynatable');
 	var existingRecords = orderListTable.records.getFromTable()
 	
 	var myRecords = null;
 	var recordIndex = 0;
 
-	hiddenOlDivObj = $(hiddenDivObj).clone()[0];
-	hiddenOlDivObj.setAttribute('id','ol-' + orderId)
-	//hardcoding fetch orderid from json response to place order
-	hiddenOlDivObj.setAttribute('orderId',orderId)
 	myRecords = [new Object()];
-
-	
-	//orderTime = moment().format("DD-MMM-YYYY HH:mm:ss")
-	orderTime = moment().format("HH:mm:ss")
-	orderType = "limit"
-	if (price == 0)
-		orderType = "market"
-	
-	
-	myRecords[recordIndex] = makeOrderRecord(hiddenOlDivObj,orderId,orderTime,stockName,action,quantity,price,stoploss,orderType,orderStatus);
-
+	myRecords[recordIndex] = newRecord
 	myRecords = myRecords.concat(existingRecords);
 	
 	obj = new Object();
@@ -583,8 +625,6 @@ async function addOrder(newOrSquareoff){
 	orderListTable.records.updateFromJson(obj)
 	orderListTable.dom.update();
 }
-
-
 
 
 function cancelOrder(cancelOrderId){
@@ -694,7 +734,8 @@ function clearWatchList(){
 
 			
 function getWatchListStocks(){
-	let searchStr = $('#seachStock')[0].value
+	let searchStr = $('#searchStock')[0].value
+	localStorage.setItem("searchStr", searchStr);
 	fetchStocks(searchStr).then( fnOJsonArr => {
 		//console.log(fnOJsonArr)
 		$("#stock-selection").empty()

@@ -4,7 +4,7 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-breeze-connect = "==1.0.43"
+breeze-connect = "*"
 flask = "==2.3.3"
 flask-cors = "==4.0.0"
 flask-socketio = "==5.3.6"
@@ -17,7 +17,7 @@ certifi = "==2023.7.22"
 charset-normalizer = "==3.2.0"
 click = "==8.1.7"
 colorama = "==0.4.6"
-executing = "==2.0.0"
+executing = "==2.0.1"
 h11 = "==0.14.0"
 idna = "==3.4"
 itsdangerous = "==2.1.2"

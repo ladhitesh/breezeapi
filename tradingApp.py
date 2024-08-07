@@ -147,20 +147,21 @@ def login():
 	
 	print("login to broker api: " + newBroker)
 	#redirect_uri = url_for('authorize', _external=True)
-	print(app.login_url)
+	
 	#return oauth.breezeapi.authorize_redirect(redirect_uri)
 	#session["chartSessionKey"] = "44583592"
-	session[configapi.IDIRECT_SESSION_TOKEN_NAME] = "44583592"
-	print(session.get("chartSessionKey",""))
+	#session[configapi.IDIRECT_SESSION_TOKEN_NAME] = "44583592"
+	#print(session.get("chartSessionKey",""))
 	if mode == "chart" and (dataprovider.isDataProviderConnected() or session.get("chartSessionKey","") != ""):
 		return redirect(url_for('getAccessToken',**request.args))
 	#skip login if already connected
 	newBrokerApi = brokerApiConnect.BrokerApiConnect(newBroker)
 	session["newbroker"] = newBroker
 	if session.get(newBrokerApi.getSessionTokenName(),"") != "":
-		print("Not redirecting to login screen as session exist for new broker: " + newBroker)
+		print("Not redirecting to login screen as session exist for new broker: " + newBroker + ",token: " + session.get(newBrokerApi.getSessionTokenName()))
 		return redirect(url_for('connectApi',**request.args))
 	login_url = newBrokerApi.getLoginUrl()
+	print(login_url)
 	return redirect(login_url)
 
 '''
@@ -225,7 +226,7 @@ def connectApi():
 				myapi = brokerapi.brokerApi
 				brokerapi.registerFeedCallback(feedData)
 				sessionToken = brokerapi.connect(queryParams)
-				session[brokerapi.getSessionTokenName] = sessionToken
+				session[brokerapi.getSessionTokenName()] = sessionToken
 				loginMessage = getCustomerDetails(sessionToken)
 				userId = myapi.api.user_id
 				sessionKey = myapi.api.session_key
