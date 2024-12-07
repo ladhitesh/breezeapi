@@ -5,6 +5,9 @@ class DataProvider():
     
     def initialize(self,existingApi,params):
         pass
+
+    def getLoginUrl(self):
+        pass
     
     def isDataProviderConnected(self):
         pass
@@ -15,5 +18,5 @@ class DataProvider():
     def getHistoricalData(self, params):
         pass
 
-    def getDataproviderStocks(self, searchStr):
+    def getDataproviderStocks(self, strict, searchStr):
         pass

@@ -38,7 +38,7 @@ app.config['CORS_HEADERS'] = 'Content-Type'
 app.breezeapi_version = metadata.version('breeze_connect')
 
 brokerapi = brokerApiConnect.BrokerApiConnect(configapi.BROKER_DEFAULT)
-dataprovider = dataproviderConnect.DataProviderConnect()
+dataprovider = dataproviderConnect.DataProviderConnect(configapi.DATAPROVIDER_DEFAULT)
 myapi = brokerapi.brokerApi
 if brokerapi.isConnected() and brokerapi.BROKER == configapi.BROKER_IDIRECT:
 	print("idirect brokerapi is connected. initializing chart to same.")
@@ -47,10 +47,10 @@ else:
 	print("brokerapi is not connected or it is not idirect. initializing default data provider")
 	try:
 		dataprovider.initialize(None,{})
-		print("dataprovider is connected")
+		print("On app start, dataprovider is connected")
 	except Exception as e:
+		print("On app start, dataprovider not connected exception raised")
 		print(e)
-		print("dataprovider not connected")
 
 #@app.after_request
 #def after_request(response):
@@ -145,7 +145,7 @@ def login():
 	newBroker = queryParams.get("broker",configapi.BROKER_DEFAULT)
 	session["mode"] = mode
 	
-	print("login to broker api: " + newBroker)
+	print("login to " + mode + " api: " + newBroker)
 	#redirect_uri = url_for('authorize', _external=True)
 	
 	#return oauth.breezeapi.authorize_redirect(redirect_uri)
@@ -155,12 +155,17 @@ def login():
 	if mode == "chart" and (dataprovider.isDataProviderConnected() or session.get("chartSessionKey","") != ""):
 		return redirect(url_for('getAccessToken',**request.args))
 	#skip login if already connected
-	newBrokerApi = brokerApiConnect.BrokerApiConnect(newBroker)
-	session["newbroker"] = newBroker
-	if session.get(newBrokerApi.getSessionTokenName(),"") != "":
-		print("Not redirecting to login screen as session exist for new broker: " + newBroker + ",token: " + session.get(newBrokerApi.getSessionTokenName()))
-		return redirect(url_for('connectApi',**request.args))
-	login_url = newBrokerApi.getLoginUrl()
+	if mode == "chart":
+		newdataprovider = dataproviderConnect.DataProviderConnect(configapi.DATAPROVIDER_IDIRECT)
+		print("preparing to redirect to dataprovider login page")
+		login_url = newdataprovider.getLoginUrl()
+	else:
+		newBrokerApi = brokerApiConnect.BrokerApiConnect(newBroker)
+		session["newbroker"] = newBroker
+		if session.get(newBrokerApi.getSessionTokenName(),"") != "":
+			print("Not redirecting to login screen as session exist for new broker: " + newBroker + ",token: " + session.get(newBrokerApi.getSessionTokenName()))
+			return redirect(url_for('connectApi',**request.args))
+		login_url = newBrokerApi.getLoginUrl()
 	print(login_url)
 	return redirect(login_url)
 
@@ -212,32 +217,35 @@ def connectApi():
 	invalidSessionMsg = ""
 	try:
 		#myapi.onMessage = feedData
-		newBrokerApi.registerFeedCallback(feedData)
-		sessionToken = newBrokerApi.connect(queryParams)
-		session[newBrokerApi.getSessionTokenName()] = sessionToken
+		if session.get("newbroker","") == "":
+			newBrokerApi.registerFeedCallback(feedData)
+			sessionToken = newBrokerApi.connect(queryParams)
+			session[newBrokerApi.getSessionTokenName()] = sessionToken
 		app.logger.info("Current login flow:" + session.get("mode",""))
 		if session.get("mode","") == "broker":
 			try:
 				newBroker = session.get("newbroker","")
 				#reset session variable after fetching its value
 				session["newbroker"] = ""
-				brokerapi = brokerApiConnect.BrokerApiConnect(newBroker)
-				session["broker"] = newBroker
-				myapi = brokerapi.brokerApi
-				brokerapi.registerFeedCallback(feedData)
-				sessionToken = brokerapi.connect(queryParams)
-				session[brokerapi.getSessionTokenName()] = sessionToken
+				if not newBroker == newBrokerApi.BROKER and not newBroker == "":
+					brokerapi = brokerApiConnect.BrokerApiConnect(newBroker)
+					session["broker"] = newBroker
+					myapi = brokerapi.brokerApi
+					brokerapi.registerFeedCallback(feedData)
+					sessionToken = brokerapi.connect(queryParams)
+					session[brokerapi.getSessionTokenName()] = sessionToken
+
 				loginMessage = getCustomerDetails(sessionToken)
-				userId = myapi.api.user_id
-				sessionKey = myapi.api.session_key
-				output = "Most recent session: " + sessionToken
+				userId = myapi.user_id
+				sessionKey = myapi.session_key
+				output = "Using most recent session "
 				#dataprovider = dataproviderConnect.DataProviderConnect()
-				dataprovider.initialize(myapi.api,{})
-				return render_template("loginresponse.html", error="", mode = "broker", userId = userId, sessionKey = sessionKey, apiSession=apiSession, loginMessage=loginMessage)	
+				#dataprovider.initialize(myapi.api,{})
+				return render_template("loginresponse.html", error="", mode = "broker", broker=newBroker, userId = userId, sessionKey = sessionKey, apiSession=apiSession, loginMessage=loginMessage)	
 			except Exception as e:
 				app.logger.info("Error in broker login flow")
 				app.logger.error(e)
-				return render_template("loginresponse.html", error=e, mode = "broker", userId = userId, sessionKey = sessionKey, apiSession=apiSession, loginMessage=loginMessage)	
+				return render_template("loginresponse.html", error=e, mode = "broker", broker=newBroker, userId = userId, sessionKey = sessionKey, apiSession=apiSession, loginMessage=loginMessage)	
 		
 		brokerapi = newBrokerApi
 		myapi = brokerapi.brokerApi
@@ -251,19 +259,25 @@ def connectApi():
 		app.logger.info("Error in reload page flow")
 		app.logger.error(e)
 		invalidSessionMsg = ". Session invalid. Create new session from login url."
+		brokerapi.clearTokenFiles()
+		session.pop(brokerapi.getSessionTokenName(),None)
 	
 	loginUrl = "<a href='/login'>Login</a>"
-	output = loginUrl +"<br/>Most recent session:"+apiSession+invalidSessionMsg
-	return render_template("index.html", output=output, apiSession=apiSession, userId=userId, sessionKey=sessionKey, loginMessage=loginMessage)	
+	output = loginUrl +"<br/>Using most recent session:"+invalidSessionMsg
+	return render_template("index.html", output=output, broker=brokerapi.BROKER, apiSession=apiSession, userId=userId, sessionKey=sessionKey, loginMessage=loginMessage)	
 
 
 @app.route('/', methods=['GET', 'POST'])
 @cross_origin()
 def oneClick():
-	session["mode"] = "full"
+	session["mode"] = "broker"
 	broker = session.get("broker",brokerapi.BROKER)
 	session["broker"] = broker
+	if brokerapi.BROKER == configapi.BROKER_IDIRECT:
+		session["mode"] = "full"
+	
 	if not brokerapi.isConnected():
+		app.logger.info("%s broker is not connected. Redirecting to /connect",broker)
 		return redirect("/connect", code=302)
 	
 
@@ -276,8 +290,8 @@ def oneClick():
 	loginMessage = getCustomerDetails(apiSession)
 	userId = myapi.user_id
 	sessionKey = myapi.session_key
-	output = "Most recent session:"+apiSession
-	return render_template("index.html", output=output, apiSession=apiSession, userId=userId, sessionKey=sessionKey, loginMessage=loginMessage)	
+	output = "Using most recent session"
+	return render_template("index.html", output=output, broker=brokerapi.BROKER, apiSession=apiSession, userId=userId, sessionKey=sessionKey, loginMessage=loginMessage)	
 
 @app.route('/getAccessToken', methods=['GET', 'POST'])
 @cross_origin()
@@ -294,7 +308,7 @@ def getAccessToken():
 		session["chartSessionKey"] = ""
 		return redirect(url_for('login',**request.args))
 	#return (json.dumps(response),200, {'Content-Type': 'application/json'})	
-	return render_template("loginresponse.html", mode = "chart", userId = userId, sessionKey = sessionKey)	
+	return render_template("loginresponse.html", mode = "chart", broker="idirect", userId = userId, sessionKey = sessionKey)	
 
 @app.route('/getFnOStocks', methods=['GET'])
 @cross_origin()
@@ -310,8 +324,9 @@ def getFnOStocks():
 def getDPStocks():
 	queryParams = request.args.to_dict()
 	searchStr = queryParams.get('searchStr','FUT CNXBAN')
+	strict = queryParams.get('strict','False')
 	seachStrList = searchStr.split(' ')
-	dpStocksDict = dataprovider.getDataproviderStocks(*seachStrList)
+	dpStocksDict = dataprovider.getDataproviderStocks(strict,*seachStrList)
 	return (json.dumps(dpStocksDict),200, {'Content-Type': 'application/json'})
 
 
@@ -338,6 +353,7 @@ def clearSessionFiles():
     return redirect("/getExistingSessions", code=302)
 
 def getCustomerDetails(apiSession):
+	print("fetching customer details")
 	customerDetailsJsonDict = brokerapi.getCustomerDetails()
 	print("printing customer details")
 	print(customerDetailsJsonDict)
@@ -351,6 +367,7 @@ def getCustomerDetails(apiSession):
 		lastLogin = ""
 	version = app.breezeapi_version
 	customerDetails = userId + "-" + userName + "-last login: " + lastLogin + " (breeze_connect:" + version + ")"
+	print(customerDetails)
 	return customerDetails
 
 @app.route('/getStockToken', methods=['GET', 'POST'])
@@ -360,6 +377,14 @@ def getStockToken():
 	(quotesToken,marketDepthToken) = brokerapi.getTokenFromStockName(queryParams)
 	print(quotesToken+"<-->"+marketDepthToken)
 	return ("{\"quotesToken\":\""+quotesToken+"\"}",200, {'Content-Type': 'application/json'})
+
+@app.route('/getOrderDetails', methods=['GET', 'POST'])
+@cross_origin()
+def getOrderDetails():
+	queryParams = request.args.to_dict()
+	orderId = queryParams.get("orderId")
+	orderDetails =  brokerapi.getOrderDetails(orderId)
+	return (orderDetails,200, {'Content-Type': 'application/json'})
 
 @app.route('/getOrderList', methods=['GET', 'POST'])
 @cross_origin()

@@ -10,16 +10,19 @@ class  DataProviderConnect():
 
     dataProvider = DataProvider()
 
-    def __init__(self) -> None:
-        pass
-
-    def initialize(self,existingApi,params):
-        DATAPROVIDER_ENUM = configapi.DATAPROVIDER
-        print("Initializing dataprovider to " + DATAPROVIDER_ENUM)
+    def __init__(self,dataprovider) -> None:
+        #python ternary operator
+        DATAPROVIDER_ENUM = ({True : configapi.DATAPROVIDER_DEFAULT, False: dataprovider } [dataprovider == None or dataprovider == ""])
+        print("Setting dataprovider to " + DATAPROVIDER_ENUM)
         if DATAPROVIDER_ENUM == "IDIRECT":
             self.dataProvider = BreezeDataProvider()
+
+    def initialize(self,existingApi,params):
         print("DPConnect existingApi:" + str(existingApi))
         return self.dataProvider.initialize(existingApi,params)
+    
+    def getLoginUrl(self):
+        return self.dataProvider.getLoginUrl()
     
     def isDataProviderConnected(self):
         return self.dataProvider.isDataProviderConnected()
@@ -31,5 +34,5 @@ class  DataProviderConnect():
     def getHistoricalData(self,params):
         return self.dataProvider.getHistoricalData(params)
     
-    def getDataproviderStocks(self, *searchStr):
-        return self.dataProvider.getDataproviderStocks(*searchStr)
+    def getDataproviderStocks(self, strict, *searchStr):
+        return self.dataProvider.getDataproviderStocks(strict, *searchStr)

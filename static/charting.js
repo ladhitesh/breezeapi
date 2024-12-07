@@ -113,7 +113,7 @@ currentRefChartToken = null;
 
 function runWhenDataproviderConnected(){
 	//update expiry and token details for non index stocks
-	$("#refChart option[product='futures']").each(function() {
+	$("#refChart option[product='future']").each(function() {
 		updateRefChartSelectOptions($(this))
 			.then(result => {
 				if($(this).is(':selected')){
@@ -126,7 +126,7 @@ function runWhenDataproviderConnected(){
 	});
 
 	//load ref chart id selected chart is not index or futures
-	if($("#refChart :selected").attr("product")!= "futures"){
+	if($("#refChart :selected").attr("product")!= "future"){
 		currentRefChartToken = $("#refChart :selected").attr("token")
 		console.log("loading default selected ref chart: " + currentRefChartToken)	
 		loadReferenceChart(true);
@@ -135,10 +135,11 @@ function runWhenDataproviderConnected(){
 }
 
 function updateRefChartSelectOptions(option){
-	searchStr = "FUT " + option.val()
+	searchStr = "FUTURE " + option.val()
 	//searchStr = "FUT " + option.value
 	//console.log(searchStr)
-	return fetchDPStocks(searchStr).then(result => {
+	strict="True"
+	return fetchDPStocks(strict,searchStr).then(result => {
 			let token = result[0]["token"]
 			//console.log(token)
 			let expiry = result[0]["expiry"]
@@ -280,13 +281,13 @@ function getRefChartStockSelectHTMLElement(){
 	let secondRowOption1Html = "<option value='CNXBAN' token='NIFTY BANK' exchangeCode='NSE' product='' expiry='' >BANKNIFTY</option>";
 	const secondRowOption1 = new DOMParser().parseFromString(secondRowOption1Html, 'text/html').querySelector("option");
 
-	let secondRowOption2Html = "<option value='CNXBAN' exchangeCode='NFO' product='futures' selected>BANKNIFTY FUT</option>";
+	let secondRowOption2Html = "<option value='CNXBAN' exchangeCode='NFO' product='future' selected>BANKNIFTY FUT</option>";
 	const secondRowOption2 = new DOMParser().parseFromString(secondRowOption2Html, 'text/html').querySelector("option");
 
 	let secondRowOption3Html = "<option value='NIFTY' token='NIFTY 50' exchangeCode='NSE' product='equity' expiry=''>NIFTY 50</option>";
 	const secondRowOption3 = new DOMParser().parseFromString(secondRowOption3Html, 'text/html').querySelector("option");
 	
-	let secondRowOption4Html = "<option value='NIFTY' exchangeCode='NFO' product='futures'>NIFTY FUT</option>";
+	let secondRowOption4Html = "<option value='NIFTY' exchangeCode='NFO' product='future'>NIFTY FUT</option>";
 	const secondRowOption4 = new DOMParser().parseFromString(secondRowOption4Html, 'text/html').querySelector("option");
 	
 	secondRowStockNameSelect.appendChild(secondRowOption1)
@@ -344,7 +345,8 @@ function loadReferenceChart(refChartVisible){
 		//console.log("expiry: " + expiry)
 		let expiryFormatted = ""
 		if(expiry != null && expiry != ""){
-			expiryFormatted = moment(expiry,"DD-MMM-YYYY").format("YYYY-MM-DD")+"T00:00:00.000Z"
+			//expiryFormatted = moment(expiry,"DD-MMM-YYYY").format("YYYY-MM-DD")+"T00:00:00.000Z"
+			expiryFormatted = expiry+"T00:00:00.000Z"
 		}
 		
 		if (refChartVisible!= undefined && !refChartVisible){
@@ -453,7 +455,8 @@ function loadOptionsChart(hiddenDataDivId, optionsChartVisible){
 			fnotype = hiddenDivObj.dataset.fnotype
 			product = hiddenDivObj.dataset.product
 			expiry = hiddenDivObj.dataset.expiry
-			expiryFormatted = moment(expiry,"DD-MMM-YYYY").format("YYYY-MM-DD")+"T00:00:00.000Z"
+			//expiryFormatted = moment(expiry,"DD-MMM-YYYY").format("YYYY-MM-DD")+"T00:00:00.000Z"
+			expiryFormatted = expiry+"T00:00:00.000Z"
 			strike = hiddenDivObj.dataset.strike
 			right = hiddenDivObj.dataset.right
 			rightLong = right

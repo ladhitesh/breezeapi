@@ -154,6 +154,15 @@ input[type=number]::-webkit-outer-spin-button {
     moment().format();
 </script>
 <script>
+
+apiSession="{{ apiSession }}"
+userId="{{ userId }}"
+sessionKey="{{ sessionKey }}"
+loginMessage="{{ loginMessage }}"
+isApiConnected = false;
+broker = "{{ broker }}";
+console.log("d.javacsript"+loginMessage)
+
 $(document).ready(function() {
 	
 	today = moment().format("DD-MMM-YYYY");
@@ -187,7 +196,7 @@ $(document).ready(function() {
 		}
 	$('#order_popup').dialog(dialogOptions);
 	
-	updateUserDetails();
+	updateUserDetails(broker);
 })
 	 
 	 
@@ -202,10 +211,13 @@ $( function() {
 
 } );
 	
-function updateUserDetails(){
-	userDetails = apiSession + " " + loginMessage
+function updateUserDetails(newBroker){
+	//userDetails = apiSession + " " + loginMessage
+	userDetails = loginMessage
+	broker = newBroker
 	$("#userDetails").html(userDetails)
 	if(userDetails.includes("Not logged in")){
+		console.log("valid session does not exist.")
 		var outputObj = $("#output")
 		var currentMessage = outputObj.html()
 		outputObj.html(currentMessage+"<BR>Valid breeze session token does not exist. Kindly login")
@@ -213,31 +225,28 @@ function updateUserDetails(){
 		
 	}
 	else{
+		console.log("updating status colour for broker:"+broker)
 		isApiConnected = true;
 		$("#connectStatus").css("background-color", "green");
-		if (broker == 'zerodha') {
+		if (broker.toLowerCase() == 'zerodha') {
 			$("#zerodha").css("background-color", 'rgb(183, 250, 183)');
+		}else{
+			$("#zerodha").css("background-color", 'rgb(255, 191, 180)');
 		}
-		if (broker == 'idirect') {
+		if (broker.toLowerCase() == 'idirect') {
 			$("#idirect").css("background-color", 'rgb(183, 250, 183)');
+		}else{
+			$("#idirect").css("background-color", 'rgb(255, 191, 180)');
 		}
-		if (broker == 'upstox') {
+		if (broker.toLowerCase() == 'upstox') {
 			$("#upstox").css("background-color", 'rgb(183, 250, 183)');
+		}else{
+			$("#upstox").css("background-color", 'rgb(255, 191, 180)');
 		}
 	}
 }
 
 
-</script>	
-
-<script type="text/javascript">
-	var apiSession="{{ apiSession }}"
-	var userId="{{ userId }}"
-	var sessionKey="{{ sessionKey }}"
-	var loginMessage="{{ loginMessage }}"
-	var isApiConnected = false;
-	var broker = 'idirect';
-	console.log("d.javacsript"+loginMessage)
 
 	function openLoginPopup(mode,broker){
 		
@@ -269,7 +278,8 @@ function updateUserDetails(){
 				userId=data.userId
 				sessionKey=data.sessionKey
 				loginMessage=data.loginMessage
-				updateUserDetails();
+				broker=data.broker
+				updateUserDetails(data.broker);
 			}
 			});
 	}
@@ -393,8 +403,11 @@ function updateUserDetails(){
 			</table>
 			<BR/>
 			<div width="100%">
-				<input id="searchStock" style="margin-bottom:0px;height:30px" type="text" value="OPT CNXBAN 48000 CE" />
-				<input type="button" onClick="getWatchListStocks()" value="Fetch Stocks" />
+				<div style="display: inline;">
+				<select id="searchStockType" style="margin-bottom:5px;height:30px;width:90px"><option value="FUTURE">FUTURE</option><option value="OPTION" selected>OPTION</option></select>	
+				<input id="searchStock" style="margin-bottom:5px;height:30px" type="text" value="OPT CNXBAN 48000 CE" />
+				<input type="button" style="margin-bottom:5px;height:30px" onClick="getWatchListStocks()" value="Fetch Stocks" />
+				</div>
 				<BR/>
 				<select id="stock-selection" style="width:300px;margin-bottom:0px;height:30px">
 					<option value="0" selected>(Please select an option)</option>

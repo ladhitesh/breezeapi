@@ -1,24 +1,24 @@
 user
 
-order
-orderId
-stockcode
-stockName
-expiry
-strike
-right
-fnotype
-product
-exchangecode
-order_datetime
-quantity
-price
-average_price
-order_status
-order_type
-pending_quantity
-stoploss
-
+order (display)
+*orderId  				order_id
+*stockName				stockname
+*order_datetime       	order_datetime
+*quantity				quantity
+*price					price
+*average_price			average_price
+*stoploss				stoploss
+*action					action
+*order_status			status
+stockcode				stock_code
+expiry					expiry_date
+strike					strike_price
+right					right
+fnotype					
+product					product_type (OPT/FUT)
+exchangecode			exchange_code
+order_type				order_type
+pending_quantity		pending_quantity
 
 
 websocket

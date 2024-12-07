@@ -4,3 +4,4 @@
 /dataprovidersessiontokens
 /dataprovidersessiontokens/**
 .vscode/settings.json
+/instruments/**

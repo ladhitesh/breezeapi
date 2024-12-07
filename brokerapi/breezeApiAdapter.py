@@ -64,11 +64,12 @@ class  BreezeApiAdapter(BrokerApiAdapter):
 			self.nseFile = self.securityMasterZipFile.open(config.ISEC_NSE_CODE_MAP_FILE.get("nse"))
 			self.foNseFile = self.securityMasterZipFile.open(config.ISEC_NSE_CODE_MAP_FILE.get("fonse"))
 			self.bseFile = self.securityMasterZipFile.open(config.ISEC_NSE_CODE_MAP_FILE.get("bse"))
-			self.stockScriptdf = pd.read_csv(
-				config.STOCK_SCRIPT_CSV_URL ,
-				sep=',',
-				encoding='utf-8',
-			)
+		#self.stockScriptdf = pd.read_csv(
+		#	config.STOCK_SCRIPT_CSV_URL ,
+		#	sep=',',
+		#	encoding='utf-8',
+		#)
+		self.stockScriptdf = pd.read_csv('./instruments/instruments-final.csv' ,sep=',',encoding='utf-8')
 
 
 	# Callback to receive ticks.
@@ -145,6 +146,19 @@ class  BreezeApiAdapter(BrokerApiAdapter):
 			sessionToken = os.path.basename(files[0])
 		return sessionToken
 	
+	def clearTokenFiles(self):
+		try:
+			directory_path = './idirectsessiontokens'
+			files = os.listdir(directory_path)
+			for file in files:
+				file_path = os.path.join(directory_path, file)
+				if os.path.isfile(file_path) and not file == ".gitignore":
+					os.remove(file_path)
+			print("All breeze token files deleted successfully as they are invalid.")
+		except OSError:
+			print("Error occurred while deleting files.")
+		return True
+	
 	def registerFeedCallback(self,callbackFn) -> None:
 		self.onMessage = callbackFn
     
@@ -215,21 +229,29 @@ class  BreezeApiAdapter(BrokerApiAdapter):
 		df_row["product"] = product
 		return df_row
 
-	def getFnOStocks(self,*searchList):
+	def getFnOStocks(self,*searchTuple):
+		searchList = list(searchTuple)
+		#print(searchList)
 		base = r'^{}'
 		expr = '(?=.*{})'
-		searchRegex = base.format(''.join(expr.format(w) for w in searchList))
-		#ic(searchRegex)
+		searchRegex = base.format(''.join(expr.format(w) for w in searchList[1:]))
+		searchStockType = searchList[0]
+		#print(searchRegex)
 		#ic(stockScriptdf.columns.values)
 		stockScriptdf = self.stockScriptdf
-		requiredCol = stockScriptdf[["TK","CD","EC","SC","SN", "LS"]]
+		requiredCol = stockScriptdf[["trading_symbol","ExAllowed","ShortName","CompanyName", "LotSize","idirect_id","zerodha_id","upstox_id","Series","ExpiryDate","StrikePrice","OptionType","InstrumentName"]]
 		result = requiredCol.loc[( \
-										  (stockScriptdf["SG"]  == "DERIVATIVE") \
-										  & (stockScriptdf["CD"].str.contains(searchRegex,na=False, case=False)
-											   | stockScriptdf["SN"].str.contains(searchRegex,na=False, case=False) ) \
-										 ) ].head(10).copy()
-		result.rename(columns = {'TK':'token', 'CD':'code','EC':'exchangeCode','SC':'stockCode', 'LS':'lotSize'}, inplace = True)
-		result = result.apply(self.addFnOStocksAdditionalColumns,axis=1)
+                                            (stockScriptdf["Series"]  == searchStockType) \
+                                            & (stockScriptdf["trading_symbol"].str.contains(searchRegex,na=False, case=False)
+											   | stockScriptdf["ShortName"].str.contains(searchRegex,na=False, case=False)
+                                                | stockScriptdf["CompanyName"].str.contains(searchRegex,na=False, case=False) ) \
+                                            ) ].head(10).copy()
+		result.rename(columns = {'trading_symbol':'code','ExAllowed':'exchangeCode','ShortName':'stockCode', 'LotSize':'lotSize','Series':'product','ExpiryDate':'expiry','StrikePrice':'strike','OptionType':'right','InstrumentName':'fnoType'}, inplace = True)
+		#print(result.to_string())
+		result['token'] = result['idirect_id']
+		result['fnoType'] = result['fnoType'].str[:3]
+		#print(result.head(2).to_string())
+		#result = result.apply(self.addFnOStocksAdditionalColumns,axis=1)
 		resultJsonStr = result.to_json(orient = "records")
 		resultJsonDict = json.loads(resultJsonStr)
 		return resultJsonDict
@@ -357,14 +379,6 @@ class  BreezeApiAdapter(BrokerApiAdapter):
 
 		print(buy_order)
 		return buy_order
-
-    
-	def getOrderDetail(self,orderId):
-		orderDetail = self.api.get_order_detail(exchange_code="NFO",order_id=orderId)
-		print(orderDetail)
-		return orderDetail
-    
-		#orderDetail = getOrderDetail('202310201500017588')
     
 	def modifyOrder(self,params):
 		#orderId,exchangeCode,orderType,stopLoss,quantity,price
@@ -401,7 +415,14 @@ class  BreezeApiAdapter(BrokerApiAdapter):
 		'''
     {'Success': {'order_id': '202310201500017588', 'message': 'Your Order Canceled Successfully'}, 'Status': 200, 'Error': None}
     '''
+	
+	def getOrderDetails(self,orderId):
+		orderDetail = self.api.get_order_detail(exchange_code="NFO",order_id=orderId)
+		print(orderDetail)
+		return orderDetail
     
+		#orderDetail = getOrderDetails('202310201500017588')
+		   
 	def getOrdersList(self,params):
 		fromDateStr = params.get("orderDate","07-12-2023")
 		toDateStr = params.get("orderDate","07-12-2023")

@@ -71,11 +71,12 @@ class  KiteApiAdapter(BrokerApiAdapter):
 			)
 		'''
 
-	# Callback to receive ticks.
+	# Callback to receive ticks. Use on_order_update(ws, data) for order notification
 	def on_ticks(self,ticks):
 		if(self.onMessage!=None):
 			token = "none"
 			interval = ""
+			mode = ticks[0].get('mode') #full,ltp,quote
 			if ticks.get('quotes') == None and ticks.get('sourceNumber') == None:
 				#OHLV data
 				interval = ticks['interval']
@@ -359,13 +360,6 @@ class  KiteApiAdapter(BrokerApiAdapter):
 		return buy_order
 
     
-	def getOrderDetail(self,orderId):
-		orderDetail = self.api.get_order_detail(exchange_code="NFO",order_id=orderId)
-		print(orderDetail)
-		return orderDetail
-    
-		#orderDetail = getOrderDetail('202310201500017588')
-    
 	def modifyOrder(self,params):
 		#orderId,exchangeCode,orderType,stopLoss,quantity,price
 		orderIdStr = params.get("orderId","")
@@ -402,6 +396,11 @@ class  KiteApiAdapter(BrokerApiAdapter):
     {'Success': {'order_id': '202310201500017588', 'message': 'Your Order Canceled Successfully'}, 'Status': 200, 'Error': None}
     '''
     
+	def getOrderDetails(self,orderId):
+		orderDetail = self.api.get_order_detail(exchange_code="NFO",order_id=orderId)
+		print(orderDetail)
+		return orderDetail
+	
 	def getOrdersList(self,params):
 		fromDateStr = params.get("orderDate","07-12-2023")
 		toDateStr = params.get("orderDate","07-12-2023")

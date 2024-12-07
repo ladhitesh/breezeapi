@@ -1,5 +1,6 @@
 from brokerapi.brokerApiAdapter import BrokerApiAdapter
 from brokerapi.breezeApiAdapter import BreezeApiAdapter
+from brokerapi.upstoxApiAdapter import UpstoxApiAdapter
 from brokerapi.testBrokerApiAdapter import TestBrokerApiAdapter
 
 import sys
@@ -11,10 +12,13 @@ class  BrokerApiConnect():
     
 
     def __init__(self, broker) -> None:
+        #python ternary operator
         self.BROKER = ({True : configapi.BROKER_DEFAULT, False: broker } [broker == None or broker == ""])
         print("Initializing broker to " + self.BROKER)
         if self.BROKER == configapi.BROKER_IDIRECT:
             self.brokerApi = BreezeApiAdapter()
+        if self.BROKER == configapi.BROKER_UPSTOX:
+            self.brokerApi = UpstoxApiAdapter()
         if self.BROKER == configapi.BROKER_TEST:
             self.brokerApi = TestBrokerApiAdapter()
 
@@ -59,6 +63,9 @@ class  BrokerApiConnect():
     def squareOffOrder(self,params):
         return self.brokerApi.squareOffOrder(params)
 
+    def getOrderDetails(self,orderId):
+        return self.brokerApi.getOrderDetails(orderId)
+    
     def getOrdersList(self,params):
         return self.brokerApi.getOrdersList(params)
 
@@ -100,5 +107,8 @@ class  BrokerApiConnect():
 
     def unsubscribeMarketDepth(self,token):
         return self.brokerApi.unsubscribeMarketDepth(token)
+    
+    def clearTokenFiles(self):
+        return self.brokerApi.clearTokenFiles()
 
 

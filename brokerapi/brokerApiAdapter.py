@@ -38,6 +38,9 @@ class BrokerApiAdapter():
     def squareOffOrder(self,params):
         pass
 
+    def getOrderDetails(self,orderId):
+        pass
+
     def getOrdersList(self,params):
         pass
 
@@ -78,4 +81,7 @@ class BrokerApiAdapter():
         pass
 
     def unsubscribeMarketDepth(token):
+        pass
+
+    def clearTokenFiles():
         pass

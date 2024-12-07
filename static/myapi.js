@@ -203,8 +203,8 @@ function fetchStocks(searchStr){
 		});
 }
 
-function fetchDPStocks(searchStr){
-	let dpStocksUrl = baseServerUrl + '/getDPStocks?' + new URLSearchParams({'searchStr': searchStr})
+function fetchDPStocks(strict,searchStr){
+	let dpStocksUrl = baseServerUrl + '/getDPStocks?' + new URLSearchParams({'strict':strict,'searchStr': searchStr})
 	return callApi(dpStocksUrl)
 		.then(result => {
 			return result;
@@ -228,7 +228,7 @@ async function sendModifyOrder(orderId,exchangeCode,price,quantity,stoploss){
 		});
 }
 
-async function sendPlaceOrder(stockcode,exchangeCode,product,strike,expiry,action,right,price,quantity,stoploss){
+async function sendPlaceOrder(stockcode,exchangeCode,product,strike,expiry,action,right,price,quantity,stoploss,instruIds){
 
 	var newOrderParams = new URLSearchParams({
 		'stockCode' : stockcode,
@@ -242,6 +242,10 @@ async function sendPlaceOrder(stockcode,exchangeCode,product,strike,expiry,actio
 		'quantity' : quantity,
 		'stoploss' : stoploss
 	})
+	
+	for (const [key, value] of Object.entries(instruIds)) {
+		newOrderParams.set(key, value);
+	}
 
 	var newOrderUrl = baseServerUrl + '/placeOrder?' + newOrderParams
 	console.log(newOrderUrl)

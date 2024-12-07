@@ -527,6 +527,15 @@ function addOrder(newOrSquareoff){
 	newOrderQuantity = quantity
 	newOrderStoploss = stoploss
 
+	instruIds = {}
+
+	for( var data in hiddenDivObj.dataset)
+		if(data.includes("_id"))
+			instruIds[data] = hiddenDivObj.dataset[data]
+
+	//console.log("InstruIds added are")
+	//console.log(instruIds)
+
 	var orderResultJsonArr = null
 	if(newOrSquareoff == "squareoff"){
 		orderResultJsonArr = sendSquareOffOrder(newOrderStockCode,newOrderExchangeCode,newOrderProduct,
@@ -564,7 +573,7 @@ function addOrder(newOrSquareoff){
 	else{
 		sendPlaceOrder(newOrderStockCode,newOrderExchangeCode,newOrderProduct,
 			newOrderStrike,newOrderExpiryDate,newOrderAction,newOrderRightType,
-			newOrderPrice,newOrderQuantity,newOrderStoploss
+			newOrderPrice,newOrderQuantity,newOrderStoploss,instruIds
 		).then(result => {
 			orderResultJsonArr = result
 			errorStatus = orderResultJsonArr["Error"]
@@ -735,8 +744,11 @@ function clearWatchList(){
 			
 function getWatchListStocks(){
 	let searchStr = $('#searchStock')[0].value
+	let searchStockTypeStr = $('#searchStockType').val()
 	localStorage.setItem("searchStr", searchStr);
-	fetchStocks(searchStr).then( fnOJsonArr => {
+	//fetchStocks(searchStr).then( fnOJsonArr => {
+	let finalSearchStr = searchStockTypeStr + ' ' + searchStr
+	fetchDPStocks('False',finalSearchStr).then( fnOJsonArr => {
 		//console.log(fnOJsonArr)
 		$("#stock-selection").empty()
 		fnOJsonArr.forEach(function(eachStock) { 
@@ -1184,6 +1196,7 @@ function calculateMargin(){
 		});
 }
 
+//unsed
 function processChartSessionKey(data){
 	sessionKeyData = JSON.parse(data);
 	loginForChartData(sessionKeyData["userid"],sessionKeyData["sessionkey"])

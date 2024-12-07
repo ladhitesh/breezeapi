@@ -2,6 +2,7 @@ from breeze_connect import BreezeConnect, config
 from datetime import datetime, date, timedelta, timezone
 import json
 import pandas as pd
+import urllib
 import os
 import glob
 import sys
@@ -12,11 +13,8 @@ from dataproviderapi.dataProvider import DataProvider
 class BreezeDataProvider(DataProvider):
     def __init__(self):
         self.dp = BreezeConnect(configapi.IDIRECT_API_KEY)
-        self.stockScriptdf = pd.read_csv(
-				config.STOCK_SCRIPT_CSV_URL ,
-				sep=',',
-				encoding='utf-8',
-			)
+        #self.stockScriptdf = pd.read_csv(config.STOCK_SCRIPT_CSV_URL ,sep=',',encoding='utf-8')
+        self.stockScriptdf = pd.read_csv('./instruments/instruments-final.csv' ,sep=',',encoding='utf-8')
         self.isConnected = False
 
     def initialize(self,existingApi,params):
@@ -52,13 +50,17 @@ class BreezeDataProvider(DataProvider):
         return self.dp.session_key
 
     def getSessionTokenFromFile(self):
-        sessionToken = ""
+        sessionToken = "no-breezeapi-session"
         file_path = './dataprovidersessiontokens/*'
         files = sorted(glob.iglob(file_path), key=os.path.getctime, reverse=True)
         if len(files) > 0:
             sessionToken = os.path.basename(files[0])
         return sessionToken
 
+    def getLoginUrl(self):
+        loginUrl = configapi.IDIRECT_LOGIN_URL + urllib.parse.quote_plus(configapi.IDIRECT_API_KEY)
+        return loginUrl
+    
     def isDataProviderConnected(self):
         return self.isConnected
     
@@ -75,6 +77,8 @@ class BreezeDataProvider(DataProvider):
         stockCode = params.get("stockCode","CNXBAN")
         exchangeCode = params.get("exchangeCode","NSE")
         product = params.get("product","")
+        product = ({True:"futures",False:product.lower()}[product.lower()=="future" or product.lower()=="fut"])
+        product = ({True:"options",False:product.lower()}[product.lower()=="option" or product.lower()=="opt"])
         expiry = params.get("expiry","")
         rightStr = params.get("right","")
         strikePrice = params.get("strike","")
@@ -119,28 +123,42 @@ class BreezeDataProvider(DataProvider):
             right = codeArrRevSplit[2]
             product="options"
         #print(df_row)
-        df_row["fnoType"] = fnoType
-        df_row["expiry"] = expiry
-        df_row["strike"] = strike
-        df_row["right"] = right
-        df_row["product"] = product
+        #df_row["fnoType"] = fnoType
+        #df_row["expiry"] = expiry
+        #df_row["strike"] = strike
+        #df_row["right"] = right
+        #df_row["product"] = product
         return df_row
     
-    def getDataproviderStocks(self,*searchList):
+    def getDataproviderStocks(self,strict='False',*searchTuple):
+        searchList = list(searchTuple)
+        #print(searchList)
         base = r'^{}'
         expr = '(?=.*{})'
-        searchRegex = base.format(''.join(expr.format(w) for w in searchList))
-        #ic(searchRegex)
+        searchRegex = base.format(''.join(expr.format(w) for w in searchList[1:]))
+        searchStockType = searchList[0]
+        #print(searchRegex)
         #ic(stockScriptdf.columns.values)
         stockScriptdf = self.stockScriptdf
-        requiredCol = stockScriptdf[["TK","CD","EC","SC","SN", "LS"]]
-        result = requiredCol.loc[( \
-                                            (stockScriptdf["SG"]  == "DERIVATIVE") \
-                                            & (stockScriptdf["CD"].str.contains(searchRegex,na=False, case=False)
-                                                | stockScriptdf["SN"].str.contains(searchRegex,na=False, case=False) ) \
-                                            ) ].head(10).copy()
-        result.rename(columns = {'TK':'token', 'CD':'code','EC':'exchangeCode','SC':'stockCode', 'LS':'lotSize'}, inplace = True)
-        result = result.apply(self.addFnOStocksAdditionalColumns,axis=1)
+        requiredCol = stockScriptdf[["trading_symbol","ExAllowed","ShortName","CompanyName", "LotSize","idirect_id","zerodha_id","upstox_id","Series","ExpiryDate","StrikePrice","OptionType","InstrumentName"]]
+        if strict.lower() == 'true':
+            result = requiredCol.loc[( \
+                                            (stockScriptdf["Series"]  == searchStockType) \
+                                            & ( stockScriptdf["ShortName"].str.contains(searchRegex,na=False, case=False) ) \
+                                                ) ].head(10).copy()
+        else:
+            result = requiredCol.loc[( \
+                                                (stockScriptdf["Series"]  == searchStockType) \
+                                                & (stockScriptdf["trading_symbol"].str.contains(searchRegex,na=False, case=False)
+                                                | stockScriptdf["ShortName"].str.contains(searchRegex,na=False, case=False)
+                                                    | stockScriptdf["CompanyName"].str.contains(searchRegex,na=False, case=False) ) \
+                                                ) ].head(10).copy()
+        result.rename(columns = {'trading_symbol':'code','ExAllowed':'exchangeCode','ShortName':'stockCode', 'LotSize':'lotSize','Series':'product','ExpiryDate':'expiry','StrikePrice':'strike','OptionType':'right','InstrumentName':'fnoType'}, inplace = True)
+        #print(result.to_string())
+        result['token'] = result['idirect_id']
+        result['fnoType'] = result['fnoType'].str[:3]
+        #print(result.head(2).to_string())
+        #result = result.apply(self.addFnOStocksAdditionalColumns,axis=1)
         resultJsonStr = result.to_json(orient = "records")
         resultJsonDict = json.loads(resultJsonStr)
         return resultJsonDict
