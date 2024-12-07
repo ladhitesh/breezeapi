@@ -1,0 +1,378 @@
+user 
+
+{
+  "status": "success",
+  "data": {
+    "email": "******",
+    "exchanges": ["NSE", "NFO", "BSE", "CDS", "BFO", "BCD"],
+    "products": ["D", "CO", "I"],
+    "broker": "UPSTOX",
+    "user_id": "******",
+    "user_name": "******",
+    "order_types": ["MARKET", "LIMIT", "SL", "SL-M"],
+    "user_type": "individual",
+    "poa": false,
+    "is_active": true
+  }
+}
+
+get fund and margin
+
+{
+  "status": "success",
+  "data": {
+    "commodity": {
+      "used_margin": 555.23,
+      "payin_amount": 107.0,
+      "span_margin": 360.0,
+      "adhoc_margin": 0.0,
+      "notional_cash": 0.0,
+      "available_margin": 3874.5,
+      "exposure_margin": 75.13
+    },
+    "equity": {
+      "used_margin": 0.8,
+      "payin_amount": 200.0,
+      "span_margin": 0.0,
+      "adhoc_margin": 0.0,
+      "notional_cash": 0.0,
+      "available_margin": 15507.46,
+      "exposure_margin": 0.0
+    }
+  }
+}
+
+
+
+
+
+
+order book
+
+
+[
+  {
+    "exchange": "BSE",
+    "product": "D",
+    "price": 0.8,
+    "quantity": 1,
+    "status": "complete",
+    "guid": null,
+    "tag": null,
+    "instrument_token": "BSE_EQ|INE220J01025",
+    "placed_by": "*****",
+    "trading_symbol": "FCONSUMER",
+    "tradingsymbol": "FCONSUMER",
+    "order_type": "LIMIT",
+    "validity": "DAY",
+    "trigger_price": 0,
+    "disclosed_quantity": 0,
+    "transaction_type": "BUY",
+    "average_price": 0.8,
+    "filled_quantity": 1,
+    "pending_quantity": 0,
+    "status_message": null,
+    "status_message_raw": null,
+    "exchange_order_id": "1697686200000169148",
+    "parent_order_id": null,
+    "order_id": "231019025057849",
+    "variety": "SIMPLE",
+    "order_timestamp": "2023-10-19 09:23:23",
+    "exchange_timestamp": "2023-10-19 09:23:23",
+    "is_amo": false,
+    "order_request_id": "2",
+    "order_ref_id": "57744821658411"
+  },
+  {
+    "exchange": "NFO",
+    "product": "I",
+    "price": 0,
+    "quantity": 1500,
+    "status": "rejected",
+    "guid": null,
+    "tag": null,
+    "instrument_token": "NSE_FO|52567",
+    "placed_by": "******",
+    "trading_symbol": "SBIN23OCTFUT",
+    "tradingsymbol": "SBIN23OCTFUT",
+    "order_type": "SL-M",
+    "validity": "DAY",
+    "trigger_price": 570,
+    "disclosed_quantity": 0,
+    "transaction_type": "SELL",
+    "average_price": 0,
+    "filled_quantity": 0,
+    "pending_quantity": 0,
+    "status_message": "You need to add Rs. 138385.27 in your account to place this trade.",
+    "status_message_raw": "RMS:Margin Exceeds,Required:153892.45, Available:15507.18 for entity account-****** across exchange across segment across product ",
+    "exchange_order_id": "",
+    "parent_order_id": null,
+    "order_id": "231019025000398",
+    "variety": "SIMPLE",
+    "order_timestamp": "2023-10-19 09:15:00",
+    "exchange_timestamp": null,
+    "is_amo": false,
+    "order_request_id": "1",
+    "order_ref_id": "33832759664502"
+  },
+  {
+    "exchange": "BFO",
+    "product": "D",
+    "price": 0.05,
+    "quantity": 10,
+    "status": "cancelled",
+    "guid": null,
+    "tag": null,
+    "instrument_token": "BSE_FO|822663",
+    "placed_by": "******",
+    "trading_symbol": "SENSEX23O2066000PE",
+    "tradingsymbol": "SENSEX23O2066000PE",
+    "order_type": "LIMIT",
+    "validity": "DAY",
+    "trigger_price": 0,
+    "disclosed_quantity": 0,
+    "transaction_type": "BUY",
+    "average_price": 0,
+    "filled_quantity": 0,
+    "pending_quantity": 10,
+    "status_message": null,
+    "status_message_raw": null,
+    "exchange_order_id": "1697687100012002451",
+    "parent_order_id": null,
+    "order_id": "231019025000428",
+    "variety": "SIMPLE",
+    "order_timestamp": "2023-10-19 09:30:53",
+    "exchange_timestamp": "2023-10-19 09:30:53",
+    "is_amo": false,
+    "order_request_id": "1",
+    "order_ref_id": "1168356875930923"
+  }
+]
+
+
+market quote
+
+OHLC
+{
+  "status": "success",
+  "data": {
+    "NSE_EQ:NHPC": {
+      "ohlc": {
+        "open": 53.4,
+        "high": 53.8,
+        "low": 51.75,
+        "close": 52.05
+      },
+      "last_price": 52.05,
+      "instrument_token": "NSE_EQ|INE848E01016"
+    }
+  }
+}
+
+LTP
+{
+  "status": "success",
+  "data": {
+    "NSE_EQ:NHPC": {
+      "last_price": 52.05,
+      "instrument_token": "NSE_EQ|INE848E01016"
+    }
+  }
+}
+
+Full Market Quote
+{
+  "status": "success",
+  "data": {
+    "NSE_EQ:NHPC": {
+      "ohlc": {
+        "open": 53.4,
+        "high": 53.8,
+        "low": 51.75,
+        "close": 52.05
+      },
+      "depth": {
+        "buy": [
+          {
+            "quantity": 6917,
+            "price": 52.05,
+            "orders": 20
+          },
+          {
+            "quantity": 0,
+            "price": 0,
+            "orders": 0
+          },
+          {
+            "quantity": 0,
+            "price": 0,
+            "orders": 0
+          },
+          {
+            "quantity": 0,
+            "price": 0,
+            "orders": 0
+          },
+          {
+            "quantity": 0,
+            "price": 0,
+            "orders": 0
+          }
+        ],
+        "sell": [
+          {
+            "quantity": 0,
+            "price": 0,
+            "orders": 0
+          },
+          {
+            "quantity": 0,
+            "price": 0,
+            "orders": 0
+          },
+          {
+            "quantity": 0,
+            "price": 0,
+            "orders": 0
+          },
+          {
+            "quantity": 0,
+            "price": 0,
+            "orders": 0
+          },
+          {
+            "quantity": 0,
+            "price": 0,
+            "orders": 0
+          }
+        ]
+      },
+      "timestamp": "2023-10-19T05:21:51.099+05:30",
+      "instrument_token": "NSE_EQ|INE848E01016",
+      "symbol": "NHPC",
+      "last_price": 52.04999923706055,
+      "volume": 24123697,
+      "average_price": 52.56,
+      "oi": 0,
+      "net_change": -1.0500000000000043,
+      "total_buy_quantity": 6917,
+      "total_sell_quantity": 0,
+      "lower_circuit_limit": 42.5,
+      "upper_circuit_limit": 63.7,
+      "last_trade_time": "1697624972130",
+      "oi_day_high": 0,
+      "oi_day_low": 0
+    }
+  }
+}
+
+
+
+websocket streaming
+
+Bytes	Type	 
+0 - 4	int32	instrument_token
+4 - 8	int32	Last traded price (If mode is ltp, the packet ends here)
+8 - 12	int32	Last traded quantity
+12 - 16	int32	Average traded price
+16 - 20	int32	Volume traded for the day
+20 - 24	int32	Total buy quantity
+24 - 28	int32	Total sell quantity
+28 - 32	int32	Open price of the day
+32 - 36	int32	High price of the day
+36 - 40	int32	Low price of the day
+40 - 44	int32	Close price (If mode is quote, the packet ends here)
+44 - 48	int32	Last traded timestamp
+48 - 52	int32	Open Interest
+52 - 56	int32	Open Interest Day High
+56 - 60	int32	Open Interest Day Low
+60 - 64	int32	Exchange timestamp
+64 - 184	[]byte	Market depth entries
+
+historical data
+{
+  "status": "success",
+  "data": {
+    "candles": [
+      [
+        "2017-12-15T09:15:00+0530",
+        1704.5,
+        1705,
+        1699.25,
+        1702.8,
+        2499
+      ],
+      [
+        "2017-12-15T09:16:00+0530",
+        1702,
+        1702,
+        1698.15,
+        1698.15,
+        1271
+      ],
+      [
+        "2017-12-15T09:17:00+0530",
+        1698.15,
+        1700.25,
+        1698,
+        1699.25,
+        831
+      ],
+      [
+        "2017-12-15T09:18:00+0530",
+        1700,
+        1700,
+        1698.3,
+        1699,
+        771
+      ],
+      [
+        "2017-12-15T09:19:00+0530",
+        1699,
+        1700,
+        1698.1,
+        1699.8,
+        543
+      ],
+      [
+        "2017-12-15T09:20:00+0530",
+        1699.8,
+        1700,
+        1696.55,
+        1696.9,
+        802
+      ]
+    ]
+  }
+}
+
+portfolio/open position
+
+{
+  "update_type": "position",
+  "instrument_token": "NSE_EQ|INE848E01016",
+  "instrument_key": "NSE_EQ|INE848E01016",
+  "average_price": 0,
+  "buy_value": 185.85,
+  "overnight_quantity": 0,
+  "exchange": "NSE_EQ",
+  "day_buy_value": 185.85,
+  "day_buy_price": 92.92,
+  "overnight_buy_amount": 0,
+  "overnight_buy_quantity": 0,
+  "day_buy_quantity": 2,
+  "day_sell_value": 0,
+  "day_sell_price": 0,
+  "overnight_sell_amount": 0,
+  "overnight_sell_quantity": 0,
+  "day_sell_quantity": 0,
+  "multiplier": 1,
+  "quantity": 2,
+  "product": "D",
+  "sell_value": 0,
+  "buy_price": 92.925,
+  "sell_price": 0
+}
+
+
+
