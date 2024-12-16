@@ -31,6 +31,9 @@ class  BrokerApiConnect():
     def isConnected(self):
         return self.brokerApi.isApiConnected()
     
+    def getApiVersion(self):
+        return self.brokerApi.getApiVersion()
+    
     def getLoginUrl(self):
         return self.brokerApi.getLoginUrl()
     
@@ -81,8 +84,8 @@ class  BrokerApiConnect():
     def getPnl(self,params):
         return self.brokerApi.getPnl(params)
 
-    def getMtm(self):
-        self.brokerApi.getMtm()
+    def getFunds(self):
+        self.brokerApi.getFunds()
 
     def getMargin(self,params):
         return self.brokerApi.getMargin(params)

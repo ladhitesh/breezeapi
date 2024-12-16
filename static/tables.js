@@ -103,7 +103,7 @@ function attachLtpObservers(){
 	}
 }
 
-function makeOrderRecord(hiddenDivObj,orderId,orderTime,stock,action,qty,price,stoploss,orderType,orderStatus){
+function makeOrderRecord(hiddenDivObj,orderId,orderTime,stock,action,qty,price,stoploss,orderType,orderStatus,orderStatusHover){
 	var orderId = orderId
 	var orderTime = orderTime
 	var stock = stock
@@ -112,6 +112,7 @@ function makeOrderRecord(hiddenDivObj,orderId,orderTime,stock,action,qty,price,s
 	var price = price
 	var orderType = orderType
 	var orderStatus = orderStatus
+	var orderStatusHover = orderStatusHover
 
 	modifyButton=""
 	if(orderStatus.toLowerCase() == "ordered" || orderStatus.toLowerCase() == "requested" ){
@@ -123,7 +124,7 @@ function makeOrderRecord(hiddenDivObj,orderId,orderTime,stock,action,qty,price,s
 	}
 	
 	cancelButton=""
-	if(orderStatus.toLowerCase() != "cancelled" && orderStatus.toLowerCase() != "executed" )
+	if(orderStatus.toLowerCase() != "cancelled" && orderStatus.toLowerCase() != "executed" && orderStatus.toLowerCase() != "rejected")
 		cancelButton=`<img id='cancelOrdBtn-${orderId}' onClick='cancelOrder("${orderId}")' src='/static/images/cancel.png' width='20' height='20'/>`
 	
 	record = new Object();
@@ -132,7 +133,7 @@ function makeOrderRecord(hiddenDivObj,orderId,orderTime,stock,action,qty,price,s
 	record.stock=stock
 	record.qty=qty
 	record.type=action
-	record.status="<div id='status-"+orderId+"'>"+orderStatus+"</div>"
+	record.status="<div title='"+orderStatusHover+"' id='status-"+orderId+"'>"+orderStatus+"</div>"
 	record.x=cancelButton
 	record.edit=modifyButton
 	record.price="<div id='price-"+orderId+"'>"+price+"</div>"
@@ -210,9 +211,11 @@ function populateOpenPositions(){
 			right = openPositionsJsonArr[openPositionIndex]["right"]
 			if(right == "Call"){rightShort = "CE"} else if(right=="Put"){rightShort="PE"}
 			
-			stockName = fnotype+'-'+stockCode+'-'+expiry
-			if(product == "options")
-				stockName = stockName + '-'+strike+'-'+rightShort
+			//stockName = fnotype+'-'+stockCode+'-'+expiry
+			//if(product == "options")
+			//	stockName = stockName + '-'+strike+'-'+rightShort
+			stockName = openPositionsJsonArr[openPositionIndex]["code"]
+			
 	
 			//console.log(stockName)
 			let hiddenDivObj = document.createElement("div");
@@ -350,6 +353,7 @@ function populateOrderList(){
 			quantity = orderListJsonArr[orderIndex]["quantity"]
 			price = orderListJsonArr[orderIndex]["price"]
 			status = orderListJsonArr[orderIndex]["status"]
+			status_hover = orderListJsonArr[orderIndex]["status_message"]
 			if(status=="Executed")
 				price = orderListJsonArr[orderIndex]["average_price"]
 			action = orderListJsonArr[orderIndex]["action"]
@@ -367,9 +371,10 @@ function populateOrderList(){
 			right = orderListJsonArr[orderIndex]["right"]
 			if(right == "Call"){right = "CE"} else if(right=="Put"){right="PE"}
 										  
-			stockName = fnotype+'-'+stockCode+'-'+expiry
-			if(product == "options")
-				stockName = stockName + '-'+strike+'-'+right
+			//stockName = fnotype+'-'+stockCode+'-'+expiry
+			//if(product == "options")
+			//	stockName = stockName + '-'+strike+'-'+right
+			stockName = orderListJsonArr[orderIndex]["code"]
 			//console.log(stockName)
 			var hiddenDivObj = document.createElement("div");
 			hiddenDivObj.setAttribute("id","ol-"+orderId)
@@ -384,7 +389,7 @@ function populateOrderList(){
 			hiddenDivObj.setAttribute("data-exchangecode",exchangecode)
 
 			
-			orderRecords[orderIndex] =  makeOrderRecord(hiddenDivObj,orderId,orderTime,stockName,action,quantity,price,stoploss,orderType,status);
+			orderRecords[orderIndex] =  makeOrderRecord(hiddenDivObj,orderId,orderTime,stockName,action,quantity,price,stoploss,orderType,status,status_hover);
 			//console.log(orderRecords[orderIndex].id)
 		}
 		
@@ -466,8 +471,8 @@ function modifyOrder(){
 			if (price == 0)
 				orderType = "market"
 			
-			
-			myRecords[recordIndex] = makeOrderRecord(hiddenOlDivObj,orderId,orderTime,stockName,action,quantity,price,stoploss,orderType,orderStatus);
+			orderStatusHover = ""
+			myRecords[recordIndex] = makeOrderRecord(hiddenOlDivObj,orderId,orderTime,stockName,action,quantity,price,stoploss,orderType,orderStatus,orderStatusHover);
 			
 			obj = new Object();
 			obj.records = myRecords;
@@ -566,7 +571,8 @@ function addOrder(newOrSquareoff){
 			orderType = "limit"
 			if (price == 0)
 				orderType = "market"
-			newRecord = makeOrderRecord(hiddenOlDivObj,orderId,orderTime,stockName,action,quantity,price,stoploss,orderType,orderStatus);
+			orderStatusHover = ""
+			newRecord = makeOrderRecord(hiddenOlDivObj,orderId,orderTime,stockName,action,quantity,price,stoploss,orderType,orderStatus,orderStatusHover);
 			refreshOrderListTable(newRecord)
 		} )
 	}
@@ -599,7 +605,8 @@ function addOrder(newOrSquareoff){
 			orderType = "limit"
 			if (price == 0)
 				orderType = "market"
-			newRecord = makeOrderRecord(hiddenOlDivObj,orderId,orderTime,stockName,action,quantity,price,stoploss,orderType,orderStatus);
+			orderStatusHover = ""
+			newRecord = makeOrderRecord(hiddenOlDivObj,orderId,orderTime,stockName,action,quantity,price,stoploss,orderType,orderStatus,orderStatusHover);
 			refreshOrderListTable(newRecord)
 		} )
 	}
@@ -1021,7 +1028,7 @@ function populateRealisedPnl(){
 function refreshMargins(){
 	fetchMargins().then(result => {
 			let marginResultJsonArr=result
-			//console.log(marginResultJsonArr)
+			console.log(marginResultJsonArr)
 			if(marginResultJsonArr != null){
 				allocatedMargin = marginResultJsonArr["amount_allocated"]
 				availableMargin = marginResultJsonArr["cash_limit"]
@@ -1182,11 +1189,13 @@ function calculateMargin(){
 	let strike = hiddenDivObj.dataset.strike;
 	let expiryDate = hiddenDivObj.dataset.expiry;
 	let rightType = hiddenDivObj.dataset.right;
+
 	let includeOpenPositions = $('#includeOpenPositions')[0].checked
 	$('#margin')[0].innerHTML = "..."
 	fetchMarginCalculation(stockCode,exchangeCode,product,strike,expiryDate,action,rightType,price,quantity,includeOpenPositions)
 		.then(result => {
 			let marginCalculationDict=result;
+
 			if(marginCalculationDict == null){
 				$('#margin')[0].innerHTML = "0.00"
 				return;

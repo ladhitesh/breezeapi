@@ -19,12 +19,15 @@ sys.path.append(".")
 import configapi
 from brokerapi.brokerApiAdapter import BrokerApiAdapter
 
-
+if sys.version_info >= (3, 8):
+    from importlib import metadata
+else:
+    from importlib_metadata import metadata
 
 
 class RightType(Enum):
     call = "CE"
-    put = "PUT"
+    put = "PE"
     @staticmethod
     def from_str(label):
         label = label.lower()
@@ -200,6 +203,9 @@ class  BreezeApiAdapter(BrokerApiAdapter):
 	def isApiConnected(self):
 		return self.isConnected
 	
+	def getApiVersion(self):
+		return "breeze_connect " + metadata.version('breeze_connect')
+	
 	def getCustomerDetails(self):
 		customerDetails = self.api.get_customer_details(self.session_token)
 		return customerDetails
@@ -262,6 +268,10 @@ class  BreezeApiAdapter(BrokerApiAdapter):
 		priceStr = params.get("price","1")
 		action = params.get("action")
 		product = params.get("product")
+		if params.get("product","").lower() == "option":
+			product = "options"
+		elif params.get("product","").lower() == "future":
+			product = "futures"
 		exchangeCode = params.get("exchangeCode","NFO")
 		strike = ""
 		rightTypeStr = ""
@@ -271,7 +281,8 @@ class  BreezeApiAdapter(BrokerApiAdapter):
 
 		if exchangeCode == "NFO":
 			expiryDateStr = params.get("expiryDate")
-			expiryDate = datetime.strptime(expiryDateStr, "%d-%b-%Y")
+			#expiryDate = datetime.strptime(expiryDateStr, "%d-%b-%Y")
+			expiryDate = datetime.strptime(expiryDateStr, "%Y-%m-%d")
 			if product == "options":
 				strike = params.get("strike","NA")
 				rightTypeStr = params.get("rightType","NA")
@@ -300,6 +311,10 @@ class  BreezeApiAdapter(BrokerApiAdapter):
 		stoploss = params.get("stoploss","")
 		action = params.get("action")
 		product = params.get("product")
+		if product.lower() == "option":
+			product = "options"
+		elif product.lower() == "future":
+			product = "futures"
 		exchangeCode = params.get("exchangeCode","NFO")
 		strike = ""
 		rightTypeStr = ""
@@ -309,7 +324,8 @@ class  BreezeApiAdapter(BrokerApiAdapter):
 
 		if exchangeCode == "NFO":
 			expiryDateStr = params.get("expiryDate")
-			expiryDate = datetime.strptime(expiryDateStr, "%d-%b-%Y")
+			#expiryDate = datetime.strptime(expiryDateStr, "%d-%b-%Y")
+			expiryDate = datetime.strptime(expiryDateStr, "%Y-%m-%d")
 			if product == "options":
 				strike = params.get("strike","NA")
 				rightTypeStr = params.get("rightType","NA")
@@ -344,6 +360,10 @@ class  BreezeApiAdapter(BrokerApiAdapter):
 		stoploss = params.get("stoploss","")
 		action = params.get("action")
 		product = params.get("product")
+		if product.lower() == "option":
+			product = "options"
+		elif product.lower() == "future":
+			product = "futures"
 		exchangeCode = params.get("exchangeCode","NFO")
 		strike = ""
 		rightTypeStr = ""
@@ -422,12 +442,46 @@ class  BreezeApiAdapter(BrokerApiAdapter):
 		return orderDetail
     
 		#orderDetail = getOrderDetails('202310201500017588')
+
+	def addInstrumentIdColumns(self,df_row):
+		exchangeCode = df_row['exchange_code']
+		stockCode = df_row['stock_code']
+		expiryDate = df_row['expiry_date']
+		if exchangeCode == "NFO":
+			expiryDate = (datetime.strptime(expiryDate,"%d-%b-%Y")).strftime('%Y-%m-%d')
+		product = df_row['product_type']
+		if product.lower() == 'options':
+			product = "OPTION"
+		elif product.lower() == 'futures':
+			product = "FUTURE"
+		strikePrice = df_row['strike_price']
+		strikePrice = str(strikePrice).split('.')[0]
+		right = df_row['right']
+		rightEnum = RightType.from_str(right)
+		stockScriptdf = self.stockScriptdf
+		requiredCol = stockScriptdf[["ExAllowed","ShortName","trading_symbol","idirect_id","zerodha_id","upstox_id"]]
+		result = requiredCol.loc[( \
+                                            (stockScriptdf["ExAllowed"] == exchangeCode)
+                                            & (stockScriptdf["ShortName"] == stockCode)
+											& (stockScriptdf["ExpiryDate"] == expiryDate)
+                                            & (stockScriptdf["Series"] == product) 
+											& (stockScriptdf["StrikePrice"] == int(strikePrice))
+											& (stockScriptdf["OptionType"] == rightEnum.value)
+                                            ) ].head(1).copy()
+		result.rename(columns = {'trading_symbol':'code'}, inplace = True)
+		#print(result.to_string())
+		df_row['idirect_id'] = result['idirect_id'].astype(str).item()
+		df_row['zerodha_id'] = result['zerodha_id'].astype(str).item()
+		df_row['upstox_id'] = result['upstox_id'].astype(str).item()
+		df_row['code'] = result['code'].astype(str).item()
+		#print(df_row.to_string())
+		return df_row
 		   
 	def getOrdersList(self,params):
-		fromDateStr = params.get("orderDate","07-12-2023")
-		toDateStr = params.get("orderDate","07-12-2023")
+		fromDateStrOrig = params.get("orderDate","07-12-2023")
+		toDateStrOrig = params.get("orderDate","07-12-2023")
 		
-		if fromDateStr == "":
+		if fromDateStrOrig == "":
 			today = datetime.now()
 			#show only one day orders
 			daysFrom = timedelta(days = 0)
@@ -435,8 +489,8 @@ class  BreezeApiAdapter(BrokerApiAdapter):
 			toDate = today
 			fromDateStr = fromDate.strftime("%d-%b-%Y")
 		else:
-			fromDate = datetime.strptime(fromDateStr,"%d-%m-%Y").date()
-			toDate = datetime.strptime(toDateStr,"%d-%m-%Y").date()
+			fromDate = datetime.strptime(fromDateStrOrig,"%d-%m-%Y").date()
+			toDate = datetime.strptime(toDateStrOrig,"%d-%m-%Y").date()
 			fromDateStr = fromDate.strftime("%d-%b-%Y")
 
 		#if today is holiday and you put an order, it gets scheduled for next working day
@@ -466,17 +520,19 @@ class  BreezeApiAdapter(BrokerApiAdapter):
 		else:
 			unfilteredOrderList = orderList.get("Success")
 			if(unfilteredOrderList is not None):
+				#print(unfilteredOrderList)
 				orderListDf = pd.json_normalize(unfilteredOrderList)
 				#orderListDf = orderListDf.apply(derivedCol, axis=1)
 				#today = datetime.now()    
 				#todayStr = today.strftime("%d-%b-%Y")
-				orderDateStr = fromDateStr
+				orderDateStr = datetime.strptime(fromDateStrOrig,"%d-%m-%Y").date().strftime("%d-%b-%Y")
 				#print(todayStr)
 				result = orderListDf.loc[( \
 												((orderListDf["order_datetime"].str.contains(orderDateStr,na=False, case=False))) \
 												) ].copy()
 				#print(result.columns.values)
 				#print(result[["order_id","order_datetime","stock_code","status","1","2","3"]])
+				result = result.apply(self.addInstrumentIdColumns,axis=1)
 				result["order_datetime_sorting"] = pd.to_datetime(result['order_datetime'])
 				result.sort_values(by='order_datetime_sorting', inplace = True, ascending = False)
 				resultJsonStr = result.to_json(orient = "records")
@@ -487,9 +543,14 @@ class  BreezeApiAdapter(BrokerApiAdapter):
     
     
 	def getOpenPositionsList(self):
-		portfolioPositions = self.api.get_portfolio_positions()
+		portfolioPositionsJson = self.api.get_portfolio_positions()
+		openPostionsList = portfolioPositionsJson.get("Success")
+		if(openPostionsList is not None):
+			positionsListDf = pd.json_normalize(openPostionsList)
+			result = positionsListDf.apply(self.addInstrumentIdColumns,axis=1)
+			portfolioPositionsJson = result.to_json(orient = "records")
 		#ic(portfolioPositions)
-		return portfolioPositions
+		return portfolioPositionsJson
     
     
 	def getTradesList(self,params):
@@ -679,7 +740,10 @@ class  BreezeApiAdapter(BrokerApiAdapter):
 		exchangeCode = params.get("exchangeCode","NFO")
 		newPosition["stock_code"] = params.get("stockCode","")
 		newPosition["expiry_date"] = params.get("expiryDate","")
-		newPosition["product"] = params.get("product","")
+		if params.get("product","").lower() == "option":
+			newPosition["product"] = "options"
+		elif params.get("product","").lower() == "future":
+			newPosition["product"] = "futures"
 		newPosition["action"] = params.get("action","")
 		newPosition["price"] = params.get("price","")
 		newPosition["quantity"] = params.get("quantity","")

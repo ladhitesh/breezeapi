@@ -19,6 +19,7 @@ import json
 import pandas as pd
 import configapi
 import sys
+import traceback
 
 if sys.version_info >= (3, 8):
     from importlib import metadata
@@ -145,13 +146,13 @@ def login():
 	newBroker = queryParams.get("broker",configapi.BROKER_DEFAULT)
 	session["mode"] = mode
 	
-	print("login to " + mode + " api: " + newBroker)
+	app.logger.info("login to %s api: %s",mode,newBroker)
 	#redirect_uri = url_for('authorize', _external=True)
 	
 	#return oauth.breezeapi.authorize_redirect(redirect_uri)
 	#session["chartSessionKey"] = "44583592"
 	#session[configapi.IDIRECT_SESSION_TOKEN_NAME] = "44583592"
-	#print(session.get("chartSessionKey",""))
+	app.logger.info("ChartSessionKey:%s",session.get("chartSessionKey",""))
 	if mode == "chart" and (dataprovider.isDataProviderConnected() or session.get("chartSessionKey","") != ""):
 		return redirect(url_for('getAccessToken',**request.args))
 	#skip login if already connected
@@ -198,6 +199,7 @@ def authorize():
 @cross_origin()
 def connectApi():		
 	queryParams = request.args.to_dict()
+	app.logger.info("Current login flow: %s", session.get("mode",""))
 	if session.get("mode","") == "chart":
 		chartSessionKey = queryParams.get(configapi.IDIRECT_SESSION_TOKEN_NAME,session.get("chartSessionKey"))
 		session["mode"] = ""
@@ -218,30 +220,41 @@ def connectApi():
 	try:
 		#myapi.onMessage = feedData
 		if session.get("newbroker","") == "":
+			app.logger.info("Not switching to new broker")
 			newBrokerApi.registerFeedCallback(feedData)
 			sessionToken = newBrokerApi.connect(queryParams)
 			session[newBrokerApi.getSessionTokenName()] = sessionToken
-		app.logger.info("Current login flow:" + session.get("mode",""))
+		else:
+			app.logger.info("Switching to new broker >%s<",session.get("newbroker",""))
+		
 		if session.get("mode","") == "broker":
 			try:
 				newBroker = session.get("newbroker","")
 				#reset session variable after fetching its value
 				session["newbroker"] = ""
-				if not newBroker == newBrokerApi.BROKER and not newBroker == "":
+				reloadHome = False
+				if not newBrokerApi.isConnected() or (not newBroker == "" and not newBroker == newBrokerApi.BROKER):
+					app.logger.info("Trying to switch broker to %s",newBroker)
 					brokerapi = brokerApiConnect.BrokerApiConnect(newBroker)
 					session["broker"] = newBroker
 					myapi = brokerapi.brokerApi
 					brokerapi.registerFeedCallback(feedData)
 					sessionToken = brokerapi.connect(queryParams)
 					session[brokerapi.getSessionTokenName()] = sessionToken
-
+				else:
+					app.logger.info("Doing nothing with existing broker %s",brokerapi.BROKER)
+					sessionToken = session.get(brokerapi.getSessionTokenName(),"")
+					reloadHome = True
 				loginMessage = getCustomerDetails(sessionToken)
 				userId = myapi.user_id
 				sessionKey = myapi.session_key
 				output = "Using most recent session "
 				#dataprovider = dataproviderConnect.DataProviderConnect()
 				#dataprovider.initialize(myapi.api,{})
-				return render_template("loginresponse.html", error="", mode = "broker", broker=newBroker, userId = userId, sessionKey = sessionKey, apiSession=apiSession, loginMessage=loginMessage)	
+				if reloadHome:
+					return redirect("/", code=302)
+				else: 
+					return render_template("loginresponse.html", error="", mode = "broker", broker=newBroker, userId = userId, sessionKey = sessionKey, apiSession=apiSession, loginMessage=loginMessage)	
 			except Exception as e:
 				app.logger.info("Error in broker login flow")
 				app.logger.error(e)
@@ -305,6 +318,7 @@ def getAccessToken():
 		print("response received:" + userId+" : " + sessionKey)
 	except Exception as e:
 		app.logger.error(e)
+		#traceback.print_stack()
 		session["chartSessionKey"] = ""
 		return redirect(url_for('login',**request.args))
 	#return (json.dumps(response),200, {'Content-Type': 'application/json'})	
@@ -365,8 +379,8 @@ def getCustomerDetails(apiSession):
 		userId = customerDetailsJsonDict["Error"]
 		userName = ""
 		lastLogin = ""
-	version = app.breezeapi_version
-	customerDetails = userId + "-" + userName + "-last login: " + lastLogin + " (breeze_connect:" + version + ")"
+	version = brokerapi.getApiVersion()
+	customerDetails = userId + "-" + userName + "-last login: " + lastLogin + " (" + version + ")"
 	print(customerDetails)
 	return customerDetails
 
@@ -458,7 +472,7 @@ def getHistoricalData():
 @app.route('/getFunds', methods=['GET', 'POST'])
 @cross_origin()
 def getFunds():
-	fundsJsonDict = myapi.getFunds()
+	fundsJsonDict = brokerapi.getFunds()
 	if fundsJsonDict is None:
 		fundsJsonDict = json.loads('{"Error":"Not connected"}')
 	print(fundsJsonDict)
@@ -508,7 +522,7 @@ def unsubscribeMarketDepth(token):
 
 def feedData(eventName,data):
 	#print(data)
-	#print("emited data for eventName:" + eventName
+	#print("emited data for eventName:" + eventName)
 	socketio.emit(eventName, json.dumps(data))
 
 

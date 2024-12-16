@@ -20,6 +20,9 @@ class BrokerApiAdapter():
     def isApiConnected(self) -> None:
         pass
 
+    def getApiVersion(self) -> None:
+        pass
+
     def getCustomerDetails(self):
         pass
 
@@ -56,7 +59,7 @@ class BrokerApiAdapter():
     def getPnl(self,params):
         pass
 
-    def getMtm(self):
+    def getFunds(self):
         pass
 
     def getMargin(self,params):

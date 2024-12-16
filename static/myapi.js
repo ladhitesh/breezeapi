@@ -166,6 +166,9 @@ async function fetchBrokerage(stockCode,exchangeCode,product,strike,expiryDate,a
 		'expiryDate' : hiddenDivObj.dataset.expiry,
 		'action' : action.toLowerCase(),
 		'rightType' : hiddenDivObj.dataset.right,
+		'upstox_id' : hiddenDivObj.dataset.upstox_id,
+		'idirect_id' : hiddenDivObj.dataset.idirect_id,
+		'zerodha_id' : hiddenDivObj.dataset.zerodha_id,
 		'price' : price,
 		'quantity' : quantity,
 		'stoploss' : stoploss
@@ -320,6 +323,9 @@ function fetchHistoricalData(stockCode,exchangeCode,product,expiry,strike,right)
 async function fetchMarginCalculation(stockCode,exchangeCode,product,strike,expiryDate,action,rightType,price,quantity,includeOpenPositions){
 	//call api for brokerage
 	var marginCalculatorParams = new URLSearchParams({
+		'idirect_id': hiddenDivObj.dataset.idirect_id,
+		'upstox_id' : hiddenDivObj.dataset.upstox_id,
+		'zerodha_id' : hiddenDivObj.dataset.zerodha_id,
 		'stockCode' : hiddenDivObj.dataset.stockcode,
 		'exchangeCode' : hiddenDivObj.dataset.exchangecode,
 		'product' : hiddenDivObj.dataset.product, 

@@ -1,6 +1,7 @@
 
 # Import Libraries
 import upstox_client
+import upstox_client.models
 from upstox_client.rest import ApiException
 from io import BytesIO
 from zipfile import ZipFile
@@ -20,6 +21,10 @@ sys.path.append(".")
 import configapi
 from brokerapi.brokerApiAdapter import BrokerApiAdapter
 
+if sys.version_info >= (3, 8):
+    from importlib import metadata
+else:
+    from importlib_metadata import metadata
 
 
 
@@ -35,6 +40,34 @@ class RightType(Enum):
             return RightType.put
         else:
             raise NotImplementedError
+		
+class OrderStatus(Enum):
+	requested = "requested"
+	pending = "pending"
+	ordered = "ordered"
+	executed = "executed"
+	rejected = "rejected"
+	cancelled = "cancelled"
+	failed = "failed"
+
+	#https://upstox.com/developer/api-documentation/appendix/order-status
+	@staticmethod
+	def from_str(label):
+		label = label.lower()
+		if label in ('validation pending','modify pending','trigger pending','modify validation pending','cancel pending','open pending'):
+			return OrderStatus.pending
+		elif label in ('put order req received','modify after market order req received','after market order req received'):
+			return OrderStatus.requested
+		elif label in ('cancelled after market order','cancelled'):
+			return OrderStatus.cancelled
+		elif label in ('open','modified','not cancelled','not modified'):
+			return OrderStatus.ordered
+		elif label in ('complete'):
+			return OrderStatus.executed
+		elif label in ('rejected'):
+			return OrderStatus.rejected
+		else:
+			raise NotImplementedError
 
 class  UpstoxApiAdapter(BrokerApiAdapter):
 
@@ -42,65 +75,41 @@ class  UpstoxApiAdapter(BrokerApiAdapter):
 		#global api, securityMasterResponse, securityMasterZipFile, nseFile, foNseFile, bseFile, stockScriptdf
 		self.loginapi = upstox_client.LoginApi()
 		self.isConnected = False
+		self.stockScriptdf = pd.read_csv('./instruments/instruments-final.csv' ,sep=',',encoding='utf-8')
 
 	# Callback to receive ticks.
 	def on_ticks(self,ticks):
+		#print(ticks)
+		
 		if(self.onMessage!=None):
 			token = "none"
 			interval = ""
-			if ticks.get('quotes') == None and ticks.get('sourceNumber') == None:
+			if ticks.get('feeds') != None and ticks.get('update_type') == None:
 				#OHLV data
-				interval = ticks['interval']
-				exchangeCode = ticks['exchange_code']
-				stockCode = ticks['stock_code']
-				expiryDate = ""
-				product = "equity"
-				rightType = ""
-				strikePrice = ""
-				if ticks.get('exchange_code') == "NFO":
-					expiryDate = ticks['expiry_date']
-					product = "futures"
-					if ticks.get('right_type') != None:
-						product = "options"
-						strikePrice = str(ticks['strike_price']).split('.')[0]
-						rightType = RightType.from_str(ticks['right_type']).name
-						#print(ticks)
-						#print(exchangeCode, stockCode, product,expiryDate,strikePrice,rightType)
-						params={}
-						params['exchangeCode'] = exchangeCode
-						params['stockCode'] = stockCode
-						params['productType'] = product
-						params['expiryDate'] = expiryDate
-						params['strike'] = strikePrice
-						params['rightType'] = rightType
-						
-						(quotesToken, marketDepthToken) = self.getTokenFromStockName(params)
-						token = quotesToken.split('!')[1]
-					else:
-						#print(ticks)
-						#print(exchangeCode, stockCode, product,expiryDate,strikePrice,rightType)
-						params={}
-						params['exchangeCode'] = exchangeCode
-						params['stockCode'] = stockCode
-						params['productType'] = product
-						params['expiryDate'] = expiryDate
-						(quotesToken, marketDepthToken) = self.getTokenFromStockName(params)
-						token = quotesToken.split('!')[1]
-						#print(token,stockCode)
-				elif ticks.get('exchange_code') == "NSE":
-					#print(exchangeCode, stockCode, "","","","")
-					params={}
-					params['exchangeCode'] = exchangeCode
-					params['stockCode'] = stockCode
-					(quotesToken, marketDepthToken) = self.getTokenFromStockName(params)
-					token = quotesToken.split('!')[1]
+				
+				feed = ticks.get('feeds')
+				#print(feed)
+				#print(type(feed))
+				for instrumentKey in feed.keys():
+					#print(instrumentKey)
+					token = instrumentKey.split('|')[1]
+					#print(token)
+					close = ticks.get('feeds').get(instrumentKey).get('ltpc').get('ltp')
+					#print("closing price ****************************")
+					newTick = {"token":token,"close":close}
+					self.onMessage(token+"-1second",newTick)
+					#print(close)
+				#print(ticks.get('feeds'))
+				#get exchange token from upstox instrument key
+				#(quotesToken, marketDepthToken) = self.getTokenFromStockName(params)
+				#token = quotesToken.split('!')[1]
 			elif ticks.get('quotes') == "Market Depth":
 				#Market Data
 				token = ticks['symbol'].split('!')[1]
 			elif ticks.get('quotes') == "Quotes Data":
 				token = ticks['symbol'].split('!')[1]
 				interval = ticks['interval']
-			elif ticks.get('sourceNumber') != None:
+			elif ticks.get('update_type') != None and ticks.get('update_type') == "order":
 				#order Notification
 				token = "order_notification"
 			eventName = token
@@ -108,6 +117,7 @@ class  UpstoxApiAdapter(BrokerApiAdapter):
 				eventName = token + "-" + interval
 				ticks['token'] = token
 			self.onMessage(eventName,ticks)
+			
 
 	def getSessionTokenFromFile(self):
 		sessionToken = ""
@@ -191,8 +201,18 @@ class  UpstoxApiAdapter(BrokerApiAdapter):
 		self.userapi = upstox_client.UserApi(upstox_client.ApiClient(configuration))
 		try:
 			userDetails = self.userapi.get_profile(self.apiversion)
-			self.orderapi = upstox_client.OrderApi(upstox_client.ApiClient(configuration))
-			self.portfolioapi = upstox_client.PortfolioApi(upstox_client.ApiClient(configuration))
+			self.orderapi:upstox_client.OrderApi = upstox_client.OrderApi(upstox_client.ApiClient(configuration))
+			self.portfolioapi:upstox_client.PortfolioApi = upstox_client.PortfolioApi(upstox_client.ApiClient(configuration))
+			self.marketHolidaysapi:upstox_client.MarketHolidaysAndTimingsApi = upstox_client.MarketHolidaysAndTimingsApi(upstox_client.ApiClient(configuration))
+			self.chargeApi:upstox_client.ChargeApi = upstox_client.ChargeApi(upstox_client.ApiClient(configuration))
+			self.portfolioStreamer = upstox_client.PortfolioDataStreamer(upstox_client.ApiClient(configuration),order_update=True,position_update=True,holding_update=False)
+			self.portfolioStreamer.on("message", self.on_ticks)
+			self.portfolioStreamer.connect()
+			self.marketdataStreamer = upstox_client.MarketDataStreamer(upstox_client.ApiClient(configuration))
+			self.marketdataStreamer.on("message", self.on_ticks)
+			self.marketdataStreamer.connect()
+			time.sleep(5)
+			self.marketdataStreamer.subscribe(["NSE_INDEX|Nifty Bank"], "ltpc")
 		except Exception as e:
 			print("Error while fetching customer details in UPSTOX login flow")
 			print(e)
@@ -212,6 +232,9 @@ class  UpstoxApiAdapter(BrokerApiAdapter):
 	def isApiConnected(self):
 		return self.isConnected
 	
+	def getApiVersion(self):
+		return "upstox-python-sdk " + metadata.version('upstox-python-sdk')
+	
 	def getCustomerDetails(self):
 		userDetails = self.userapi.get_profile(self.apiversion)
 		print(userDetails)
@@ -227,30 +250,69 @@ class  UpstoxApiAdapter(BrokerApiAdapter):
 		customerDetails["Success"] = user
 		print(customerDetails)
 		return customerDetails
-
-	def addFnOStocksAdditionalColumns(self,df_row):
-		codeArr = df_row["code"].split("-", 2)
-		fnoType = codeArr[0]
-		stockCode =  codeArr[1]
-		#print(codeArr)
-		if fnoType == "FUT":
-			expiry = codeArr[2]
-			strike = ""
-			right = ""
-			product = "futures"
+	
+	def addInstrumentIdColumnsByInstruId(self,df_row):
+		print("Populating values based on upstox id:%s",df_row["upstox_id"])
+		stockScriptdf = self.stockScriptdf
+		requiredCol = stockScriptdf[["ExAllowed","ShortName","trading_symbol","idirect_id","zerodha_id","upstox_id","Series"]]
+		result = requiredCol.loc[( \
+                                            (stockScriptdf["upstox_id"] == df_row["upstox_id"])
+                                          	) ].head(1).copy()
+		result.rename(columns = {'trading_symbol':'code'}, inplace = True)
+		print(result.to_string())
+		if not df_row.empty:
+			df_row['idirect_id'] = result['idirect_id'].astype(str).item()
+			df_row['zerodha_id'] = result['zerodha_id'].astype(str).item()
+			df_row['upstox_id'] = result['upstox_id'].astype(str).item()
+			df_row['code'] = result['code'].astype(str).item()
+			product = result['Series'].astype(str).item()
+			if product.lower() == 'option':
+				product = "OPTIONS"
+			elif product.lower() == 'future':
+				product = "FUTURES"
+			df_row['product_type'] = product
 		else:
-			codeArrRevSplit = codeArr[2].rsplit("-", 2)
-			#print(codeArrRevSplit)
-			expiry = codeArrRevSplit[0]  #'26-Oct-2023'
-			strike = codeArrRevSplit[1]
-			right = codeArrRevSplit[2]
-			product="options"
-		#print(df_row)
-		df_row["fnoType"] = fnoType
-		df_row["expiry"] = expiry
-		df_row["strike"] = strike
-		df_row["right"] = right
-		df_row["product"] = product
+			print("Cannot find data for upstox id: %s",df_row["upstox_id"])
+		#print(df_row.to_string())
+		return df_row
+
+	def addInstrumentIdColumns(self,df_row):
+		print(df_row.index)
+		print('upstox_id' in df_row.index)
+		if 'upstox_id' in df_row.index :
+			df_row = self.addInstrumentIdColumnsByInstruId(df_row) 
+			return df_row
+		exchangeCode = df_row['exchange_code']
+		stockCode = df_row['stock_code']
+		expiryDate = df_row['expiry_date']
+		if exchangeCode == "NFO":
+			expiryDate = (datetime.strptime(expiryDate,"%d-%b-%Y")).strftime('%Y-%m-%d')
+		product = df_row['product_type']
+		if product.lower() == 'options':
+			product = "OPTION"
+		elif product.lower() == 'futures':
+			product = "FUTURE"
+		strikePrice = df_row['strike_price']
+		strikePrice = str(strikePrice).split('.')[0]
+		right = df_row['right']
+		rightEnum = RightType.from_str(right)
+		stockScriptdf = self.stockScriptdf
+		requiredCol = stockScriptdf[["ExAllowed","ShortName","trading_symbol","idirect_id","zerodha_id","upstox_id"]]
+		result = requiredCol.loc[( \
+                                            (stockScriptdf["ExAllowed"] == exchangeCode)
+                                            & (stockScriptdf["ShortName"] == stockCode)
+											& (stockScriptdf["ExpiryDate"] == expiryDate)
+                                            & (stockScriptdf["Series"] == product) 
+											& (stockScriptdf["StrikePrice"] == int(strikePrice))
+											& (stockScriptdf["OptionType"] == rightEnum.value)
+                                            ) ].head(1).copy()
+		result.rename(columns = {'trading_symbol':'code'}, inplace = True)
+		#print(result.to_string())
+		df_row['idirect_id'] = result['idirect_id'].astype(str).item()
+		df_row['zerodha_id'] = result['zerodha_id'].astype(str).item()
+		df_row['upstox_id'] = result['upstox_id'].astype(str).item()
+		df_row['code'] = result['code'].astype(str).item()
+		#print(df_row.to_string())
 		return df_row
 
 	def getFnOStocks(self,*searchList):
@@ -267,92 +329,96 @@ class  UpstoxApiAdapter(BrokerApiAdapter):
 											   | stockScriptdf["SN"].str.contains(searchRegex,na=False, case=False) ) \
 										 ) ].head(10).copy()
 		result.rename(columns = {'TK':'token', 'CD':'code','EC':'exchangeCode','SC':'stockCode', 'LS':'lotSize'}, inplace = True)
-		result = result.apply(self.addFnOStocksAdditionalColumns,axis=1)
+		result = result.apply(self.addInstrumentIdColumns,axis=1)
 		resultJsonStr = result.to_json(orient = "records")
 		resultJsonDict = json.loads(resultJsonStr)
 		return resultJsonDict
     
 	def getBrokerages(self,params):
-		stockCode = params.get("stockCode","CNXBAN")
-		quantity = params.get("quantity","1")
-		priceStr = params.get("price","1")
-		action = params.get("action")
-		product = params.get("product")
-		exchangeCode = params.get("exchangeCode","NFO")
-		strike = ""
-		rightTypeStr = ""
-		orderType = "limit"
-		if priceStr == "0":
-			orderType = "market"
+		upstox_id = params.get("upstox_id","None")
+		quantity:int = params.get("quantity",0)
+		price:float = (params.get("price",1),1)[params.get("price",1) == ""]
+		action = params.get("action").upper()
+		try:
+			brokerageResponse:upstox_client.GetBrokerageResponse = self.chargeApi.get_brokerage(instrument_token=upstox_id,quantity=quantity,transaction_type=action,price=price,product='D',api_version=self.apiversion)
+			print(brokerageResponse)
+			brokerageWrapper:upstox_client.BrokerageWrapperData = brokerageResponse.data
+			brokerageData:upstox_client.BrokerageData = brokerageWrapper.charges
+			brokerage = brokerageData.to_dict()
+			returnData = '"total_brokerage":"'+str(brokerage["total"])+'"'
+			returnData = returnData +','+'"brokerage":"'+str(brokerage["brokerage"])+'"'
+			returnData = returnData +','+'"stamp_duty":"'+str(brokerage["taxes"]["stamp_duty"])+'"'
+			returnData = returnData +','+'"stt":"'+str(brokerage["taxes"]["stt"])+'"'
+			returnData = returnData +','+'"gst":"'+str(brokerage["taxes"]["gst"])+'"'
+			returnData = returnData +','+'"exchange_turnover_charges":"'+str(brokerage["other_taxes"]["transaction"])+'"'
+			returnData = returnData +','+'"sebi_charges":"'+str(brokerage["other_taxes"]["sebi_turnover"])+'"'
+			response = '{"Success":{'+returnData+'}}'
+			response = json.loads(response)
+		except Exception as e:
+			print(e)
+			response = '{"Error":"Check error in server logs"}'
+			response = json.loads(response)
 
-		if exchangeCode == "NFO":
-			expiryDateStr = params.get("expiryDate")
-			expiryDate = datetime.strptime(expiryDateStr, "%d-%b-%Y")
-			if product == "options":
-				strike = params.get("strike","NA")
-				rightTypeStr = params.get("rightType","NA")
-				rightTypeEnum = RightType.from_str(rightTypeStr)
-				rightTypeStr = rightTypeEnum.name
-		
-		expiry = expiryDate.strftime('%Y-%m-%dT06:00:00.000Z')
-		brokerages = self.api.preview_order( stock_code = stockCode,
-														exchange_code = exchangeCode,
-														product = product,
-														order_type = orderType,
-														price = priceStr,
-														action = action,
-														quantity = quantity,
-														expiry_date=expiry,
-														right=rightTypeStr,
-														strike_price=strike,
-														specialflag = "N")
-		return brokerages
+		return response
     
 	def placeOrder(self,params):
 		#stockcode,exchangeCode,product,action,orderType,stoploss,quantity,price,expiryDate,rightStr,strike
-		stockCode = params.get("stockCode","CNXBAN")
-		quantity = params.get("quantity","1")
-		priceStr = params.get("price","1")
-		stoploss = params.get("stoploss","")
-		action = params.get("action")
-		product = params.get("product")
-		exchangeCode = params.get("exchangeCode","NFO")
-		strike = ""
-		rightTypeStr = ""
-		orderType = "limit"
-		if priceStr == "0":
-			orderType = "market"
-
-		if exchangeCode == "NFO":
-			expiryDateStr = params.get("expiryDate")
-			expiryDate = datetime.strptime(expiryDateStr, "%d-%b-%Y")
-			if product == "options":
-				strike = params.get("strike","NA")
-				rightTypeStr = params.get("rightType","NA")
-				rightTypeEnum = RightType.from_str(rightTypeStr)
-				rightTypeStr = rightTypeEnum.name
-
-		body = self.orderapi.PlaceOrderRequest()
+		quantity = int(params.get("quantity","1"))
+		price = float(params.get("price","1"))
+		stoploss = float(params.get("stoploss","0"))
+		action = params.get("action").upper()
+		instrumentId = params.get("upstox_id","")
+		orderType = "LIMIT"
+		if price == 0:
+			orderType = "MARKET"
+		amoOrder = False
+		try:
+			marketResponse:upstox_client.GetMarketStatusResponse = self.marketHolidaysapi.get_market_status("NFO")
+			marketStatus:upstox_client.MarketStatusData = marketResponse.data
+			if not marketStatus.status == "NORMAL_OPEN":
+				amoOrder = True
+		except Exception as e:
+			print(e)
+			print("Unable to determine market open status to place new order. Placing regular order")
+		
+		body = upstox_client.PlaceOrderRequest(
+		quantity = quantity,
+		product = 'D', #I=Intraday D=Delivery
+		price = price,
+		order_type = orderType, #MARKET, LIMIT, SL,SL-M
+		transaction_type = action,
+		trigger_price = stoploss,
+		instrument_token = instrumentId,
+		validity='DAY',
+		disclosed_quantity=quantity,
+		is_amo=amoOrder )
 		# Place order
-		todayStr = datetime.now().strftime('%Y-%m-%dT06:00:00.000Z')
-		expiryStr = expiryDate.strftime('%Y-%m-%dT06:00:00.000Z')
-		buy_order = self.api.place_order(stock_code=stockCode,
-													exchange_code=exchangeCode,
-													product=product,
-													action=action,
-													order_type=orderType,
-													stoploss=stoploss,
-													quantity=quantity,
-													price=priceStr,
-													validity="day",
-													validity_date=todayStr,
-													disclosed_quantity="0",
-													expiry_date=expiryStr,
-													right=rightTypeStr,
-													strike_price=strike)
-
-		print(buy_order)
-		return buy_order
+		try:
+			order_response:upstox_client.PlaceOrderResponse = self.orderapi.place_order(body,self.apiversion)
+			print(order_response)
+			orderData : upstox_client.PlaceOrderData = order_response.data
+			orderId = orderData.order_id
+			order_details:upstox_client.GetOrderDetailsResponse = self.orderapi.get_order_status(order_id=orderId)
+			print(order_details)
+			orderDetailsData:upstox_client.OrderBookData = order_details.data
+		except Exception as ex:
+			print("Error occurred while placing order")
+			print(ex)
+			response = '{"Error":"Error occured while placing order. Check logs."}'
+			print(response)
+			result = json.loads(response)
+			return result
+		order_status = "Success"
+		order_status_message = ""
+		if orderDetailsData.status_message == None :
+			order_status_message = '{ "message":"' + orderDetailsData.status +'","order_id":"' + orderDetailsData.order_id + '"}'
+		else:
+			order_status = "Error"
+			order_status_message = '"' + orderDetailsData.status_message + '"'
+		response = '{"'+ order_status +'":' + order_status_message + '}'
+		print(response)
+		result = json.loads(response)
+		return result
 	
 	def squareOffOrder(self,params):
 		
@@ -404,21 +470,31 @@ class  UpstoxApiAdapter(BrokerApiAdapter):
 		orderIdStr = params.get("orderId","")
 		exchangeCode = params.get("exchangeCode","NFO")
 		priceStr = params.get("price","")
-		quantityStr = params.get("quantity","")
-		stopLossStr = params.get("stoploss","0")
-		orderType = "limit"
+		quantity = int(params.get("quantity","0"))
+		stopLoss = float(params.get("stoploss","0"))
+		orderType = "LIMIT"
+		validity ="DAY" #DAY,IOC
 		if priceStr == "0":
-			orderType = "market"
-		modifyResult = self.api.modify_order(order_id=orderIdStr,
-														 exchange_code=exchangeCode,
-														 order_type=orderType,
-														 stoploss=stopLossStr,
-														 quantity=quantityStr,
-														 price=priceStr,
-														 validity="day",
-														 disclosed_quantity="0")
-		print(modifyResult)
-		return modifyResult
+			orderType = "MARKET" #MARKET,LIMIT,SL,SL-M
+		if stopLoss > 0 :
+			orderType = "SL" #MARKET,LIMIT,SL,SL-M
+		price = float(priceStr)
+
+		try:
+			body:upstox_client.ModifyOrderRequest = upstox_client.ModifyOrderRequest(
+				price=price,quantity=quantity,validity=validity,order_id=orderIdStr,
+				trigger_price=stopLoss,order_type=orderType)
+			modifyResponse:upstox_client.ModifyOrderResponse = self.orderapi.modify_order(body,self.apiversion)
+			print(modifyResponse)
+			modifyResult:upstox_client.ModifyOrderData = modifyResponse.data
+			response = '{"Success":{"message":"Order ' + modifyResult.order_id + ' modified successfully","order_id":"' + modifyResult.order_id + '"}}'
+		except Exception as e:
+			print(e)
+			response = '{"Error":"'+str(e)+'"}'
+		
+		print(response)
+		result = json.loads(response)
+		return result
 
 		'''
     {'Success': {'message': 'Successfully Modified the order', 'order_id': '202310201500017588'}, 'Status': 200, 'Error': None}
@@ -426,10 +502,19 @@ class  UpstoxApiAdapter(BrokerApiAdapter):
 
     
 	def cancelOrder(self,orderRef):
-		cancelResult = self.api.cancel_order(exchange_code="NFO",
-														 order_id=orderRef)
-		print(cancelResult)
-		return cancelResult
+		try : 
+			cancelResponse:upstox_client.CancelOrderResponse = self.orderapi.cancel_order(order_id=orderRef,api_version=self.apiversion)
+			cancelResult:upstox_client.CancelOrderData = cancelResponse.data
+			print(cancelResult)
+			response = '{"Success":{"message":"Order '+ cancelResult.order_id+' cancelled successfully"}}'
+		
+		except Exception as e:
+			print(e)
+			response = '{"Error":"' + str(e) + '"}'
+
+		print(response)
+		result = json.loads(response)
+		return result
 
 		'''
     {'Success': {'order_id': '202310201500017588', 'message': 'Your Order Canceled Successfully'}, 'Status': 200, 'Error': None}
@@ -439,6 +524,17 @@ class  UpstoxApiAdapter(BrokerApiAdapter):
 		orderDetail = self.api.get_order_detail(exchange_code="NFO",order_id=orderId)
 		print(orderDetail)
 		return orderDetail
+	
+	def fixOrderStatus(self,df_row):
+		status = df_row['status']
+		statusMessage = df_row['status_message']
+		if statusMessage == None:
+			statusMessage = ""
+		newStatus = OrderStatus.from_str(status).name
+		df_row['status'] = newStatus
+		df_row['status_message'] = str(status) + " " + statusMessage
+		print(df_row)
+		return df_row
 	
 	def getOrdersList(self,params):
 		fromDateStr = params.get("orderDate","22-09-2024")
@@ -473,20 +569,19 @@ class  UpstoxApiAdapter(BrokerApiAdapter):
 		toDateStr = toDate.strftime('%Y-%m-%dT23:00:00.000Z')
 		fromDateStr = fromDate.strftime('%Y-%m-%dT01:00:00.000Z')
 		print("fetching orders from: "+fromDateStr+" to "+toDateStr)		
-		orderList = self.orderapi.get_order_book(self.apiversion)
+		orderList:upstox_client.GetOrderBookResponse = self.orderapi.get_order_book(self.apiversion)
 		print(orderList)
-		print(orderList.data[0])
-		print(orderList.data[0].to_dict()["order_id"])
-		if orderList is None or  orderList.status == "error":
+		resultJsonDict = {}
+		if orderList is None or orderList.status == "error":
 			print(orderList)
-			orderList = json.loads('{"Error":"Not connected"}')
+			resultJsonDict = json.loads('{"Error":"Not connected"}')
 		else:
 			unfilteredOrderList = orderList.data
 			#print(type(unfilteredOrderList))
 			#print(unfilteredOrderList)
-			if(unfilteredOrderList is not None):
+			if(unfilteredOrderList): #list not empty
 				orderListDf = pd.DataFrame([o.to_dict() for o in unfilteredOrderList])
-				print(orderListDf)
+				#print(orderListDf)
 				#orderListDf = orderListDf.apply(derivedCol, axis=1)
 				today = datetime.now()    
 				todayStr = today.strftime("%Y-%m-%d")
@@ -494,29 +589,24 @@ class  UpstoxApiAdapter(BrokerApiAdapter):
 				#orderDateStr = "2024-09-22"
 				#print(todayStr)
 				result = orderListDf.loc[( \
-												((orderListDf["order_timestamp"].str.contains(orderDateStr,na=False, case=False))) \
+												(orderListDf["order_timestamp"].str.contains(orderDateStr,na=False, case=False)) \
+												& (orderListDf["exchange"].str.contains("NFO",na=False, case=False) 
+			   										| orderListDf["exchange"].str.contains("BFO",na=False, case=False) )
 												) ].copy()
 				#print(result.columns.values)
 				#print(result[["order_id","order_datetime","stock_code","status","1","2","3"]])
-				result["order_timestamp_sorting"] = pd.to_datetime(result['order_timestamp'])
-				result.sort_values(by='order_timestamp_sorting', inplace = True, ascending = False)
+				result.rename(columns = {'exchange':'exchange_code', 'order_timestamp':'order_datetime','transaction_type':'action','instrument_token':'upstox_id', 'trigger_price':'stoploss'}, inplace = True)
+				result = result.apply(self.addInstrumentIdColumns,axis=1)
+				result = result.apply(self.fixOrderStatus,axis=1)
+				result["order_datetime_sorting"] = pd.to_datetime(result['order_datetime'])
+				result.sort_values(by='order_datetime_sorting', inplace = True, ascending = False)
 				resultJsonStr = result.to_json(orient = "records")
 				resultJsonDict = json.loads(resultJsonStr)
-				print(resultJsonDict)
-				mappedResult = mapOrderlistResult(resultJsonDict)
-				#orderList["Success"]=resultJsonDict
+				#print(resultJsonDict)
 		#print(resultJsonDict)
 		returnValue = {}
 		returnValue["Success"] = resultJsonDict
 		return returnValue
-    
-	def mapOrderlistResult(orderList):
-		mappedOrderList = []
-		return mappedOrderList
-
-	def mapOrderResult(order):
-		mappedOrder = {}
-		return mappedOrder
     
 	def getOpenPositionsList(self):
 		portfolioPositions = self.api.get_portfolio_positions()
@@ -614,7 +704,9 @@ class  UpstoxApiAdapter(BrokerApiAdapter):
 		return tradesListJsonDict
 	
 	def getFunds(self):
-		return self.api.get_funds()
+		#not used
+		response = ""
+		return response
 	
 	def getStockNameFromToken(self,token):
 		return self.api.get_data_from_stock_token_value(token)
@@ -640,8 +732,8 @@ class  UpstoxApiAdapter(BrokerApiAdapter):
 
 	def subscribeQuotes(self,token, interval):
 		#"4.1!2885"
-		quotesToken = "4.1!"+token
-		return self.subscribeFeed(quotesToken,interval)
+		upstox_id = "NSE_FO|"+token
+		return self.marketdataStreamer.subscribe(instrumentKeys=[upstox_id],mode="ltpc")
     
 	def subscribeMarketDepth(self,token):
 		#"4.2!2885"
@@ -650,8 +742,8 @@ class  UpstoxApiAdapter(BrokerApiAdapter):
     
 	def unsubscribeQuotes(self,token, interval):
 		#"4.1!2885"
-		quotesToken = "4.1!"+token
-		return self.unsubscribeFeed(quotesToken,interval)
+		upstox_id = "NSE_FO|"+token
+		return self.marketdataStreamer.unsubscribe(instrumentKeys=[upstox_id],mode="ltpc")
     
 	def unsubscribeMarketDepth(self,token):
 		#"4.2!2885"
@@ -703,32 +795,33 @@ class  UpstoxApiAdapter(BrokerApiAdapter):
 		return hDataJsonDict
 
 	def getMargin(self,params):
-		fundsAndMargin = self.userapi.get_user_fund_margin("2")
-		print(fundsAndMargin)
-		return fundsAndMargin
+		userFundMarginResponse:upstox_client.GetUserFundMarginResponse = self.userapi.get_user_fund_margin(self.apiversion,segment="SEC")
+		print(userFundMarginResponse)
+		userFundMarginData:upstox_client.UserFundMarginData = userFundMarginResponse.data['equity']
+		allocatedFunds = userFundMarginData.available_margin
+		availableMargin = userFundMarginData.used_margin
+		mtm = userFundMarginData.payin_amount
+		response = '{ "Success" : { "amount_allocated" : "'+str(allocatedFunds)+'", "cash_limit" : "'+str(availableMargin)+'"} }'
+		print(response)
+		result = json.loads(response)
+		return result
+
 
 	def marginCalculator(self,params):
 		newPosition = {}
 		exchangeCode = params.get("exchangeCode","NFO")
-		newPosition["stock_code"] = params.get("stockCode","")
-		newPosition["expiry_date"] = params.get("expiryDate","")
-		newPosition["product"] = params.get("product","")
-		newPosition["action"] = params.get("action","")
-		newPosition["price"] = params.get("price","")
-		newPosition["quantity"] = params.get("quantity","")
-		newPosition["strike_price"] = params.get("strike","")
-		rightTypeStr = params.get("rightType","")
-		if not rightTypeStr == "":
-			rightTypeEnum = RightType.from_str(rightTypeStr)
-			rightTypeStr = rightTypeEnum.name
-		newPosition["right"] = rightTypeStr
-		includeOpenPostions = params.get("includeOpenPositions","")
+		action = params.get("action","BUY").upper()
+		price:float = params.get("price",0)
+		quantity = int(params.get("quantity",0))
+		upstox_id = params.get("upstox_id","")
+		newPosition:upstox_client.Instrument = upstox_client.Instrument(instrument_key=upstox_id,quantity=quantity,transaction_type=action,price=price,product='D')
+		includeOpenPostions = params.get("includeOpenPositions","false")
 		if includeOpenPostions.lower() == "true":
 			includeOpenPostions = True
 		includePendingOrders = False
 		#open positions
 		openPositionsList = []
-		if includeOpenPostions:
+		if includeOpenPostions == "true":
 			openPositionsDictList = self.getOpenPositionsList()
 			#print("open position as below")
 			#print(openPositionsDictList)
@@ -778,7 +871,19 @@ class  UpstoxApiAdapter(BrokerApiAdapter):
 		listOfPositions.append(newPosition)
 		#print("list of positions")
 		#print(listOfPositions)
-		return self.api.margin_calculator(listOfPositions,"NFO")
+		try:
+			body:upstox_client.MarginRequest = upstox_client.MarginRequest(instruments=listOfPositions)
+			marginResponse:upstox_client.PostMarginResponse = self.chargeApi.post_margin(body)
+			marginData:upstox_client.MarginData = marginResponse.data
+			margin = marginData.to_dict()
+			print(margin)
+			response = '{"Success":{"span_margin_required":"'+str(margin["final_margin"])+'"}}'
+			response = json.loads(response)
+		except Exception as e:
+			print(e)
+			response = '{"Error":"'+str(e)+'"}'
+			response = json.loads(response)
+		return response
 
 	def getNseStocks(self,stockName):
 		nseSecuritiesDf = pd.read_csv(self.nseFile, sep=',', engine='python')
@@ -800,7 +905,7 @@ def test():
 def main():
 	print("Hello World!")
 	global myapi
-	myapi = BreezeApiAdapter()
+	myapi = UpstoxApiAdapter()
 	test()
 
 
