@@ -111,12 +111,19 @@ class  UpstoxApiAdapter(BrokerApiAdapter):
 				interval = ticks['interval']
 			elif ticks.get('update_type') != None and ticks.get('update_type') == "order":
 				#order Notification
+				#print(ticks)
 				token = "order_notification"
+				orderReference = ticks.get("order_id")
+				orderStatus = ticks.get("status")
+				stockCode = ticks.get("trading_symbol")
+				newTick = {"orderReference":orderReference,"orderStatus":orderStatus,"stockCode":stockCode}
+				print(newTick)
+				self.onMessage(token,newTick)
 			eventName = token
 			if interval != "":
 				eventName = token + "-" + interval
 				ticks['token'] = token
-			self.onMessage(eventName,ticks)
+			#self.onMessage(eventName,ticks)
 			
 
 	def getSessionTokenFromFile(self):
@@ -205,10 +212,11 @@ class  UpstoxApiAdapter(BrokerApiAdapter):
 			self.portfolioapi:upstox_client.PortfolioApi = upstox_client.PortfolioApi(upstox_client.ApiClient(configuration))
 			self.marketHolidaysapi:upstox_client.MarketHolidaysAndTimingsApi = upstox_client.MarketHolidaysAndTimingsApi(upstox_client.ApiClient(configuration))
 			self.chargeApi:upstox_client.ChargeApi = upstox_client.ChargeApi(upstox_client.ApiClient(configuration))
+			self.pnlApi:upstox_client.TradeProfitAndLossApi = upstox_client.TradeProfitAndLossApi(upstox_client.ApiClient(configuration))
 			self.portfolioStreamer = upstox_client.PortfolioDataStreamer(upstox_client.ApiClient(configuration),order_update=True,position_update=True,holding_update=False)
 			self.portfolioStreamer.on("message", self.on_ticks)
 			self.portfolioStreamer.connect()
-			self.marketdataStreamer = upstox_client.MarketDataStreamer(upstox_client.ApiClient(configuration))
+			self.marketdataStreamer = upstox_client.MarketDataStreamerV3(upstox_client.ApiClient(configuration))
 			self.marketdataStreamer.on("message", self.on_ticks)
 			self.marketdataStreamer.connect()
 			time.sleep(5)
@@ -391,7 +399,8 @@ class  UpstoxApiAdapter(BrokerApiAdapter):
 		instrument_token = instrumentId,
 		validity='DAY',
 		disclosed_quantity=quantity,
-		is_amo=amoOrder )
+		is_amo=amoOrder,
+		tag="hitesh" )
 		# Place order
 		try:
 			order_response:upstox_client.PlaceOrderResponse = self.orderapi.place_order(body,self.apiversion)
@@ -609,9 +618,27 @@ class  UpstoxApiAdapter(BrokerApiAdapter):
 		return returnValue
     
 	def getOpenPositionsList(self):
-		portfolioPositions = self.api.get_portfolio_positions()
-		#ic(portfolioPositions)
-		return portfolioPositions
+		portfolioPositionsResponse:upstox_client.GetPositionResponse = self.portfolioapi.get_positions(api_version=self.apiversion)
+		print(portfolioPositionsResponse)
+		positionDataList = portfolioPositionsResponse.data
+		positionList = []
+		for positionData in positionDataList:
+			#print(positionData.to_dict())
+			position = positionData.to_dict()
+			newPosition = {}
+			if position["buy_price"] > 0 :
+				newPosition["action"] = "BUY"
+				newPosition["average_price"] = position["buy_price"]
+				newPosition["quantity"] = position["quantity"]
+			newPosition["code"] = position["trading_symbol"]
+			newPosition["upstox_id"] = position["instrument_token"]
+			positionList.append(newPosition)
+		print(positionList)
+		response = '{"Success":' + json.dumps(positionList) + '}'
+		print(response)
+		response = json.loads(response)
+		print(response)
+		return response
     
     
 	def getTradesList(self,params):
@@ -655,53 +682,52 @@ class  UpstoxApiAdapter(BrokerApiAdapter):
 		toDateStr = params.get("toDate",datetime.now().strftime("%d-%b-%Y"))
 		fromDate = datetime.strptime(fromDateStr, "%d-%b-%Y")
 		toDate = datetime.strptime(toDateStr, "%d-%b-%Y")
-		exchangeCode = "NFO" #get only fno pnl
-		tradesListJsonDict = self.getTradesList(params)
-		if tradesListJsonDict is None:
+		if toDate.month < 4 :
+			financial_year = str((toDate.year%100)-1) + str(toDate.year%100)
+		else :
+			financial_year = str((toDate.year%100)) + str((toDate.year%100)+1)
+		from_date = fromDate.strftime("%d-%m-%Y")
+		to_date = toDate.strftime("%d-%m-%Y")
+		segment = "FO" #get only fno pnl
+		#financial_year = str(fromDate.year%100) + str(toDate.year%100) #last 2 digits of from and to date
+		tradesListJsonDict:upstox_client.GetTradeWiseProfitAndLossDataResponse = self.pnlApi.get_trade_wise_profit_and_loss_data(api_version=self.apiversion,segment=segment,financial_year=financial_year,from_date=from_date,to_date=to_date,page_number=1,page_size=5000)
+		#print(tradesListJsonDict)
+		if tradesListJsonDict == None or not tradesListJsonDict.status == "success" :
 			print(tradesListJsonDict)
 			tradesListJsonDict = json.loads('{"Error":"Not connected"}')
 			return tradesListJsonDict
-		
-		if not tradesListJsonDict["Success"]:
+		#print("trade list")
+		#print(len(list(tradesListJsonDict.data)))
+		if len(list(tradesListJsonDict.data)) == 0 :
 			print("No Trades taken between "+fromDateStr+"-"+toDateStr)
 			print(tradesListJsonDict)
-			return tradesListJsonDict
-		tradesListDf = pd.json_normalize(tradesListJsonDict["Success"])
-		tradesListDf["quantity"] = tradesListDf["quantity"].astype(float)
-		tradesListDf["average_cost"] = tradesListDf["average_cost"].astype(float)
-		tradesListDf["total_taxes"] = tradesListDf["total_taxes"].astype(float)
-		tradesListDf["total_cost"] = tradesListDf["quantity"] * tradesListDf["average_cost"]
+			realisedPnlDf = pd.DataFrame({"realised_pnl": 0, 'realised_pnl_with_taxes': 0}, index=[0])
+			resultJsonStr = realisedPnlDf.to_json(orient = "records")
+			resultJsonDict = json.loads(resultJsonStr)
+			responseJsonDict = {}
+			responseJsonDict["Success"]=resultJsonDict[0]
+			return responseJsonDict
+		tradesList = tradesListJsonDict.data
+		tradesListDf = pd.DataFrame([o.to_dict() for o in tradesList])
 		#print(tradesListDf)
-		groupbyTradesListDf = tradesListDf.groupby(["stock_code", "action"], as_index=False)\
-		.agg(quantity=("quantity","sum"),sum_total_cost=("total_cost","sum"),sum_total_taxes=("total_taxes","sum"))
-		groupbyTradesListDf = groupbyTradesListDf.apply(self.costCalculator,axis=1)
-		groupbyTradesListDf = groupbyTradesListDf.apply(self.pnlMultiplier,axis=1)
-		#print(groupbyTradesListDf)
-		#remove open postion total cost from all trades cost
-		openPositionsDict = self.getOpenPositionsList()
-		totalOpAmount = 0
-		if not openPositionsDict is None and not openPositionsDict["Success"] is None:
-			todayStr = datetime.now().strftime("%d-%b-%Y")
-			today = datetime.strptime(todayStr, "%d-%b-%Y")
-			if toDate == today:
-				openPositionsDf = pd.json_normalize(openPositionsDict["Success"])
-				#print(openPositionsDf)
-				openPositionsDf["quantity"] = openPositionsDf["quantity"].astype(float)
-				openPositionsDf["average_price"] = openPositionsDf["average_price"].astype(float)
-				openPositionsDf["total_op_amt"] = openPositionsDf["quantity"] * openPositionsDf["average_price"] * -1 #assuming buy
-				totalOpAmount = openPositionsDf['total_op_amt'].sum()
-				print("Total open position:" + str(totalOpAmount))
-		realised_pnl = groupbyTradesListDf['sum_total_cost'].sum()
-		realised_pnl_with_taxes = groupbyTradesListDf['total_cost_with_taxes'].sum()
+		realised_pnl = (tradesListDf['sell_amount']-tradesListDf['buy_amount']).sum()
+		#print(realised_pnl)
+		chargesResponse:upstox_client.GetProfitAndLossChargesResponse = self.pnlApi.get_profit_and_loss_charges(api_version=self.apiversion,segment=segment,financial_year=financial_year,from_date=from_date,to_date=to_date)
+		chargesData:upstox_client.ProfitAndLossChargesWrapperData = chargesResponse.data
+		chargesBreakDown:upstox_client.ProfitAndLossChargesData = chargesData.charges_breakdown
+		totalCharges = (chargesBreakDown.to_dict())["total"]
+		realised_pnl_with_taxes = realised_pnl - totalCharges
 		#remove open positions
-		realised_pnl = round((realised_pnl - totalOpAmount),2)
-		realised_pnl_with_taxes = round((realised_pnl_with_taxes - totalOpAmount),2)
+		realised_pnl = round((realised_pnl),2)
+		realised_pnl_with_taxes = round((realised_pnl_with_taxes),2)
 		realisedPnlDf = pd.DataFrame({"realised_pnl": realised_pnl, 'realised_pnl_with_taxes': realised_pnl_with_taxes}, index=[0])
-		#print(realisedPnlDf)
+		#realisedPnlDf = pd.DataFrame({"realised_pnl": realised_pnl, 'realised_pnl_with_taxes': 0}, index=[0])
+		print(realisedPnlDf)
 		resultJsonStr = realisedPnlDf.to_json(orient = "records")
 		resultJsonDict = json.loads(resultJsonStr)
-		tradesListJsonDict["Success"]=resultJsonDict[0]
-		return tradesListJsonDict
+		responseJsonDict = {}
+		responseJsonDict["Success"]=resultJsonDict[0]
+		return responseJsonDict
 	
 	def getFunds(self):
 		#not used

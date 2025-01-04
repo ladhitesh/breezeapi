@@ -200,7 +200,10 @@ function populateOpenPositions(){
 			price = openPositionsJsonArr[openPositionIndex]["average_price"]
 			
 			//stock name
-			product = openPositionsJsonArr[openPositionIndex]["product_type"].toLowerCase()
+			product = ""
+			if (openPositionsJsonArr[openPositionIndex]["product_type"] != undefined ){
+			product = openPositionsJsonArr[openPositionIndex]["product_type"].toLowerCase()}
+			fnotype = ""
 			if(product=="options"){fnotype="OPT"}
 			if(product=="futures"){fnotype="FUT"}
 			
@@ -209,6 +212,7 @@ function populateOpenPositions(){
 			strike = openPositionsJsonArr[openPositionIndex]["strike_price"]
 			exchangecode = openPositionsJsonArr[openPositionIndex]["exchange_code"]
 			right = openPositionsJsonArr[openPositionIndex]["right"]
+			rightShort = ""
 			if(right == "Call"){rightShort = "CE"} else if(right=="Put"){rightShort="PE"}
 			
 			//stockName = fnotype+'-'+stockCode+'-'+expiry

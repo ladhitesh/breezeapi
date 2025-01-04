@@ -71,18 +71,33 @@ def readFiles():
     try:
         
 
-        print("Reading unzippped files")
+        print("Reading idirect unzippped file-FONSEScripMaster.txt")
         selectedColumns_idirect = ['Token','InstrumentName','ShortName','Series','ExpiryDate',
             'StrikePrice','OptionType','LotSize','CompanyName','ExchangeCode','ExAllowed']
         df = pd.read_csv(directory_path + '/FONSEScripMaster.txt',header=0,usecols=selectedColumns_idirect)
         df = df.rename(columns={'Token':'idirect_id'})
-        indexOnly = df["InstrumentName"].str.contains("FUTIDX") | df["InstrumentName"].str.contains("OPTIDX")
-        mask = indexOnly
+        indexOnly = (df["InstrumentName"].str.contains("FUTIDX") | df["InstrumentName"].str.contains("OPTIDX"))
+        stocksOnly = (df["InstrumentName"].str.contains("FUTSTK") | df["InstrumentName"].str.contains("OPTSTK"))
+        mask = indexOnly | stocksOnly
         df_filtered_idirect = df.loc[mask]
         df_filtered_idirect.to_csv(directory_path + '/idirect-filtered.csv', index=False)
         print(df_filtered_idirect.head()) 
 
-        print("Reading unzippped files")
+        print("Reading idirect unzippped file-NSEScripMaster.txt")
+        selectedColumns_idirect_equities = ['Token','ShortName','Series','CompanyName','FaceValue','ISINCode','52WeeksHigh','ExchangeCode']
+        df = pd.read_csv(directory_path + '/NSEScripMaster.txt',header=0,skipinitialspace=True,sep=',',usecols=lambda x: x in selectedColumns_idirect_equities,engine='python')
+        df = df.rename(columns={'Token':'idirect_id'})
+        print(df.head()) 
+        equityOnly = ((df["Series"].str.contains("EQ")) | (df["Series"].str.contains("BE")))
+        otherConditions = ((df["idirect_id"].str.contains("0") == False)  & ((df["idirect_id"].str.isnumeric() == True)) & (df["FaceValue"] > 0.0) & (df["52WeeksHigh"] > 0.0))
+        mask = equityOnly & otherConditions
+        df_filtered_idirect_equities = df.loc[mask]
+        df_filtered_idirect_equities.idirect_id = df_filtered_idirect_equities.idirect_id.astype(int)
+        df_filtered_idirect_equities.to_csv(directory_path + '/idirect-filtered_equities.csv', index=False)
+        print(df_filtered_idirect_equities.head()) 
+
+        '''
+        print("Reading idirect traderdirect unzippped files")
         selectedColumns_idirect_orig = ['SC','SN','EC','SM','SG',
             'TK','LS','CD','NS','TS']
         df = pd.read_csv(directory_path + '/idirect-stockscriptnew.csv',sep=',',
@@ -93,8 +108,9 @@ def readFiles():
         df_filtered_idirect_orig['TK']=df_filtered_idirect_orig['TK'].astype(int)
         df_filtered_idirect_orig.to_csv(directory_path + '/idirect_orig-filtered.csv', index=False)
         print(df_filtered_idirect_orig.head()) 
+        '''
 
-        print("Reading unzippped files")
+        print("Reading zerodha unzippped files")
         selectedColumns_zerodha = ['instrument_token','exchange_token','tradingsymbol','segment']
         df = pd.read_csv(directory_path + '/zerodha-instruments.csv',header=0,usecols=selectedColumns_zerodha)
         df = df.rename(columns={'instrument_token':'zerodha_id','segment': 'zsegment','exchange_token':'zexchange_token'})
@@ -104,16 +120,40 @@ def readFiles():
         df_filtered_zerodha.to_csv(directory_path + '/zerodha-filtered.csv', index=False)
         print(df_filtered_zerodha.head())
 
-        print("Reading unzippped files")
+        print("Reading zerodha unzippped files for equities")
+        selectedColumns_zerodha_equities = ['instrument_token','exchange_token','tradingsymbol','segment','lot_size','name']
+        df = pd.read_csv(directory_path + '/zerodha-instruments.csv',header=0,usecols=selectedColumns_zerodha_equities)
+        df = df.rename(columns={'instrument_token':'zerodha_id','segment': 'zsegment','exchange_token':'zexchange_token'})
+        equitiesOnly = (df["zsegment"].str.contains("NSE") )
+        otherConditions = ((df["name"].isnull() == False) & (df["lot_size"] == 1))
+        mask = (equitiesOnly & otherConditions)
+        df_filtered_zerodha_equities = df.loc[mask]
+        df_filtered_zerodha_equities.to_csv(directory_path + '/zerodha-filtered_equities.csv', index=False)
+        print(df_filtered_zerodha_equities.head())
+
+        print("Reading upstox unzippped files")
         selectedColumns_upstox = ['instrument_key','exchange_token','trading_symbol','segment','underlying_type','name']
         df = pd.read_json(directory_path + '/upstox-complete.json')
         df = df[selectedColumns_upstox]
         df = df.rename(columns={'instrument_key':'upstox_id','segment': 'usegment','exchange_token':'uexchange_token','name':'uname'})
-        indexOnly = df["usegment"].str.contains("NSE_FO") & df["underlying_type"].str.contains("INDEX")
-        mask = indexOnly
+        indexOnly = (df["usegment"].str.contains("NSE_FO") & df["underlying_type"].str.contains("INDEX"))
+        stockFOOnly = (df["usegment"].str.contains("NSE_FO") & df["underlying_type"].str.contains("EQUITY"))
+        mask = indexOnly | stockFOOnly
         df_filtered_upstox = df.loc[mask]
         df_filtered_upstox.to_csv(directory_path + '/upstox-filtered.csv', index=False)
         print(df_filtered_upstox.head())
+
+        print("Reading upstox unzippped files for equities ")
+        selectedColumns_upstox_equities = ['instrument_key','exchange_token','trading_symbol','segment','instrument_type','name','lot_size']
+        df = pd.read_json(directory_path + '/upstox-complete.json')
+        df = df[selectedColumns_upstox_equities]
+        df = df.rename(columns={'instrument_key':'upstox_id','segment': 'usegment','exchange_token':'uexchange_token','name':'uname'})
+        equitiesOnly = ((df["usegment"].str.contains("NSE_EQ")) & (df["instrument_type"].str.contains("EQ") | df["instrument_type"].str.contains("BE")))
+        otherConditions = (df["lot_size"] == 1)
+        mask = (equitiesOnly & otherConditions)
+        df_filtered_upstox_equities = df.loc[mask]
+        df_filtered_upstox_equities.to_csv(directory_path + '/upstox-filtered_equities.csv', index=False)
+        print(df_filtered_upstox_equities.head())
 
         #df_consolidated = pd.concat([df_filtered_idirect,df_filtered_zerodha],axis=1)
         #df_consolidated.to_csv(directory_path + '/instruments-consolidated.csv', index=False)
@@ -125,6 +165,13 @@ def readFiles():
         df_final['ExpiryDate'] = pd.to_datetime(df_final['ExpiryDate'])
         df_final = df_final.sort_values(by=['Series','ShortName','ExpiryDate','StrikePrice'])
         df_final.to_csv(directory_path + '/instruments-final.csv', index=False)
+
+        df_i_i_e = df_filtered_idirect_equities
+        df_i_z_e = df_i_i_e.merge(df_filtered_zerodha_equities, how='inner',left_on='idirect_id', right_on='zexchange_token')
+        df_final_equities = df_i_z_e.merge(df_filtered_upstox_equities, how='inner',left_on='idirect_id', right_on='uexchange_token')
+        df_final_equities = df_final_equities.sort_values(by=['idirect_id'])
+        df_final_equities.to_csv(directory_path + '/instruments-final_equities.csv', index=False)
+
     except Exception as e:
                 print("Error occurred while reading unzipped files.")
                 print(e)
