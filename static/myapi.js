@@ -21,7 +21,6 @@ $(document).ready(function() {
         console.log("websocket disconnected to api server")
    });
 	socket.on('order_notification', orderNotification)
-	socket.on('chart_session_key', processChartSessionKey)
 	
 });
 

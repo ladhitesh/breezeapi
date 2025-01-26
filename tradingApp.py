@@ -38,18 +38,25 @@ app.config['CORS_HEADERS'] = 'Content-Type'
 
 app.breezeapi_version = metadata.version('breeze_connect')
 
+#initialise to the default broker but do not connect yet.
+#we will try to connect when app is launched.
 brokerapi = brokerApiConnect.BrokerApiConnect(configapi.BROKER_DEFAULT)
+#initialise to the default dataprovider
 dataprovider = dataproviderConnect.DataProviderConnect(configapi.DATAPROVIDER_DEFAULT)
 myapi = brokerapi.brokerApi
 if brokerapi.isConnected() and brokerapi.BROKER == configapi.BROKER_IDIRECT:
+	#this can never happen as brokerapi.connect is not called during file load
 	print("idirect brokerapi is connected. initializing chart to same.")
 	dataprovider.initialize(myapi.api,{})
 else:
+	#if server restarts and we already have a request token, then connect to dataprovider.
+	#this is required so that we can load chart when app launches.
 	print("brokerapi is not connected or it is not idirect. initializing default data provider")
 	try:
 		dataprovider.initialize(None,{})
 		print("On app start, dataprovider is connected")
 	except Exception as e:
+		#we do not have a valid request token. Need to go for login flow manually.
 		print("On app start, dataprovider not connected exception raised")
 		print(e)
 
@@ -248,7 +255,7 @@ def connectApi():
 					sessionToken = session.get(brokerapi.getSessionTokenName(),"")
 					reloadHome = True
 				#fetch some login info to display on-screen
-				loginMessage = getCustomerDetails(sessionToken)
+				loginMessage = getCustomerDetails()
 				userId = myapi.user_id
 				sessionKey = myapi.session_key
 				output = "Using most recent session "
@@ -258,11 +265,11 @@ def connectApi():
 				if reloadHome:
 					return redirect("/", code=302)
 				else: 
-					return render_template("loginresponse.html", error="", mode = "broker", broker=newBroker, userId = userId, sessionKey = sessionKey, apiSession=apiSession, loginMessage=loginMessage)	
+					return render_template("loginresponse.html", error="", mode = "broker", broker=newBroker, userId = userId, sessionKey = sessionKey, loginMessage=loginMessage)	
 			except Exception as e:
 				app.logger.info("Error in broker login flow")
 				app.logger.error(e)
-				return render_template("loginresponse.html", error=e, mode = "broker", broker=newBroker, userId = userId, sessionKey = sessionKey, apiSession=apiSession, loginMessage=loginMessage)	
+				return render_template("loginresponse.html", error=e, mode = "broker", broker=newBroker, userId = userId, sessionKey = sessionKey, loginMessage=loginMessage)	
 		
 		#post-login setup for full mode
 		brokerapi = newBrokerApi
@@ -285,36 +292,43 @@ def connectApi():
 	#if you reached here, you encountered problem in connection. Try again from home page
 	loginUrl = "<a href='/login'>Login</a>"
 	output = loginUrl +"<br/>Using most recent session:"+invalidSessionMsg
-	return render_template("index.html", output=output, broker=brokerapi.BROKER, apiSession=apiSession, userId=userId, sessionKey=sessionKey, loginMessage=loginMessage)	
+	return render_template("index.html", output=output, broker=brokerapi.BROKER, userId=userId, sessionKey=sessionKey, loginMessage=loginMessage)	
 
-
+#this is homepage and get called on app launch or page refresh
 @app.route('/', methods=['GET', 'POST'])
 @cross_origin()
 def homePage():
+	#try connecting to the broker when app launched/page refreshes
 	session["mode"] = "broker"
-	broker = session.get("broker",brokerapi.BROKER)
-	session["broker"] = broker
-	if brokerapi.BROKER == configapi.BROKER_IDIRECT:
+	#get last connected broker from session to reconnect
+	if not "broker" in session:
+		#last connected broker not in session(probably session destroyed), use brokerapi to get that
+		session["broker"] = brokerapi.BROKER
+	broker = session.get("broker")
+	
+	if broker == configapi.BROKER_IDIRECT:
 		# as of now, data provider(charts) is also idirect. 
 		# hence we have full mode as we cannot login twice. same login is shared by broker and data provider
 		session["mode"] = "full"
 	
 	if not brokerapi.isConnected():
+		#this happens for first app launch
 		app.logger.info("%s broker is not connected. Redirecting to /connect",broker)
 		return redirect("/connect", code=302)
 	
-
+	#this happens if we accidently closed app and relaunch it and the server is still running
 	apiSession = session.get( brokerapi.getSessionTokenName(),"")
+	#broker is already connected. reset the login flag
 	session["mode"] = ""
 	if apiSession == "" or apiSession == "no-breezeapi-session":
 		print("api connected but session destroyed/tab closed.")
 		print("getting apisession from file")
 		return redirect("/connect", code=302)
-	loginMessage = getCustomerDetails(apiSession)
+	loginMessage = getCustomerDetails()
 	userId = myapi.user_id
 	sessionKey = myapi.session_key
 	output = "Using most recent session"
-	return render_template("index.html", output=output, broker=brokerapi.BROKER, apiSession=apiSession, userId=userId, sessionKey=sessionKey, loginMessage=loginMessage)	
+	return render_template("index.html", output=output, broker=brokerapi.BROKER, userId=userId, sessionKey=sessionKey, loginMessage=loginMessage)	
 
 @app.route('/getAccessToken', methods=['GET', 'POST'])
 @cross_origin()
@@ -376,7 +390,7 @@ def clearSessionFiles():
             os.remove("./breezeapi/bzapisessions/" + apiSession)
     return redirect("/getExistingSessions", code=302)
 
-def getCustomerDetails(apiSession):
+def getCustomerDetails():
 	print("fetching customer details")
 	customerDetailsJsonDict = brokerapi.getCustomerDetails()
 	print("printing customer details")

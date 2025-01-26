@@ -155,13 +155,16 @@ input[type=number]::-webkit-outer-spin-button {
 </script>
 <script>
 
-apiSession="{{ apiSession }}"
+//used in dataprovider
 userId="{{ userId }}"
+//used in dataprovider
 sessionKey="{{ sessionKey }}"
-loginMessage="{{ loginMessage }}"
+//indicates broker is connected or not. this is used to populate position/order details
 isApiConnected = false;
+// when page loads, this is used for displaying user details from connected broker
+loginMessage="{{ loginMessage }}"
+// when page loads, this is used for highlighting the connected broker
 broker = "{{ broker }}";
-console.log("d.javacsript"+loginMessage)
 
 $(document).ready(function() {
 	
@@ -212,7 +215,6 @@ $( function() {
 } );
 	
 function updateUserDetails(newBroker){
-	//userDetails = apiSession + " " + loginMessage
 	userDetails = loginMessage
 	broker = newBroker
 	$("#userDetails").html(userDetails)
@@ -274,10 +276,12 @@ function updateUserDetails(newBroker){
 				loginForChartData(chartUserId,chartSessionKey);
 			}else if (mode == "broker"){
 				console.log("broker login done")
-				apiSession=data.sessionKey
+				//used for dataprovider
 				userId=data.userId
+				//used for dataprovider
 				sessionKey=data.sessionKey
 				loginMessage=data.loginMessage
+				//not useful as updateUserDetails takes care
 				broker=data.broker
 				updateUserDetails(data.broker);
 			}
