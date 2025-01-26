@@ -140,7 +140,7 @@ class  UpstoxApiAdapter(BrokerApiAdapter):
 			files = os.listdir(directory_path)
 			for file in files:
 				file_path = os.path.join(directory_path, file)
-				if os.path.isfile(file_path):
+				if os.path.isfile(file_path) and not file == ".gitignore":
 					os.remove(file_path)
 			print("All upstox token files deleted successfully as they are invalid.")
 		except OSError:
@@ -259,36 +259,44 @@ class  UpstoxApiAdapter(BrokerApiAdapter):
 		print(customerDetails)
 		return customerDetails
 	
-	def addInstrumentIdColumnsByInstruId(self,df_row):
-		print("Populating values based on upstox id:%s",df_row["upstox_id"])
+	def getInstrumentDetailsByInstruId(self,upstox_id):
+		print("Populating values based on upstox id:%s",upstox_id)
 		stockScriptdf = self.stockScriptdf
 		requiredCol = stockScriptdf[["ExAllowed","ShortName","trading_symbol","idirect_id","zerodha_id","upstox_id","Series"]]
 		result = requiredCol.loc[( \
-                                            (stockScriptdf["upstox_id"] == df_row["upstox_id"])
+                                            (stockScriptdf["upstox_id"] == upstox_id)
                                           	) ].head(1).copy()
 		result.rename(columns = {'trading_symbol':'code'}, inplace = True)
 		print(result.to_string())
-		if not df_row.empty:
-			df_row['idirect_id'] = result['idirect_id'].astype(str).item()
-			df_row['zerodha_id'] = result['zerodha_id'].astype(str).item()
-			df_row['upstox_id'] = result['upstox_id'].astype(str).item()
-			df_row['code'] = result['code'].astype(str).item()
+		response = {}
+		if not result.empty:
+			response['token'] = result['idirect_id'].astype(str).item()
+			response['idirect_id'] = result['idirect_id'].astype(str).item()
+			response['zerodha_id'] = result['zerodha_id'].astype(str).item()
+			response['upstox_id'] = result['upstox_id'].astype(str).item()
+			response['code'] = result['code'].astype(str).item()
 			product = result['Series'].astype(str).item()
 			if product.lower() == 'option':
 				product = "OPTIONS"
 			elif product.lower() == 'future':
 				product = "FUTURES"
-			df_row['product_type'] = product
+			response['product_type'] = product
 		else:
-			print("Cannot find data for upstox id: %s",df_row["upstox_id"])
+			print("Cannot find data for upstox id: %s",upstox_id)
 		#print(df_row.to_string())
-		return df_row
+		return response
 
 	def addInstrumentIdColumns(self,df_row):
 		print(df_row.index)
+		print(df_row.to_dict())
 		print('upstox_id' in df_row.index)
 		if 'upstox_id' in df_row.index :
-			df_row = self.addInstrumentIdColumnsByInstruId(df_row) 
+			upstox_id = df_row["upstox_id"]
+			response = self.getInstrumentDetailsByInstruId(upstox_id)
+			df_row['idirect_id'] = response['idirect_id']
+			df_row['zerodha_id'] = response['zerodha_id']
+			df_row['code'] = response['code']
+			df_row['product_type'] = response['product_type']
 			return df_row
 		exchangeCode = df_row['exchange_code']
 		stockCode = df_row['stock_code']
@@ -621,6 +629,10 @@ class  UpstoxApiAdapter(BrokerApiAdapter):
 		portfolioPositionsResponse:upstox_client.GetPositionResponse = self.portfolioapi.get_positions(api_version=self.apiversion)
 		print(portfolioPositionsResponse)
 		positionDataList = portfolioPositionsResponse.data
+		#spoofData start
+		#positionData:upstox_client.PositionData = upstox_client.PositionData(buy_price=250,average_price=250,quantity=15,trading_symbol="BANKNIFTY",instrument_token="NSE_FO|45066")
+		#positionDataList.append(positionData)
+		#spoof data end
 		positionList = []
 		for positionData in positionDataList:
 			#print(positionData.to_dict())
@@ -631,7 +643,10 @@ class  UpstoxApiAdapter(BrokerApiAdapter):
 				newPosition["average_price"] = position["buy_price"]
 				newPosition["quantity"] = position["quantity"]
 			newPosition["code"] = position["trading_symbol"]
-			newPosition["upstox_id"] = position["instrument_token"]
+			upstox_id = position["instrument_token"]
+			newPosition["upstox_id"] = upstox_id
+			instruDetails = self.getInstrumentDetailsByInstruId(upstox_id)
+			newPosition = newPosition | instruDetails #merge 2 dicts
 			positionList.append(newPosition)
 		print(positionList)
 		response = '{"Success":' + json.dumps(positionList) + '}'
@@ -903,7 +918,8 @@ class  UpstoxApiAdapter(BrokerApiAdapter):
 			marginData:upstox_client.MarginData = marginResponse.data
 			margin = marginData.to_dict()
 			print(margin)
-			response = '{"Success":{"span_margin_required":"'+str(margin["final_margin"])+'"}}'
+			span_margin_required = str(round(margin["final_margin"],2))
+			response = '{"Success":{"span_margin_required":"' + span_margin_required + '"}}'
 			response = json.loads(response)
 		except Exception as e:
 			print(e)

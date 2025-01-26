@@ -202,7 +202,7 @@ function populateOpenPositions(){
 			//stock name
 			product = ""
 			if (openPositionsJsonArr[openPositionIndex]["product_type"] != undefined ){
-			product = openPositionsJsonArr[openPositionIndex]["product_type"].toLowerCase()}
+				product = openPositionsJsonArr[openPositionIndex]["product_type"].toLowerCase()}
 			fnotype = ""
 			if(product=="options"){fnotype="OPT"}
 			if(product=="futures"){fnotype="FUT"}
@@ -247,11 +247,12 @@ function populateOpenPositions(){
 			
 			const opRecord = positionRecords[openPositionIndex];
 			const hiddenId = "op-"+stockName
-			fetchStockToken(stockCode,exchangecode,product,expiry,strike,right)
-				.then(result => {
-					let token = result
-					//console.log("token for orderlist: "+token)
-					$('#'+hiddenId)[0].dataset['token'] = token
+			
+			const subscribeLTP = function (token,hiddenId,opRecord){
+					console.log(hiddenId)
+					console.log($('div[id="'+hiddenId+'"]').data('token'))
+					hiddenObject = $('div[id="'+hiddenId+'"]')
+					hiddenObject.attr('data-token',token)
 					//console.log($('#'+hiddenId))
 					//console.log(opRecord)
 					
@@ -261,13 +262,25 @@ function populateOpenPositions(){
 					ltpDiv.innerHTML = "0.00"
 					//console.log(ltpDiv.outerHTML)
 
-					opRecord.hiddenColumn=$('#'+hiddenId)[0].outerHTML;
+					opRecord.hiddenColumn=hiddenObject.prop('outerHTML');
 					opRecord.ltp=ltpDiv.outerHTML;
 					openPositionsTable.dom.update();
 					
 					console.log("subscribing to token:"+token)
 					subscribeApiTickData(token, apiLtpListener)
-				});
+				}
+			if (openPositionsJsonArr[openPositionIndex]["token"] != undefined
+				 && openPositionsJsonArr[openPositionIndex]["token"]!= "" ){
+				token = openPositionsJsonArr[openPositionIndex]["token"]
+				setTimeout(function(){subscribeLTP(token,hiddenId,opRecord);},3000)
+			}else{
+				fetchStockToken(stockCode,exchangecode,product,expiry,strike,right)
+					.then(result => {
+						let token = result
+						//console.log("token for orderlist: "+token)
+						subscribeLTP(token,hiddenId,opRecord)
+					});
+			}
 			
 			//console.log("subscribing to token:"+token)
 			//socket.emit('subscribeQuotes', token, "1second")

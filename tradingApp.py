@@ -147,27 +147,28 @@ def login():
 	session["mode"] = mode
 	
 	app.logger.info("login to %s api: %s",mode,newBroker)
-	#redirect_uri = url_for('authorize', _external=True)
-	
-	#return oauth.breezeapi.authorize_redirect(redirect_uri)
-	#session["chartSessionKey"] = "44583592"
-	#session[configapi.IDIRECT_SESSION_TOKEN_NAME] = "44583592"
 	app.logger.info("ChartSessionKey:%s",session.get("chartSessionKey",""))
-	if mode == "chart" and (dataprovider.isDataProviderConnected() or session.get("chartSessionKey","") != ""):
-		return redirect(url_for('getAccessToken',**request.args))
-	#skip login if already connected
+	#check whether this is chart dataprovider login request or broker login request
 	if mode == "chart":
+		#skip login if already connected
+		if (dataprovider.isDataProviderConnected() or session.get("chartSessionKey","") != ""):
+			return redirect(url_for('getDataProviderAccessToken',**request.args))
+		#fetch login url for redirect
 		newdataprovider = dataproviderConnect.DataProviderConnect(configapi.DATAPROVIDER_IDIRECT)
 		print("preparing to redirect to dataprovider login page")
 		login_url = newdataprovider.getLoginUrl()
 	else:
+		#this is a broker login request
 		newBrokerApi = brokerApiConnect.BrokerApiConnect(newBroker)
-		session["newbroker"] = newBroker
+		#skip login if already connected
 		if session.get(newBrokerApi.getSessionTokenName(),"") != "":
 			print("Not redirecting to login screen as session exist for new broker: " + newBroker + ",token: " + session.get(newBrokerApi.getSessionTokenName()))
 			return redirect(url_for('connectApi',**request.args))
+		#fetch login url for redirect
 		login_url = newBrokerApi.getLoginUrl()
+		session["newbroker"] = newBroker
 	print(login_url)
+	#goto login url for login
 	return redirect(login_url)
 
 '''
@@ -178,20 +179,8 @@ DO NOT CHANGE. BE CAREFUL
 @app.route('/authorize', methods=['GET', 'POST'])
 def authorize():
 	print("inside authorize")
-	'''
-	token = oauth.breezeapi.authorize_access_token()
-	print("obtained access token:"+str(token))
-	print("getting repos")
-	resp = oauth.breezeapi.get('/breezeapi/api/v1/customerdetails')
-	resp.raise_for_status()
-	profile = resp.json()
-	# do something with the token and profile
-	print("token :"+str(token))
-	print("profile :"+str(profile))
-	'''
 	#queryParams = request.args.to_dict()
-	#apiSession = queryParams.get(configapi.SESSION_TOKEN_NAME,'')
-	#return redirect('/connect?apisession=' + apiSession)
+	#print(queryParams)
 	return redirect(url_for('connectApi',**request.args))
 	
 
@@ -200,16 +189,19 @@ def authorize():
 def connectApi():		
 	queryParams = request.args.to_dict()
 	app.logger.info("Current login flow: %s", session.get("mode",""))
+	#check whether this is post login for chart/data provider
 	if session.get("mode","") == "chart":
-		chartSessionKey = queryParams.get(configapi.IDIRECT_SESSION_TOKEN_NAME,session.get("chartSessionKey"))
+		#reset the login process flag
 		session["mode"] = ""
+		chartSessionKey = queryParams.get(configapi.IDIRECT_SESSION_TOKEN_NAME,session.get("chartSessionKey"))
 		session["chartSessionKey"] = chartSessionKey
-		#need to let page refresh and then once socket is connec then send data
+		#need to let page refresh and then once socket is connected then send data
 		#socketio.emit("processChartSessionKey", json.dumps({"userid":"HITYJ3OJ","sessionkey":apiSession}))
 		#time.sleep(10)
 		#return redirect("/", code=302)
 		#return render_template("loginresponse.html", userId=chartUserId,sessionKey=chartSessionKey)	
-		return getAccessToken()
+		return getDataProviderAccessToken()
+	#this is post-login process for broker
 	global brokerapi, myapi
 	newBrokerApi = brokerapi
 	apiSession = queryParams.get(newBrokerApi.getSessionTokenName(),"")
@@ -218,39 +210,51 @@ def connectApi():
 	loginMessage = "Not logged in."
 	invalidSessionMsg = ""
 	try:
-		#myapi.onMessage = feedData
+		#check whether this is new broker or existing broker.
 		if session.get("newbroker","") == "":
-			app.logger.info("Not switching to new broker")
-			newBrokerApi.registerFeedCallback(feedData)
+			#this is existing broker
+			app.logger.info("Not switching to new broker.")
+			app.logger.info("This is probably page refresh or request to connect to already connected broker")
+			#re-connect using the existing token
 			sessionToken = newBrokerApi.connect(queryParams)
 			session[newBrokerApi.getSessionTokenName()] = sessionToken
+			#set callback for api web socket responses
+			newBrokerApi.registerFeedCallback(feedData)
 		else:
 			app.logger.info("Switching to new broker >%s<",session.get("newbroker",""))
 		
+		#check whether this is broker only post-login or full (broker + data provider) post-login
 		if session.get("mode","") == "broker":
 			try:
+				#this is broker-only setup
 				newBroker = session.get("newbroker","")
-				#reset session variable after fetching its value
+				#reset the broker login flag
 				session["newbroker"] = ""
 				reloadHome = False
+				#check whether broker is connected or this is new broker post-login flow
 				if not newBrokerApi.isConnected() or (not newBroker == "" and not newBroker == newBrokerApi.BROKER):
 					app.logger.info("Trying to switch broker to %s",newBroker)
-					brokerapi = brokerApiConnect.BrokerApiConnect(newBroker)
-					session["broker"] = newBroker
+					brokerapi = brokerApiConnect.BrokerApiConnect(newBroker)					
 					myapi = brokerapi.brokerApi
-					brokerapi.registerFeedCallback(feedData)
 					sessionToken = brokerapi.connect(queryParams)
 					session[brokerapi.getSessionTokenName()] = sessionToken
+					#set callback for api web socket responses
+					brokerapi.registerFeedCallback(feedData)
+					#set the new broker name in session
+					session["broker"] = newBroker
 				else:
+					#broker is already connected. This is probably a page refresh
 					app.logger.info("Doing nothing with existing broker %s",brokerapi.BROKER)
 					sessionToken = session.get(brokerapi.getSessionTokenName(),"")
 					reloadHome = True
+				#fetch some login info to display on-screen
 				loginMessage = getCustomerDetails(sessionToken)
 				userId = myapi.user_id
 				sessionKey = myapi.session_key
 				output = "Using most recent session "
 				#dataprovider = dataproviderConnect.DataProviderConnect()
 				#dataprovider.initialize(myapi.api,{})
+				#check whether we are reloading main page or returning to post-login pop up
 				if reloadHome:
 					return redirect("/", code=302)
 				else: 
@@ -260,13 +264,16 @@ def connectApi():
 				app.logger.error(e)
 				return render_template("loginresponse.html", error=e, mode = "broker", broker=newBroker, userId = userId, sessionKey = sessionKey, apiSession=apiSession, loginMessage=loginMessage)	
 		
+		#post-login setup for full mode
 		brokerapi = newBrokerApi
 		myapi = brokerapi.brokerApi
 		session["broker"] = brokerapi.BROKER
 		session["newbroker"] = ""
+		#check whether full mode and initializa data provider
 		if session.get("mode","") == "full":
 			dataprovider.initialize(brokerapi.brokerApi.api,{})
 			print("Dataprovider connected on full mode?" + str(dataprovider.isDataProviderConnected()))
+		#redirect to homepage
 		return redirect("/", code=302)
 	except Exception as e:
 		app.logger.info("Error in reload page flow")
@@ -275,6 +282,7 @@ def connectApi():
 		brokerapi.clearTokenFiles()
 		session.pop(brokerapi.getSessionTokenName(),None)
 	
+	#if you reached here, you encountered problem in connection. Try again from home page
 	loginUrl = "<a href='/login'>Login</a>"
 	output = loginUrl +"<br/>Using most recent session:"+invalidSessionMsg
 	return render_template("index.html", output=output, broker=brokerapi.BROKER, apiSession=apiSession, userId=userId, sessionKey=sessionKey, loginMessage=loginMessage)	
@@ -282,11 +290,13 @@ def connectApi():
 
 @app.route('/', methods=['GET', 'POST'])
 @cross_origin()
-def oneClick():
+def homePage():
 	session["mode"] = "broker"
 	broker = session.get("broker",brokerapi.BROKER)
 	session["broker"] = broker
 	if brokerapi.BROKER == configapi.BROKER_IDIRECT:
+		# as of now, data provider(charts) is also idirect. 
+		# hence we have full mode as we cannot login twice. same login is shared by broker and data provider
 		session["mode"] = "full"
 	
 	if not brokerapi.isConnected():
@@ -308,7 +318,7 @@ def oneClick():
 
 @app.route('/getAccessToken', methods=['GET', 'POST'])
 @cross_origin()
-def getAccessToken():
+def getDataProviderAccessToken():
 
 	try:
 		if not dataprovider.isDataProviderConnected():

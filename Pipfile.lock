@@ -70,11 +70,11 @@
         },
         "breeze-connect": {
             "hashes": [
-                "sha256:7015625a52c07af63b9abcc23724ef73c132eb0a4cdf32c53791a8d6f02f6491"
+                "sha256:1e5446448f2aa85193ea16de9070071e74f054c5b5c556574db857add7c1a9bd"
             ],
             "index": "pypi",
             "markers": "python_version >= '3.6'",
-            "version": "==1.0.58"
+            "version": "==1.0.60"
         },
         "certifi": {
             "hashes": [
