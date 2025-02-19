@@ -110,21 +110,24 @@ $(document).ready(function() {
 
 //will be set on document ready
 currentRefChartToken = null;
+isrefChartNonIndexStockDataUpdated = false
 
 function runWhenDataproviderConnected(){
 	//update expiry and token details for non index stocks
-	$("#refChart option[product='future']").each(function() {
-		updateRefChartSelectOptions($(this))
-			.then(result => {
-				if($(this).is(':selected')){
-					//load ref chart once token and expiry is updated
-					currentRefChartToken = $(this).attr("token")
-					console.log("loading default selected ref chart: " + currentRefChartToken)	
-					loadReferenceChart(true);
-					chart.timeScale().fitContent();
-				}});
-	});
-
+	if (!isrefChartNonIndexStockDataUpdated){
+		$("#refChart option[product='future']").each(function() {
+			updateRefChartSelectOptions($(this))
+				.then(result => {
+					if($(this).is(':selected')){
+						//load ref chart once token and expiry is updated
+						currentRefChartToken = $(this).attr("token")
+						console.log("loading default selected ref chart: " + currentRefChartToken)	
+						loadReferenceChart(true);
+						chart.timeScale().fitContent();
+					}});
+		});
+	}
+	isrefChartNonIndexStockDataUpdated = true
 	//load ref chart id selected chart is not index or futures
 	if($("#refChart :selected").attr("product")!= "future"){
 		currentRefChartToken = $("#refChart :selected").attr("token")
@@ -278,10 +281,10 @@ function getRefChartStockSelectHTMLElement(){
 	let secondRowStockNameSelectHtml = "<select id='refChart' style='color:black;background-color:#fcfcde;text-align:left;display:inline-block;width:230px;font-size:12px;padding:0px;margin:0px;border:0px;font-weight:bold' onchange='updateReferenceChart();'>"
 	const secondRowStockNameSelect = new DOMParser().parseFromString(secondRowStockNameSelectHtml, 'text/html').querySelector("select");
 
-	let secondRowOption1Html = "<option value='CNXBAN' token='NIFTY BANK' exchangeCode='NSE' product='' expiry='' >BANKNIFTY</option>";
+	let secondRowOption1Html = "<option value='CNXBAN' token='NIFTY BANK' exchangeCode='NSE' product='' expiry='' selected>BANKNIFTY</option>";
 	const secondRowOption1 = new DOMParser().parseFromString(secondRowOption1Html, 'text/html').querySelector("option");
 
-	let secondRowOption2Html = "<option value='CNXBAN' exchangeCode='NFO' product='future' selected>BANKNIFTY FUT</option>";
+	let secondRowOption2Html = "<option value='CNXBAN' exchangeCode='NFO' product='future' >BANKNIFTY FUT</option>";
 	const secondRowOption2 = new DOMParser().parseFromString(secondRowOption2Html, 'text/html').querySelector("option");
 
 	let secondRowOption3Html = "<option value='NIFTY' token='NIFTY 50' exchangeCode='NSE' product='equity' expiry=''>NIFTY 50</option>";
@@ -345,7 +348,7 @@ function loadReferenceChart(refChartVisible){
 		//console.log("expiry: " + expiry)
 		let expiryFormatted = ""
 		if(expiry != null && expiry != ""){
-			//expiryFormatted = moment(expiry,"DD-MMM-YYYY").format("YYYY-MM-DD")+"T00:00:00.000Z"
+			expiryFormattedForOHLCVSubs = moment(expiry,"YYYY-MM-DD").format("DD-MMM-YYYY")
 			expiryFormatted = expiry+"T00:00:00.000Z"
 		}
 		
@@ -372,9 +375,9 @@ function loadReferenceChart(refChartVisible){
 				//chart.timeScale().fitContent();
 
 				//socket.emit('subscribeQuotes', token, interval)
-				subscribeDirectOHLCV(token,intervalRevLookup[interval],{'token':token,'stockCode':stockCode,'expiry':expiry,'strike':"",'right':""},"")
+				subscribeDirectOHLCV(token,intervalRevLookup[interval],{'token':token,'stockCode':stockCode,'expiry':expiryFormattedForOHLCVSubs,'strike':"",'right':""},"")
 				//socket.emit('subscribeQuotes', token, '1second')
-				subscribeDirectOHLCV(token,"1SEC",{'token':token,'stockCode':stockCode,'expiry':expiry,'strike':"",'right':""},"")
+				subscribeDirectOHLCV(token,"1SEC",{'token':token,'stockCode':stockCode,'expiry':expiryFormattedForOHLCVSubs,'strike':"",'right':""},"")
 				//socket.on(token+'-'+interval, function (ohlcvData){
 				//	refChartFeedDataListener(ohlcvData)
 				//});
@@ -455,7 +458,7 @@ function loadOptionsChart(hiddenDataDivId, optionsChartVisible){
 			fnotype = hiddenDivObj.dataset.fnotype
 			product = hiddenDivObj.dataset.product
 			expiry = hiddenDivObj.dataset.expiry
-			//expiryFormatted = moment(expiry,"DD-MMM-YYYY").format("YYYY-MM-DD")+"T00:00:00.000Z"
+			expiryFormattedForOHLCVSubs = moment(expiry,"YYYY-MM-DD").format("DD-MMM-YYYY")
 			expiryFormatted = expiry+"T00:00:00.000Z"
 			strike = hiddenDivObj.dataset.strike
 			right = hiddenDivObj.dataset.right
@@ -505,13 +508,13 @@ function loadOptionsChart(hiddenDataDivId, optionsChartVisible){
 					}
 					
 					//socket.emit('subscribeQuotes', this.token, interval);
-					subscribeDirectOHLCV(token,intervalRevLookup[interval],{'token':token,'stockCode':stockCode,'expiry':expiry,'strike':strike,'right':right},"")
+					subscribeDirectOHLCV(token,intervalRevLookup[interval],{'token':token,'stockCode':stockCode,'expiry':expiryFormattedForOHLCVSubs,'strike':strike,'right':right},"")
 					//socket.on(this.token+'-'+interval, function (ohlcvData){
 					//	optionChartFeedDataListener(ohlcvData)
 					//});
 					resetOptionsChartTickOpeningLevels();
 					//socket.on(this.token+'-1second', optionChartTickListener);
-					subscribeDirectOHLCV(this.token,"1SEC",{'token':this.token,'stockCode':stockCode,'expiry':expiry,'strike':strike,'right':right},"")
+					subscribeDirectOHLCV(this.token,"1SEC",{'token':this.token,'stockCode':stockCode,'expiry':expiryFormattedForOHLCVSubs,'strike':strike,'right':right},"")
 					
 					previousOptionsDataToken = this.token;
 				});
@@ -562,7 +565,7 @@ function refChartFeedDataListener(data){
 			dataInterval = intervalLookup[data['interval']]
 		}
 		if(selectedToken != data['token'] || interval != dataInterval){
-			console.log("ignoring token("+selectedToken+"): "+data["token"]+" as selected interval "+interval+" is different than data interval "+dataInterval)
+			console.log("refchart :ignoring token("+selectedToken+"): "+data["token"]+" as selected interval '"+interval+"' is different than data interval '"+dataInterval+"'")
 			//unsubscribe minute feed data
 			return;
 		}
@@ -584,7 +587,7 @@ function optionChartFeedDataListener(data){
 			dataInterval = intervalLookup[data['interval']]
 		}
 		if(data['token'] != previousOptionsDataToken || interval != dataInterval ){
-			console.log("ignoring token("+previousOptionsDataToken+"): "+data["token"]+" as selected interval "+interval+" is different than data interval "+dataInterval)
+			console.log("datachart:ignoring token("+previousOptionsDataToken+"): "+data["token"]+" as selected interval "+interval+" is different than data interval "+dataInterval)
 			//send unscubscribe message for appropriate interval
 			return;
 		}

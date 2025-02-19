@@ -199,6 +199,8 @@ function fiveMinChannelListener(data){
 	console.log("received 5 min data for token:" + ohlcvDataDict["token"])
 	let dataInterval = ohlcvDataDict["interval"]
 	let dataToken = ohlcvDataDict["token"]
+	if(dataToken == undefined)
+		console.log(data)
 	if(allSubscriptions[dataInterval] != null && allSubscriptions[dataInterval].findIndex(obj => obj.token==dataToken)!=-1){
 		refChartFeedDataListener(ohlcvDataDict);
 		optionChartFeedDataListener(ohlcvDataDict);
@@ -277,6 +279,7 @@ function parseTicks(ticks){
 	}
 	let tickStockName = getStockName(ticksDict['stock_code'],ticksDict['expiry'],ticksDict['strike'],ticksDict['right'])
 	//console.log(tickStockName)
+	//console.log(stockCodeTokenDict)
 	let tickToken = stockCodeTokenDict[tickStockName]
 	ticksDict['token'] = tickToken
 	//console.log(ticksDict)
