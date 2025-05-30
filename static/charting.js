@@ -5,19 +5,23 @@ $(document).ready(function() {
 
 	const chartOptions = { height:450, 
 			layout: { textColor: 'black', background: { type: 'solid', color: 'white' } }, 
-			timeScale: { rightOffset: 10,visible: true,timeVisible: true,secondsVisible: true,shiftVisibleRangeOnNewBar: true,
-									 ticksVisible: false },
-			rightPriceScale: { visible: true }, leftPriceScale: { visible: true, ticksVisible: true }, crosshair: {mode : 0}
+			timeScale: { rightOffset: 10,visible: true,timeVisible: true,secondsVisible: false,shiftVisibleRangeOnNewBar: true,
+									 ticksVisible: true },
+			rightPriceScale: { visible: true }, leftPriceScale: { visible: true, ticksVisible: true }, crosshair: {mode : LightweightCharts.CrosshairMode.Normal}
 			};
 	chart = LightweightCharts.createChart(document.getElementById('chart'), chartOptions);
-	
-	optionSeries = chart.addCandlestickSeries(
+	const myTickMarkFormatter = (time, tickMarkType, locale) => {
+		return moment.tz(time,"Asia/Kolkata").format("LTS");
+	};
+	//chart.timeScale().applyOptions({tickMarkFormatter : myTickMarkFormatter}) 
+
+	optionSeries = chart.addSeries(LightweightCharts.CandlestickSeries,
 		{ priceScaleId: 'right', upColor: '#26a69a', downColor: '#ef5350', 
 		 borderVisible: false, wickUpColor: '#26a69a', wickDownColor: '#ef5350' 
 		});
 	optionSeries.setData([]);
 
-	refDataSeries = chart.addCandlestickSeries(
+	refDataSeries = chart.addSeries(LightweightCharts.CandlestickSeries,
 		{ priceScaleId: 'left', upColor: '#bbbbbf', downColor: '#585859', 
 		 borderVisible: false, wickUpColor: '#bbbbbf', wickDownColor: '#585859' 
 		});
@@ -28,7 +32,7 @@ $(document).ready(function() {
 	optionSeries.priceScale().applyOptions({ scaleMargins: { top: 0.1,bottom: 0.2,},
 		priceFormat: {type: 'price', precision: 2, minMove: 0.05, formatter: price => parseFloat(price).toFixed(2),}
 	});
-	volumeSeries = chart.addHistogramSeries({ color: '#C5C5C5',priceFormat: {type: 'volume',}, priceScaleId: ''});
+	volumeSeries = chart.addSeries(LightweightCharts.HistogramSeries,{ color: '#C5C5C5',priceFormat: {type: 'volume',}, priceScaleId: ''});
 	volumeSeries.priceScale().applyOptions({ scaleMargins: {top: 0.8, bottom: 0,} });
 
 	//Legend
@@ -315,6 +319,11 @@ fromDateStr = moment().format("YYYY-MM-DD")+"T09:15:00.000Z"
 toDateStr = moment().format("YYYY-MM-DD")+"T19:30:00.000Z"
 
 function setChartRange(days){
+	if(days > 15 && interval != "1day"){
+		alert("Select daily interval to display data more than 15 days")
+		return
+	}
+
 	fromDateStr = moment().subtract(days,'d').format("YYYY-MM-DD")+"T09:15:00.000Z"
 	loadReferenceChart(true);
 	loadOptionsChart(currentHiddenDataDivId, optionsChartVisible)

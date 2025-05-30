@@ -13,6 +13,8 @@ class  DataProviderConnect():
     def __init__(self,dataprovider) -> None:
         #python ternary operator
         DATAPROVIDER_ENUM = ({True : configapi.DATAPROVIDER_DEFAULT, False: dataprovider } [dataprovider == None or dataprovider == ""])
+        print("Dataproviter: " + dataprovider)
+        print(DATAPROVIDER_ENUM)
         print("Setting dataprovider to " + DATAPROVIDER_ENUM)
         if DATAPROVIDER_ENUM == "IDIRECT":
             self.dataProvider = BreezeDataProvider()
