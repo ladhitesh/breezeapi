@@ -207,7 +207,16 @@ class  BreezeApiAdapter(BrokerApiAdapter):
 		return "breeze_connect " + metadata.version('breeze_connect')
 	
 	def getCustomerDetails(self):
-		customerDetails = self.api.get_customer_details(self.session_token)
+		userDetails = self.api.get_customer_details(self.session_token)
+		print(userDetails)
+		customerDetails = { "Success":{}}
+		user = {}
+		if (userDetails["Success"] != None):
+			user["userid"] = userDetails["Success"]["idirect_userid"]
+			user["user_name"] = userDetails["Success"]["idirect_user_name"]
+			user["broker"] = "IDIRECT"
+		customerDetails["Success"] = user
+		print(customerDetails)
 		return customerDetails
 
 	def addFnOStocksAdditionalColumns(self,df_row):

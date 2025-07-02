@@ -20,3 +20,18 @@ class DataProvider():
 
     def getDataproviderStocks(self, strict, searchStr):
         pass
+
+    def subscribeQuotesFeed(self, token, interval):
+        pass
+    
+    def unsubscribeQuotesFeed(self, token, interval):
+        pass
+
+    def subscribeMarketDepth(self,token):
+        pass
+
+    def unsubscribeMarketDepth(self, token):
+        pass
+
+    def registerFeedCallback(self, callBack):
+        pass

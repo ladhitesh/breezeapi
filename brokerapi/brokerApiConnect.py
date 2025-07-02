@@ -1,6 +1,7 @@
 from brokerapi.brokerApiAdapter import BrokerApiAdapter
 from brokerapi.breezeApiAdapter import BreezeApiAdapter
 from brokerapi.upstoxApiAdapter import UpstoxApiAdapter
+from brokerapi.kiteApiAdapter import KiteApiAdapter
 from brokerapi.testBrokerApiAdapter import TestBrokerApiAdapter
 
 import sys
@@ -19,6 +20,8 @@ class  BrokerApiConnect():
             self.brokerApi = BreezeApiAdapter()
         if self.BROKER == configapi.BROKER_UPSTOX:
             self.brokerApi = UpstoxApiAdapter()
+        if self.BROKER == configapi.BROKER_KITE:
+            self.brokerApi = KiteApiAdapter()
         if self.BROKER == configapi.BROKER_TEST:
             self.brokerApi = TestBrokerApiAdapter()
 

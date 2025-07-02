@@ -1,7 +1,9 @@
 
 # Import Libraries
 import logging
-from kiteconnect import KiteConnect, config
+from kiteconnect import KiteConnect
+from kiteconnect import KiteTicker
+from kiteconnect.exceptions import KiteException
 from io import BytesIO
 from zipfile import ZipFile
 from urllib.request import urlopen
@@ -19,7 +21,10 @@ sys.path.append(".")
 import configapi
 from brokerapi.brokerApiAdapter import BrokerApiAdapter
 
-
+if sys.version_info >= (3, 8):
+    from importlib import metadata
+else:
+    from importlib_metadata import metadata
 
 
 class RightType(Enum):
@@ -35,41 +40,63 @@ class RightType(Enum):
         else:
             raise NotImplementedError
 
+class OrderStatus(Enum):
+	requested = "requested"
+	pending = "pending"
+	ordered = "ordered"
+	executed = "executed"
+	rejected = "rejected"
+	cancelled = "cancelled"
+	failed = "failed"
+
+	#https://upstox.com/developer/api-documentation/appendix/order-status
+	@staticmethod
+	def from_str(label):
+		label = label.lower()
+		if label in ('validation pending','modify pending','trigger pending','modify validation pending','cancel pending','open pending'):
+			return OrderStatus.pending
+		elif label in ('put order req received','modify after market order req received','after market order req received'):
+			return OrderStatus.requested
+		elif label in ('cancelled after market order','cancelled'):
+			return OrderStatus.cancelled
+		elif label in ('open','modified','not cancelled','not modified'):
+			return OrderStatus.ordered
+		elif label in ('complete'):
+			return OrderStatus.executed
+		elif label in ('rejected'):
+			return OrderStatus.rejected
+		else:
+			raise NotImplementedError
+		
 class  KiteApiAdapter(BrokerApiAdapter):
 
 	def __init__(self):
 		#global api, securityMasterResponse, securityMasterZipFile, nseFile, foNseFile, bseFile, stockScriptdf
-		self.api = KiteConnect(configapi.KITE_API_KEY)
+		self.api:KiteConnect = KiteConnect(configapi.KITE_API_KEY)
 		self.isConnected = False
-		'''
-		if os.path.exists("securityMaster.zip"):
-			securityMasterCreateTimestamp = os.path.getctime("securityMaster.zip")
-			securityMasterCreateTimeDate = datetime.fromtimestamp(securityMasterCreateTimestamp).date()
-			today = datetime.now().date()
-			#print(today - securityMasterCreateTimeDate)
-			if today > securityMasterCreateTimeDate:
-				print("removing stale securityMaster.zip")
-				os.remove("securityMaster.zip")
-		if not os.path.exists("securityMaster.zip"):
-			self.securityMasterResponse = urlopen(config.SECURITY_MASTER_URL)
-			securityMasterBytesio = BytesIO(self.securityMasterResponse.read())	
-			with open("securityMaster.zip", mode="wb") as file:
-				file.write(securityMasterBytesio.getbuffer().tobytes())
-				print("wrote new securityMaster.zip")
-				file.close()
-		else:
-			print("using existing securityMaster.zip created on:"+str(securityMasterCreateTimeDate))
-		with ZipFile("securityMaster.zip") as securityMasterZipFile:
-			self.securityMasterZipFile = securityMasterZipFile
-			self.nseFile = self.securityMasterZipFile.open(config.ISEC_NSE_CODE_MAP_FILE.get("nse"))
-			self.foNseFile = self.securityMasterZipFile.open(config.ISEC_NSE_CODE_MAP_FILE.get("fonse"))
-			self.bseFile = self.securityMasterZipFile.open(config.ISEC_NSE_CODE_MAP_FILE.get("bse"))
-			self.stockScriptdf = pd.read_csv(
-				config.STOCK_SCRIPT_CSV_URL ,
-				sep=',',
-				encoding='utf-8',
-			)
-		'''
+		self.stockScriptdf = pd.read_csv('./instruments/instruments-final.csv' ,sep=',',encoding='utf-8')
+		connectBroker:bool = True
+		if connectBroker:
+			try:
+				sessionToken = ""
+				file_path = './kitesessiontokens/access_token'
+				files = sorted(glob.iglob(file_path), key=os.path.getctime, reverse=True)
+				with open(file_path, 'r') as file:
+					sessionToken = file.read()
+				print("session token from file: " + sessionToken)
+				self.api.set_access_token(sessionToken)
+				print("calling user profile api to check if access token is still valid")
+				userProfile = self.api.profile()
+				self.session_token = sessionToken
+				self.session_key = sessionToken
+				self.user_id = userProfile.get("user_id")
+				self.user_name = userProfile.get("user_name")
+				print("USERID-->" + self.user_id)
+				print("USERNAME-->" + self.user_name)
+				self.isConnected = True
+			except Exception as e:
+				print("Error occured while using existing session token from file to initialize kite api")
+				print(e)
 
 	# Callback to receive ticks. Use on_order_update(ws, data) for order notification
 	def on_ticks(self,ticks):
@@ -138,59 +165,159 @@ class  KiteApiAdapter(BrokerApiAdapter):
 				ticks['token'] = token
 			self.onMessage(eventName,ticks)
 
+	def on_order_update(self, data):
+		print("Order update : {}".format(data))
+
 	def getSessionTokenFromFile(self):
 		sessionToken = ""
-		file_path = './kitesessiontokens/*'
+		file_path = './kitesessiontokens/access_token'
 		files = sorted(glob.iglob(file_path), key=os.path.getctime, reverse=True)
-		if len(files) > 0:
-			sessionToken = os.path.basename(files[0])
+		with open(file_path, 'r') as file:
+			sessionToken = file.read()
+		print("session token from file: " + sessionToken)
 		return sessionToken
 	
+	def clearTokenFiles(self):
+		try:
+			directory_path = './kitesessiontokens'
+			files = os.listdir(directory_path)
+			for file in files:
+				file_path = os.path.join(directory_path, file)
+				if os.path.isfile(file_path) and not file == ".gitignore":
+					os.remove(file_path)
+			print("All kite(zerodha) token files deleted successfully as they are invalid.")
+		except OSError:
+			print("Error occurred while deleting files.")
+		return True
+
 	def registerFeedCallback(self,callbackFn) -> None:
 		self.onMessage = callbackFn
+
+	def getLoginUrl(self):
+		loginUrl = self.api.login_url()
+		return loginUrl
+	
+	def getSessionTokenName(self):
+		return configapi.KITE_SESSION_TOKEN_NAME
     
 	def connect(self,params):
-		sessionToken = params.get(configapi.KITE_SESSION_TOKEN_NAME,"no-kiteapi-session")
-		self.api.generate_session(request_token=sessionToken,api_secret=configapi.KITE_SECRET_KEY)
-		if sessionToken == "no-kiteapi-session":
+		if self.isConnected == True:
+			print("API already connected. Not doing anything in connect call.")
+			return self.session_token
+		reConnect = False
+		sessionToken = params.get(configapi.KITE_SESSION_TOKEN_NAME.split(".")[1],"no-kite-session")
+		if sessionToken == "no-kite-session":
 			sessionToken = self.getSessionTokenFromFile()
-			if sessionToken == "no-kiteapi-session":
-				raise Exception("No valid requestToken exist")
-			self.api = KiteConnect(api_key=configapi.KITE_API_KEY,access_token=sessionToken)
-			self.api.set_access_token(sessionToken)
+			token = self.api.generate_session(request_token=sessionToken,api_secret=configapi.KITE_SECRET_KEY)
+			self.session_key = token.get('access_token')
+			self.session_token = token.get('access_token')
+			if sessionToken == "no-kite-session":
+				raise Exception("No valid kite sessionToken exist")
+			else:
+				reConnect = True
 		else:
 			try:
 				file_path = './kitesessiontokens/'+sessionToken
-				os.makedirs(os.path.dirname(file_path), exist_ok=True)
+				#os.makedirs(os.path.dirname(file_path), exist_ok=True)
 				# create file
-				with open(file_path, 'x') as fp:
-					fp.close()
+				#with open(file_path, 'x') as fp:
+				#	fp.close()
 			except Exception as e:
 				print(e)
 				print('File already exists')
-		# do we need to generate session every time or store access oken and simply init kiteconnect
-		# data = self.api.generate_session(request_token=sessionToken,api_secret=configapi.SECRET_KEY)
-		#self.api.set_access_token(sessionToken)
+
+		if not reConnect :
+			try:
+				#token = self.loginapi.token("2", code=sessionToken, client_id=configapi.UPSTOX_API_KEY, client_secret=configapi.UPSTOX_SECRET_KEY, redirect_uri=configapi.UPSTOX_REDIRECT_URL, grant_type="authorization_code")
+				self.api : KiteConnect = KiteConnect(api_key=configapi.KITE_API_KEY)
+				token = self.api.generate_session(request_token=sessionToken,api_secret=configapi.KITE_SECRET_KEY)
+				print("token obtained after generate session api call")
+				print(token)
+				self.session_key = token.get('access_token')
+				self.session_token = token.get('access_token')
+				try:
+					file_path = './kitesessiontokens/access_token'
+					os.makedirs(os.path.dirname(file_path), exist_ok=True)
+					# create file
+					with open(file_path, 'w') as fp:
+						fp.write(token.get('access_token'))
+						fp.close()
+				except Exception as e:
+					print(e)
+					print('File already exists')
+			except Exception as e:	
+				print("Error getting token using code from file")
+				print(e)
+
+		#fetch customer details using token from file
+		userProfile = {}
+		try:
+			userProfile:dict = self.api.profile()
+			#print(userProfile)
+			'''
+			#zerodha websocket now available in personal(free) version api
+			try:
+				self.kws = KiteTicker(configapi.KITE_API_KEY, self.session_token)
+				self.kws.on_ticks = self.on_ticks
+				self.kws.on_order_update = self.on_order_update
+				self.kws.connect()
+			except Exception as e:
+					print('Error while connecting to zerodha websocket')
+					print(e)
+			'''
+			'''
+			self.orderapi:upstox_client.OrderApi = upstox_client.OrderApi(upstox_client.ApiClient(configuration))
+			self.portfolioapi:upstox_client.PortfolioApi = upstox_client.PortfolioApi(upstox_client.ApiClient(configuration))
+			self.marketHolidaysapi:upstox_client.MarketHolidaysAndTimingsApi = upstox_client.MarketHolidaysAndTimingsApi(upstox_client.ApiClient(configuration))
+			self.chargeApi:upstox_client.ChargeApi = upstox_client.ChargeApi(upstox_client.ApiClient(configuration))
+			self.pnlApi:upstox_client.TradeProfitAndLossApi = upstox_client.TradeProfitAndLossApi(upstox_client.ApiClient(configuration))
+			self.portfolioStreamer = upstox_client.PortfolioDataStreamer(upstox_client.ApiClient(configuration),order_update=True,position_update=True,holding_update=False)
+			self.portfolioStreamer.on("message", self.on_ticks)
+			self.portfolioStreamer.connect()
+			self.marketdataStreamer = upstox_client.MarketDataStreamerV3(upstox_client.ApiClient(configuration))
+			self.marketdataStreamer.on("message", self.on_ticks)
+			self.marketdataStreamer.connect()
+			time.sleep(5)
+			self.marketdataStreamer.subscribe(["NSE_INDEX|Nifty Bank"], "ltpc")
+			'''
+		except Exception as e:
+			print("Error while fetching customer details in KITE login flow")
+			print(e)
+			raise e
+		#print("checking status of userdetails")
+		#print(userProfile)
+		if userProfile:
+			#print("User profile not empty")
+			#print(userProfile.get("user_id"))
+			self.user_id = userProfile.get("user_id")
+			self.user_name = userProfile.get("user_name")
+		print("USERID-->" + self.user_id)
+		print("USERNAME-->" + self.user_name)
+
 		
-		#self.api.ws_connect()
-		#initialize kiteticker for websockets
-		# Assign the callbacks.
-		self.api.on_ticks = self.on_ticks
-		self.api.subscribe_feeds(get_order_notification=True)
-		print("USERID-->" + self.api.user_id)
-		self.user_id = self.api.user_id
-		self.session_key = self.api.access_token
-		self.session_token = sessionToken
 		self.isConnected = True
-		return sessionToken
+		return self.session_token
 	
 	def isApiConnected(self):
 		return self.isConnected
+	
+	def getApiVersion(self):
+		return "kiteconnect " + metadata.version('kiteconnect')
 		
 	def getCustomerDetails(self):
-		customerDetails = self.api.get_customer_details(self.session_token)
+		userProfile = self.api.profile()
+		#print(userProfile)
+		customerDetails = { "Success":{}}
+		user = {}
+		if userProfile:
+			user["userid"] = userProfile.get("user_id")
+			user["user_name"] = userProfile.get("user_name")
+			user["broker"] = userProfile.get("broker")
+		customerDetails["Success"] = user
+		print(customerDetails)
 		return customerDetails
 
+	'''
 	def addFnOStocksAdditionalColumns(self,df_row):
 		codeArr = df_row["code"].split("-", 2)
 		fnoType = codeArr[0]
@@ -215,6 +342,81 @@ class  KiteApiAdapter(BrokerApiAdapter):
 		df_row["right"] = right
 		df_row["product"] = product
 		return df_row
+	'''
+	
+	def getInstrumentDetailsByInstruId(self,zerodha_id):
+		print(f"Populating values based on zerodha id: {zerodha_id}")
+		stockScriptdf = self.stockScriptdf
+		#stockScriptdf["zerodha_id"] = stockScriptdf["zerodha_id"].astype(str)
+		requiredCol = stockScriptdf[["ExAllowed","ShortName","tradingsymbol","trading_symbol","idirect_id","zerodha_id","upstox_id","Series"]]
+		result = requiredCol.loc[( \
+                                            (stockScriptdf["zerodha_id"].astype(str) == zerodha_id)
+                                          	) ].head(1).copy()
+		result.rename(columns = {'trading_symbol':'code','tradingsymbol':'zerodha_tradingsymbol'}, inplace = True)
+		print(result.to_string())
+		response = {}
+		if not result.empty:
+			response['token'] = result['idirect_id'].astype(str).item()
+			response['idirect_id'] = result['idirect_id'].astype(str).item()
+			response['zerodha_id'] = result['zerodha_id'].astype(str).item()
+			response['upstox_id'] = result['upstox_id'].astype(str).item()
+			response['code'] = result['code'].astype(str).item()
+			response['zerodha_tradingsymbol'] = result['zerodha_tradingsymbol'].astype(str).item()
+			product = result['Series'].astype(str).item()
+			if product.lower() == 'option':
+				product = "OPTIONS"
+			elif product.lower() == 'future':
+				product = "FUTURES"
+			response['product_type'] = product
+		else:
+			print(f"Cannot find data for zerodha id: {zerodha_id}")
+		#print(df_row.to_string())
+		return response
+	
+	def addInstrumentIdColumns(self,df_row):
+		print(df_row.index)
+		print(df_row.to_dict())
+		print('zerodha_id' in df_row.index)
+		if 'zerodha_id' in df_row.index :
+			zerodha_id = str(df_row["zerodha_id"])
+			response = self.getInstrumentDetailsByInstruId(zerodha_id)
+			df_row['idirect_id'] = response['idirect_id']
+			df_row['upstox_id'] = response['upstox_id']
+			df_row['code'] = response['code']
+			df_row['product_type'] = response['product_type']
+			return df_row
+		exchangeCode = df_row['exchange_code']
+		stockCode = df_row['stock_code']
+		expiryDate = df_row['expiry_date']
+		if exchangeCode == "NFO":
+			expiryDate = (datetime.strptime(expiryDate,"%d-%b-%Y")).strftime('%Y-%m-%d')
+		product = df_row['product_type']
+		if product.lower() == 'options':
+			product = "OPTION"
+		elif product.lower() == 'futures':
+			product = "FUTURE"
+		strikePrice = df_row['strike_price']
+		strikePrice = str(strikePrice).split('.')[0]
+		right = df_row['right']
+		rightEnum = RightType.from_str(right)
+		stockScriptdf = self.stockScriptdf
+		requiredCol = stockScriptdf[["ExAllowed","ShortName","trading_symbol","idirect_id","zerodha_id","upstox_id"]]
+		result = requiredCol.loc[( \
+                                            (stockScriptdf["ExAllowed"] == exchangeCode)
+                                            & (stockScriptdf["ShortName"] == stockCode)
+											& (stockScriptdf["ExpiryDate"] == expiryDate)
+                                            & (stockScriptdf["Series"] == product) 
+											& (stockScriptdf["StrikePrice"] == int(strikePrice))
+											& (stockScriptdf["OptionType"] == rightEnum.value)
+                                            ) ].head(1).copy()
+		result.rename(columns = {'trading_symbol':'code'}, inplace = True)
+		#print(result.to_string())
+		df_row['idirect_id'] = result['idirect_id'].astype(str).item()
+		df_row['zerodha_id'] = result['zerodha_id'].astype(str).item()
+		df_row['upstox_id'] = result['upstox_id'].astype(str).item()
+		df_row['code'] = result['code'].astype(str).item()
+		#print(df_row.to_string())
+		return df_row
 
 	def getFnOStocks(self,*searchList):
 		base = r'^{}'
@@ -230,91 +432,116 @@ class  KiteApiAdapter(BrokerApiAdapter):
 											   | stockScriptdf["SN"].str.contains(searchRegex,na=False, case=False) ) \
 										 ) ].head(10).copy()
 		result.rename(columns = {'TK':'token', 'CD':'code','EC':'exchangeCode','SC':'stockCode', 'LS':'lotSize'}, inplace = True)
-		result = result.apply(self.addFnOStocksAdditionalColumns,axis=1)
+		result = result.apply(self.addInstrumentIdColumns,axis=1)
 		resultJsonStr = result.to_json(orient = "records")
 		resultJsonDict = json.loads(resultJsonStr)
 		return resultJsonDict
     
 	def getBrokerages(self,params):
-		stockCode = params.get("stockCode","CNXBAN")
 		quantity = params.get("quantity","1")
-		priceStr = params.get("price","1")
+		priceStr = params.get("price","0")
 		action = params.get("action")
-		product = params.get("product")
 		exchangeCode = params.get("exchangeCode","NFO")
-		strike = ""
-		rightTypeStr = ""
-		orderType = "limit"
-		if priceStr == "0":
-			orderType = "market"
+		orderType = "LIMIT"
+		if priceStr == "0" or priceStr == "":
+			orderType = "MARKET"
+			priceStr = "0.0"
 
-		if exchangeCode == "NFO":
-			expiryDateStr = params.get("expiryDate")
-			expiryDate = datetime.strptime(expiryDateStr, "%d-%b-%Y")
-			if product == "options":
-				strike = params.get("strike","NA")
-				rightTypeStr = params.get("rightType","NA")
-				rightTypeEnum = RightType.from_str(rightTypeStr)
-				rightTypeStr = rightTypeEnum.name
-		
-		expiry = expiryDate.strftime('%Y-%m-%dT06:00:00.000Z')
-		brokerages = self.api.preview_order( stock_code = stockCode,
-														exchange_code = exchangeCode,
-														product = product,
-														order_type = orderType,
-														price = priceStr,
-														action = action,
-														quantity = quantity,
-														expiry_date=expiry,
-														right=rightTypeStr,
-														strike_price=strike,
-														specialflag = "N")
-		return brokerages
-    
+		zerodha_id = params.get("zerodha_id","")
+		instruDetails = self.getInstrumentDetailsByInstruId(zerodha_id)
+		order = {}
+		order["exchange"] =  "NFO"
+		order["tradingsymbol"] =  instruDetails.get('zerodha_tradingsymbol')
+		order["transaction_type"] = str(action).upper()
+		order["variety"] = "regular"
+		order["product"] = "NRML"
+		order["order_type"] = orderType
+		order["quantity"] = int(quantity)
+		order["price"] = float(priceStr)
+		#order["trigger_price"] =  0
+		#order["mode"] =  "compact"
+
+		try:
+			#print(order)
+			brokerageResponse = self.api.order_margins([order])
+			#print(brokerageResponse)
+			brokerage = brokerageResponse[0]["charges"]
+			print(brokerage)
+			returnData = '"total_brokerage":"'+str("{:.2f}".format(brokerage["total"]))+'"'
+			returnData = returnData +','+'"brokerage":"'+str("{:.2f}".format(brokerage["brokerage"]))+'"'
+			returnData = returnData +','+'"stamp_duty":"'+str("{:.2f}".format(brokerage["stamp_duty"]))+'"'
+			returnData = returnData +','+'"stt":"'+str("{:.2f}".format(brokerage["transaction_tax"]))+'"'
+			returnData = returnData +','+'"gst":"'+str("{:.2f}".format(brokerage["gst"]["total"]))+'"'
+			returnData = returnData +','+'"exchange_turnover_charges":"'+str("{:.2f}".format(brokerage["exchange_turnover_charge"]))+'"'
+			returnData = returnData +','+'"sebi_charges":"'+str("{:.2f}".format(brokerage["sebi_turnover_charge"]))+'"'
+			response = '{"Success":{'+returnData+'}}'
+			#print(response)
+			response = json.loads(response)
+		except Exception as e:
+			print(e)
+			response = '{"Error":"Check error in server logs"}'
+			#print(response)
+			response = json.loads(response)
+		print(response)
+		return response
+	
 	def placeOrder(self,params):
 		#stockcode,exchangeCode,product,action,orderType,stoploss,quantity,price,expiryDate,rightStr,strike
-		stockCode = params.get("stockCode","CNXBAN")
-		quantity = params.get("quantity","1")
-		priceStr = params.get("price","1")
-		stoploss = params.get("stoploss","")
-		action = params.get("action")
-		product = params.get("product")
-		exchangeCode = params.get("exchangeCode","NFO")
-		strike = ""
-		rightTypeStr = ""
-		orderType = "limit"
-		if priceStr == "0":
-			orderType = "market"
-
-		if exchangeCode == "NFO":
-			expiryDateStr = params.get("expiryDate")
-			expiryDate = datetime.strptime(expiryDateStr, "%d-%b-%Y")
-			if product == "options":
-				strike = params.get("strike","NA")
-				rightTypeStr = params.get("rightType","NA")
-				rightTypeEnum = RightType.from_str(rightTypeStr)
-				rightTypeStr = rightTypeEnum.name
+		quantity = int(params.get("quantity","1"))
+		price = float(params.get("price","1"))
+		stoploss = float(params.get("stoploss","0"))
+		action = params.get("action").upper()
+		instrumentId = params.get("zerodha_id","")
+		if instrumentId:
+			responseDict = self.getInstrumentDetailsByInstruId(instrumentId)
+			zerodha_tradingsymbol = responseDict.get("zerodha_tradingsymbol","")
+			print("zerodha_tradingsymbol: " + zerodha_tradingsymbol)
+		exchangeCode = "NFO"
+		orderType = "LIMIT"
+		if price == 0:
+			orderType = "MARKET"
+		amoOrder = False
+		'''
+		try:
+			marketResponse:upstox_client.GetMarketStatusResponse = self.marketHolidaysapi.get_market_status("NFO")
+			marketStatus:upstox_client.MarketStatusData = marketResponse.data
+			if not marketStatus.status == "NORMAL_OPEN":
+				amoOrder = True
+		except Exception as e:
+			print(e)
+			print("Unable to determine market open status to place new order. Placing regular order")
+		'''
+		product = 'NRML' #MIS=Intraday CNC=Delivery of Equities, NRML=overnight of FNO 
+		validity='DAY'
+		mytag="hiteshapi"
 		# Place order
-		todayStr = datetime.now().strftime('%Y-%m-%dT06:00:00.000Z')
-		expiryStr = expiryDate.strftime('%Y-%m-%dT06:00:00.000Z')
-		buy_order = self.api.place_order(stock_code=stockCode,
-													exchange_code=exchangeCode,
-													product=product,
-													action=action,
-													order_type=orderType,
-													stoploss=stoploss,
-													quantity=quantity,
-													price=priceStr,
-													validity="day",
-													validity_date=todayStr,
-													disclosed_quantity="0",
-													expiry_date=expiryStr,
-													right=rightTypeStr,
-													strike_price=strike)
-
-		print(buy_order)
-		return buy_order
+		newOrderId:str = None
+		try:
+			order_response = self.api.place_order(variety='regular',exchange=exchangeCode,tradingsymbol=zerodha_tradingsymbol,
+										 transaction_type=action,quantity=quantity,product=product,
+										 order_type=orderType,price=price,validity=validity,trigger_price=stoploss,tag=mytag)
+			print(order_response)
+			newOrderId = order_response
+		except KiteException as ex:
+			print("Error occurred while placing order")
+			print(ex)
+			response = '{"Error":"Check logs for error: '+ str(ex) +'"}'
+			print(response)
+			result = json.loads(response)
+			return result
+		order_status = "Success"
+		order_status_message = ""
+		if newOrderId :
+			order_status_message = '{ "message":"order placed successfully.check status.","order_id":"' + newOrderId + '"}'
+		else:
+			order_status = "Error"
+			order_status_message = '"Error placing order"'
+		response = '{"'+ order_status +'":' + order_status_message + '}'
+		print(response)
+		result = json.loads(response)
+		return result
 	
+
 	def squareOffOrder(self,params):
 		
 		stockCode = params.get("stockCode","CNXBAN")
@@ -365,45 +592,69 @@ class  KiteApiAdapter(BrokerApiAdapter):
 		orderIdStr = params.get("orderId","")
 		exchangeCode = params.get("exchangeCode","NFO")
 		priceStr = params.get("price","")
-		quantityStr = params.get("quantity","")
-		stopLossStr = params.get("stoploss","0")
-		orderType = "limit"
+		quantity = int(params.get("quantity","0"))
+		stopLoss = float(params.get("stoploss","0"))
+		orderType = "LIMIT"
+		validity ="DAY" #DAY,IOC
 		if priceStr == "0":
-			orderType = "market"
-		modifyResult = self.api.modify_order(order_id=orderIdStr,
-														 exchange_code=exchangeCode,
-														 order_type=orderType,
-														 stoploss=stopLossStr,
-														 quantity=quantityStr,
-														 price=priceStr,
-														 validity="day",
-														 disclosed_quantity="0")
-		print(modifyResult)
-		return modifyResult
+			orderType = "MARKET" #MARKET,LIMIT,SL,SL-M
+		if stopLoss > 0 :
+			orderType = "SL" #MARKET,LIMIT,SL,SL-M
+		price = float(priceStr)
 
-		'''
-    {'Success': {'message': 'Successfully Modified the order', 'order_id': '202310201500017588'}, 'Status': 200, 'Error': None}
-    '''
-
+		try:
+			modifyResponse = self.api.modify_order(variety='regular',order_id=orderIdStr,quantity=quantity,price=price,order_type=orderType,trigger_price=stopLoss,validity=validity)
+			print(modifyResponse)
+			modifiedOrderId = modifyResponse
+			response = '{"Success":{"message":"Order ' + orderIdStr + ' modified successfully","order_id":"' + modifiedOrderId + '"}}'
+		except Exception as e:
+			print(e)
+			response = '{"Error":"'+str(e)+'"}'
+		
+		print(response)
+		result = json.loads(response)
+		return result
     
 	def cancelOrder(self,orderRef):
-		cancelResult = self.api.cancel_order(exchange_code="NFO",
-														 order_id=orderRef)
-		print(cancelResult)
-		return cancelResult
+		try : 
+			cancelResponse = self.api.cancel_order(variety='regular',order_id=orderRef)
+			print(cancelResponse)
+			response = '{"Success":{"message":"Order '+ cancelResponse +' cancelled successfully"}}'
+		
+		except Exception as e:
+			print(e)
+			response = '{"Error":"' + str(e) + '"}'
 
-		'''
-    {'Success': {'order_id': '202310201500017588', 'message': 'Your Order Canceled Successfully'}, 'Status': 200, 'Error': None}
-    '''
+		print(response)
+		result = json.loads(response)
+		return result
     
 	def getOrderDetails(self,orderId):
 		orderDetail = self.api.get_order_detail(exchange_code="NFO",order_id=orderId)
 		print(orderDetail)
 		return orderDetail
 	
+	def fixOrderStatus(self,df_row):
+		status = df_row['status']
+		statusMessage = df_row['status_message']
+		if statusMessage == None:
+			statusMessage = ""
+		newStatus = OrderStatus.from_str(status).name
+		df_row['status'] = newStatus
+		df_row['status_message'] = str(status) + " " + statusMessage
+		print(df_row)
+		return df_row
+
+	def updatePrice(self, df_row):
+		price = df_row['price']
+		if price == 0:
+			print(f"updating price: {price} with average_price: {df_row['average_price']}")
+			df_row["price"] = df_row["average_price"]
+		return df_row
+	
 	def getOrdersList(self,params):
-		fromDateStr = params.get("orderDate","07-12-2023")
-		toDateStr = params.get("orderDate","07-12-2023")
+		fromDateStr = params.get("orderDate","22-09-2024")
+		toDateStr = params.get("orderDate","22-09-2024")
 		
 		if fromDateStr == "":
 			today = datetime.now()
@@ -434,39 +685,78 @@ class  KiteApiAdapter(BrokerApiAdapter):
 		toDateStr = toDate.strftime('%Y-%m-%dT23:00:00.000Z')
 		fromDateStr = fromDate.strftime('%Y-%m-%dT01:00:00.000Z')
 		print("fetching orders from: "+fromDateStr+" to "+toDateStr)		
-		orderList = self.api.get_order_list(exchange_code="NFO",
-														from_date=fromDateStr,
-														to_date=toDateStr)
-		#print(orderList)
-		if orderList is None or orderList.get("Success") is None:
+		orderList:dict = self.api.orders()
+		print(orderList)
+		resultJsonDict = {}
+		if orderList is None or not orderList:
 			print(orderList)
-			orderList = json.loads('{"Error":"Not connected"}')
+			resultJsonDict = json.loads('{"Error":"Not connected"}')
 		else:
-			unfilteredOrderList = orderList.get("Success")
-			if(unfilteredOrderList is not None):
-				orderListDf = pd.json_normalize(unfilteredOrderList)
+			unfilteredOrderList = orderList
+			#print(type(unfilteredOrderList))
+			#print(unfilteredOrderList)
+			if(unfilteredOrderList): #list not empty
+				orderListDf = pd.DataFrame(unfilteredOrderList)
+				print(orderListDf)
+				orderListDf["order_timestamp"] = orderListDf["order_timestamp"].astype(str)
 				#orderListDf = orderListDf.apply(derivedCol, axis=1)
-				#today = datetime.now()    
-				#todayStr = today.strftime("%d-%b-%Y")
-				orderDateStr = fromDateStr
+				today = datetime.now()    
+				todayStr = today.strftime("%Y-%m-%d")
+				orderDateStr = todayStr
+				#orderDateStr = "2024-09-22"
 				#print(todayStr)
 				result = orderListDf.loc[( \
-												((orderListDf["order_datetime"].str.contains(orderDateStr,na=False, case=False))) \
+												(orderListDf["order_timestamp"].str.contains(orderDateStr,na=False, case=False)) \
+												& (orderListDf["exchange"].str.contains("NFO",na=False, case=False) 
+			   										| orderListDf["exchange"].str.contains("BFO",na=False, case=False) )
 												) ].copy()
 				#print(result.columns.values)
 				#print(result[["order_id","order_datetime","stock_code","status","1","2","3"]])
+				result.rename(columns = {'exchange':'exchange_code', 'order_timestamp':'order_datetime','transaction_type':'action','instrument_token':'zerodha_id', 'trigger_price':'stoploss'}, inplace = True)
+				result = result.apply(self.addInstrumentIdColumns,axis=1)
+				result = result.apply(self.fixOrderStatus,axis=1)
+				result = result.apply(self.updatePrice,axis=1)
 				result["order_datetime_sorting"] = pd.to_datetime(result['order_datetime'])
 				result.sort_values(by='order_datetime_sorting', inplace = True, ascending = False)
 				resultJsonStr = result.to_json(orient = "records")
 				resultJsonDict = json.loads(resultJsonStr)
-				orderList["Success"]=resultJsonDict
+				
+				#print(resultJsonDict)
 		#print(resultJsonDict)
-		return orderList
+		returnValue = {}
+		returnValue["Success"] = resultJsonDict
+		return returnValue
     
     
 	def getOpenPositionsList(self):
-		portfolioPositions = self.api.get_portfolio_positions()
-		#ic(portfolioPositions)
+		portfolioPositions = self.api.positions()
+		print(portfolioPositions)
+		positionList = []
+		if portfolioPositions:
+			positionDataList = portfolioPositions["net"]
+			for positionData in positionDataList:
+				#print(positionData.to_dict())
+				position = positionData
+				if position["buy_quantity"] == position["sell_quantity"]:
+					continue
+				newPosition = {}
+				if position["buy_price"] > 0 :
+					newPosition["action"] = "BUY"
+					newPosition["average_price"] = position["buy_price"]
+					newPosition["quantity"] = position["quantity"]
+				newPosition["code"] = position["tradingsymbol"]
+				zerodha_id = str(position["instrument_token"])
+				newPosition["zerodha_id"] = zerodha_id
+				instruDetails = self.getInstrumentDetailsByInstruId(zerodha_id)
+				newPosition = newPosition | instruDetails #merge 2 dicts
+				positionList.append(newPosition)
+			print(positionList)
+		response = '{"Success":' + json.dumps(positionList) + '}'
+		print(response)
+		response = json.loads(response)
+		print(response)
+		return response
+
 		return portfolioPositions
     
     
@@ -511,53 +801,57 @@ class  KiteApiAdapter(BrokerApiAdapter):
 		toDateStr = params.get("toDate",datetime.now().strftime("%d-%b-%Y"))
 		fromDate = datetime.strptime(fromDateStr, "%d-%b-%Y")
 		toDate = datetime.strptime(toDateStr, "%d-%b-%Y")
-		exchangeCode = "NFO" #get only fno pnl
-		tradesListJsonDict = self.getTradesList(params)
-		if tradesListJsonDict is None:
-			print(tradesListJsonDict)
-			tradesListJsonDict = json.loads('{"Error":"Not connected"}')
-			return tradesListJsonDict
+		if toDate.month < 4 :
+			financial_year = str((toDate.year%100)-1) + str(toDate.year%100)
+		else :
+			financial_year = str((toDate.year%100)) + str((toDate.year%100)+1)
+		from_date = fromDate.strftime("%d-%m-%Y")
+		to_date = toDate.strftime("%d-%m-%Y")
+		segment = "FO" #get only fno pnl
+		#financial_year = str(fromDate.year%100) + str(toDate.year%100) #last 2 digits of from and to date
+		positionsList = self.api.positions()
+		print(positionsList)
 		
-		if not tradesListJsonDict["Success"]:
+		if not positionsList:
+			print(positionsList)
+			positionsList = json.loads('{"Error":"Not connected"}')
+			return positionsList
+		#print("trade list")
+		#print(len(list(tradesListJsonDict.data)))
+		if len(list(positionsList['day'])) == 0 :
 			print("No Trades taken between "+fromDateStr+"-"+toDateStr)
-			print(tradesListJsonDict)
-			return tradesListJsonDict
-		tradesListDf = pd.json_normalize(tradesListJsonDict["Success"])
-		tradesListDf["quantity"] = tradesListDf["quantity"].astype(float)
-		tradesListDf["average_cost"] = tradesListDf["average_cost"].astype(float)
-		tradesListDf["total_taxes"] = tradesListDf["total_taxes"].astype(float)
-		tradesListDf["total_cost"] = tradesListDf["quantity"] * tradesListDf["average_cost"]
+			print(positionsList)
+			realisedPnlDf = pd.DataFrame({"realised_pnl": 0, 'realised_pnl_with_taxes': 0}, index=[0])
+			resultJsonStr = realisedPnlDf.to_json(orient = "records")
+			resultJsonDict = json.loads(resultJsonStr)
+			responseJsonDict = {}
+			responseJsonDict["Success"]=resultJsonDict[0]
+			return responseJsonDict
+		
+		tradesList = positionsList['day']
+		tradesListDf = pd.DataFrame(tradesList)
 		#print(tradesListDf)
-		groupbyTradesListDf = tradesListDf.groupby(["stock_code", "action"], as_index=False)\
-		.agg(quantity=("quantity","sum"),sum_total_cost=("total_cost","sum"),sum_total_taxes=("total_taxes","sum"))
-		groupbyTradesListDf = groupbyTradesListDf.apply(self.costCalculator,axis=1)
-		groupbyTradesListDf = groupbyTradesListDf.apply(self.pnlMultiplier,axis=1)
-		#print(groupbyTradesListDf)
-		#remove open postion total cost from all trades cost
-		openPositionsDict = self.getOpenPositionsList()
-		totalOpAmount = 0
-		if not openPositionsDict is None and not openPositionsDict["Success"] is None:
-			todayStr = datetime.now().strftime("%d-%b-%Y")
-			today = datetime.strptime(todayStr, "%d-%b-%Y")
-			if toDate == today:
-				openPositionsDf = pd.json_normalize(openPositionsDict["Success"])
-				#print(openPositionsDf)
-				openPositionsDf["quantity"] = openPositionsDf["quantity"].astype(float)
-				openPositionsDf["average_price"] = openPositionsDf["average_price"].astype(float)
-				openPositionsDf["total_op_amt"] = openPositionsDf["quantity"] * openPositionsDf["average_price"] * -1 #assuming buy
-				totalOpAmount = openPositionsDf['total_op_amt'].sum()
-				print("Total open position:" + str(totalOpAmount))
-		realised_pnl = groupbyTradesListDf['sum_total_cost'].sum()
-		realised_pnl_with_taxes = groupbyTradesListDf['total_cost_with_taxes'].sum()
+		realised_pnl = tradesListDf['pnl'].sum()
+		#print(realised_pnl)
+		
+		#chargesResponse:upstox_client.GetProfitAndLossChargesResponse = self.pnlApi.get_profit_and_loss_charges(api_version=self.apiversion,segment=segment,financial_year=financial_year,from_date=from_date,to_date=to_date)
+		#chargesData:upstox_client.ProfitAndLossChargesWrapperData = chargesResponse.data
+		#chargesBreakDown:upstox_client.ProfitAndLossChargesData = chargesData.charges_breakdown
+		totalCharges = 0
+		realised_pnl_with_taxes = realised_pnl - totalCharges
 		#remove open positions
-		realised_pnl = round((realised_pnl - totalOpAmount),2)
-		realised_pnl_with_taxes = round((realised_pnl_with_taxes - totalOpAmount),2)
+		realised_pnl = round((realised_pnl),2)
+		realised_pnl_with_taxes = round((realised_pnl_with_taxes),2)
 		realisedPnlDf = pd.DataFrame({"realised_pnl": realised_pnl, 'realised_pnl_with_taxes': realised_pnl_with_taxes}, index=[0])
-		#print(realisedPnlDf)
+		#realisedPnlDf = pd.DataFrame({"realised_pnl": realised_pnl, 'realised_pnl_with_taxes': 0}, index=[0])
+		print(realisedPnlDf)
 		resultJsonStr = realisedPnlDf.to_json(orient = "records")
 		resultJsonDict = json.loads(resultJsonStr)
-		tradesListJsonDict["Success"]=resultJsonDict[0]
-		return tradesListJsonDict
+		
+		responseJsonDict = {}
+		responseJsonDict["Success"]=resultJsonDict[0]
+		#responseJsonDict["Success"]={}
+		return responseJsonDict
 	
 	def getFunds(self):
 		return self.api.get_funds()
@@ -646,24 +940,44 @@ class  KiteApiAdapter(BrokerApiAdapter):
 		return hDataJsonDict
 
 	def getMargin(self,params):
-		exchangeCode = params.get("exchangeCode","NFO")
-		return self.api.get_margin(exchangeCode)
+		margin = self.api.margins(segment="equity")
+		print(margin)
+		response = '{ "Error" : "Some error occured"}'
+		if margin:
+			allocatedFunds = margin["available"]["opening_balance"]
+			availableMargin = margin["available"]["live_balance"]
+			mtm = margin["utilised"]["m2m_realised"]
+			mtmStr = '"limit_list":[{"amount":' + str(mtm) + '}] '
+			response = '{ "Success" : { "amount_allocated" : "'+str(allocatedFunds)+'", "cash_limit" : "'+str(availableMargin)+'", ' + mtmStr + '} }'
+		print(response)
+		result = json.loads(response)
+		return result
 
 	def marginCalculator(self,params):
-		newPosition = {}
+		quantity = int(params.get("quantity","1"))
+		priceStr = params.get("price","0")
+		action = str(params.get("action")).upper()
 		exchangeCode = params.get("exchangeCode","NFO")
-		newPosition["stock_code"] = params.get("stockCode","")
-		newPosition["expiry_date"] = params.get("expiryDate","")
-		newPosition["product"] = params.get("product","")
-		newPosition["action"] = params.get("action","")
-		newPosition["price"] = params.get("price","")
-		newPosition["quantity"] = params.get("quantity","")
-		newPosition["strike_price"] = params.get("strike","")
-		rightTypeStr = params.get("rightType","")
-		if not rightTypeStr == "":
-			rightTypeEnum = RightType.from_str(rightTypeStr)
-			rightTypeStr = rightTypeEnum.name
-		newPosition["right"] = rightTypeStr
+		orderType = "LIMIT"
+		if priceStr == "0" or priceStr == "":
+			orderType = "MARKET"
+			price = 0.0
+		else:
+			price = float(priceStr)
+
+		zerodha_id = params.get("zerodha_id","")
+		instruDetails = self.getInstrumentDetailsByInstruId(zerodha_id)
+		zerodha_tradingsymbol = instruDetails.get('zerodha_tradingsymbol')
+		newPosition = {}
+		newPosition["exchange"] =  "NFO"
+		newPosition["product"] = "NRML"
+		newPosition["variety"] = "regular"
+		newPosition["tradingsymbol"] =  zerodha_tradingsymbol
+		newPosition["transaction_type"] = action
+		newPosition["price"] = price
+		newPosition["quantity"] = quantity
+		newPosition["order_type"] = orderType
+
 		includeOpenPostions = params.get("includeOpenPositions","")
 		if includeOpenPostions.lower() == "true":
 			includeOpenPostions = True
@@ -690,6 +1004,7 @@ class  KiteApiAdapter(BrokerApiAdapter):
 		#print(openPositionsList)
 
 		#pending orders
+		includePendingOrders = False
 		pendingOrdersList = []
 		if includePendingOrders:
 			today = datetime.now()
@@ -697,7 +1012,7 @@ class  KiteApiAdapter(BrokerApiAdapter):
 			daysFrom = timedelta(days = 0)
 			fromDate = today - daysFrom
 			toDate = today + timedelta(days=0)
-			orderList =  self.getOrdersList(fromDate,toDate)
+			orderList =  self.getOrdersList({})
 			if(orderList is not None and orderList["Success"] is not None ):
 				unfilteredOrderList = orderList["Success"]
 				orderListDf = pd.json_normalize(unfilteredOrderList)
@@ -720,7 +1035,25 @@ class  KiteApiAdapter(BrokerApiAdapter):
 		listOfPositions.append(newPosition)
 		#print("list of positions")
 		#print(listOfPositions)
-		return self.api.margin_calculator(listOfPositions,"NFO")
+		try:
+			#print(listOfPositions)
+			marginResponse = self.api.order_margins(listOfPositions)
+			#print(marginResponse)
+			span_margin_required = 0.0
+			for margin in marginResponse:
+				if margin["tradingsymbol"] == zerodha_tradingsymbol:
+					span_margin_required = float(margin["total"])
+			#print(span_margin_required)
+			response = '{"Success":{"span_margin_required":"' + str("{:.2f}".format(span_margin_required)) + '"}}'
+			#print(response)
+			response = json.loads(response)
+		except Exception as e:
+			print(e)
+			response = '{"Error":"Check error in server logs"}'
+			#print(response)
+			response = json.loads(response)
+		print(response)
+		return response
 
 	def getNseStocks(self,stockName):
 		nseSecuritiesDf = pd.read_csv(self.nseFile, sep=',', engine='python')

@@ -38,3 +38,19 @@ class  DataProviderConnect():
     
     def getDataproviderStocks(self, strict, *searchStr):
         return self.dataProvider.getDataproviderStocks(strict, *searchStr)
+    
+    def registerFeedCallback(self, callBack):
+        return self.dataProvider.registerFeedCallback(callBack)
+    
+    def subscribeQuotesFeed(self, token, interval):
+        return self.dataProvider.subscribeQuotes(token,interval)
+    
+    def unsubscribeQuotesFeed(self, token, interval):
+        return self.dataProvider.unsubscribeQuotes(token,interval)
+
+    def subscribeMarketDepth(self,token):
+        return self.dataProvider.subscribeMarketDepth(token)
+
+    def unsubscribeMarketDepth(self, token):
+        return self.dataProvider.unsubscribeMarketDepth(token)
+    

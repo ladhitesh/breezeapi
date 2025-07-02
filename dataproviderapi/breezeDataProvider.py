@@ -16,7 +16,28 @@ class BreezeDataProvider(DataProvider):
         #self.stockScriptdf = pd.read_csv(config.STOCK_SCRIPT_CSV_URL ,sep=',',encoding='utf-8')
         self.stockScriptdf = pd.read_csv('./instruments/instruments-final.csv' ,sep=',',encoding='utf-8')
         self.isConnected = False
+        self.onMessage = None
 
+    def registerFeedCallback(self,callbackFn) -> None:
+        print("callback registered"+str(callbackFn))
+        self.onMessage = callbackFn
+
+    # Callback to receive ticks.
+    def on_ticks(self,ticks):
+        #print(ticks)
+        #print(self.onMessage!=None)
+        if(self.onMessage!=None):
+            token = "none"
+            interval = ""
+            if ticks.get('quotes') == "Market Depth":
+                #Market Data
+                token = ticks['symbol'].split('!')[1]
+            eventName = token
+            if interval != "":
+                eventName = token + "-" + interval
+                ticks['token'] = token
+            self.onMessage(eventName,ticks)
+    
     def initialize(self,existingApi,params):
         if existingApi != None:
             self.dp = existingApi
@@ -42,6 +63,9 @@ class BreezeDataProvider(DataProvider):
                 print(e)
                 print('File already exists')
         self.dp.generate_session(api_secret=configapi.IDIRECT_SECRET_KEY,session_token=sessionToken)
+        self.dp.ws_connect()
+		# Assign the callbacks.
+        self.dp.on_ticks = self.on_ticks
         print("USERID-->" + self.dp.user_id)
         self.user_id = self.dp.user_id
         self.session_key = self.dp.session_key
@@ -162,3 +186,29 @@ class BreezeDataProvider(DataProvider):
         resultJsonStr = result.to_json(orient = "records")
         resultJsonDict = json.loads(resultJsonStr)
         return resultJsonDict
+    
+    def subscribeQuotes(self,token, interval):
+        #"4.1!2885"
+        quotesToken = "4.1!"+token
+        return self.subscribeFeed(quotesToken,interval)
+
+    def subscribeMarketDepth(self,token):
+        #"4.2!2885"
+        marketDepthToken = "4.2!"+token
+        return self.subscribeFeed(marketDepthToken,"")
+
+    def unsubscribeQuotes(self,token, interval):
+        #"4.1!2885"
+        quotesToken = "4.1!"+token
+        return self.unsubscribeFeed(quotesToken,interval)
+
+    def unsubscribeMarketDepth(self,token):
+        #"4.2!2885"
+        marketDepthToken = "4.2!"+token
+        return self.unsubscribeFeed(marketDepthToken,"")
+
+    def subscribeFeed(self,codedToken, interval):
+        return self.dp.subscribe_feeds(stock_token=codedToken,interval=interval)   
+
+    def unsubscribeFeed(self,codedToken, interval):
+        return self.dp.unsubscribe_feeds(stock_token=codedToken,interval=interval) 

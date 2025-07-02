@@ -252,9 +252,9 @@ class  UpstoxApiAdapter(BrokerApiAdapter):
 		if status == "success":
 			userProfile = userDetails.data
 			print(userProfile)
-			user["idirect_userid"] = userProfile.user_id
-			user["idirect_user_name"] = userProfile.user_name
-			user["idirect_lastlogin_time"] = userProfile.broker
+			user["userid"] = userProfile.user_id
+			user["user_name"] = userProfile.user_name
+			user["broker"] = userProfile.broker
 		customerDetails["Success"] = user
 		print(customerDetails)
 		return customerDetails

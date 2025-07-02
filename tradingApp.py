@@ -38,27 +38,33 @@ app.config['CORS_HEADERS'] = 'Content-Type'
 
 app.breezeapi_version = metadata.version('breeze_connect')
 
-#initialise to the default broker but do not connect yet.
-#we will try to connect when app is launched.
-brokerapi = brokerApiConnect.BrokerApiConnect(configapi.BROKER_DEFAULT)
-#initialise to the default dataprovider
-dataprovider = dataproviderConnect.DataProviderConnect(configapi.DATAPROVIDER_DEFAULT)
-myapi = brokerapi.brokerApi
-if brokerapi.isConnected() and brokerapi.BROKER == configapi.BROKER_IDIRECT:
-	#this can never happen as brokerapi.connect is not called during file load
-	print("idirect brokerapi is connected. initializing chart to same.")
-	dataprovider.initialize(myapi.api,{})
-else:
-	#if server restarts and we already have a request token, then connect to dataprovider.
-	#this is required so that we can load chart when app launches.
-	print("brokerapi is not connected or it is not idirect. initializing default data provider")
-	try:
-		dataprovider.initialize(None,{})
-		print("On app start, dataprovider is connected")
-	except Exception as e:
-		#we do not have a valid request token. Need to go for login flow manually.
-		print("On app start, dataprovider not connected exception raised")
-		print(e)
+def initApp():
+	#initialise to the default broker but do not connect yet.
+	#we will try to connect when app is launched.
+	global brokerapi
+	brokerapi = brokerApiConnect.BrokerApiConnect(configapi.BROKER_DEFAULT)
+	#initialise to the default dataprovider
+	global dataprovider
+	dataprovider = dataproviderConnect.DataProviderConnect(configapi.DATAPROVIDER_DEFAULT)
+	global myapi
+	myapi = brokerapi.brokerApi
+	if brokerapi.isConnected() and brokerapi.BROKER == configapi.BROKER_IDIRECT:
+		#this can never happen as brokerapi.connect is not called during file load
+		print("idirect brokerapi is connected. initializing chart to same.")
+		dataprovider.initialize(myapi.api,{})
+		dataprovider.registerFeedCallback(feedData)
+	else:
+		#if server restarts and we already have a request token, then connect to dataprovider.
+		#this is required so that we can load chart when app launches.
+		print("brokerapi is not connected or it is not idirect. initializing default data provider")
+		try:
+			dataprovider.initialize(None,{})
+			dataprovider.registerFeedCallback(feedData)
+			print("On app start, dataprovider is connected")
+		except Exception as e:
+			#we do not have a valid request token. Need to go for login flow manually.
+			print("On app start, dataprovider not connected exception raised")
+			print(e)
 
 #@app.after_request
 #def after_request(response):
@@ -106,7 +112,7 @@ def subscribeMarketDepth(token):
 	
 @socketio.event
 def unsubscribeMarketDepth(token):
-	print("unsubscribe MD-->"+token)
+	print("unsubscribe MD-->"+str(token))
 	print(unsubscribeMarketDepth(token))
 	
 @socketio.event
@@ -167,9 +173,12 @@ def login():
 	else:
 		#this is a broker login request
 		newBrokerApi = brokerApiConnect.BrokerApiConnect(newBroker)
+		for key, value in session.items():
+			print(f"  {key}: {value}")
 		#skip login if already connected
 		if session.get(newBrokerApi.getSessionTokenName(),"") != "":
 			print("Not redirecting to login screen as session exist for new broker: " + newBroker + ",token: " + session.get(newBrokerApi.getSessionTokenName()))
+			session["newbroker"] = newBrokerApi.BROKER
 			return redirect(url_for('connectApi',**request.args))
 		#fetch login url for redirect
 		login_url = newBrokerApi.getLoginUrl()
@@ -269,6 +278,8 @@ def connectApi():
 			except Exception as e:
 				app.logger.info("Error in broker login flow")
 				app.logger.error(e)
+				if brokerapi.getSessionTokenName() in session:
+					session.pop(brokerapi.getSessionTokenName())
 				return render_template("loginresponse.html", error=e, mode = "broker", broker=newBroker, userId = userId, sessionKey = sessionKey, loginMessage=loginMessage)	
 		
 		#post-login setup for full mode
@@ -279,6 +290,7 @@ def connectApi():
 		#check whether full mode and initializa data provider
 		if session.get("mode","") == "full":
 			dataprovider.initialize(brokerapi.brokerApi.api,{})
+			dataprovider.registerFeedCallback(feedData)
 			print("Dataprovider connected on full mode?" + str(dataprovider.isDataProviderConnected()))
 		#redirect to homepage
 		return redirect("/", code=302)
@@ -286,6 +298,8 @@ def connectApi():
 		app.logger.info("Error in reload page flow")
 		app.logger.error(e)
 		invalidSessionMsg = ". Session invalid. Create new session from login url."
+		if brokerapi.getSessionTokenName() in session:
+			session.pop(brokerapi.getSessionTokenName())
 		brokerapi.clearTokenFiles()
 		session.pop(brokerapi.getSessionTokenName(),None)
 	
@@ -338,6 +352,7 @@ def getDataProviderAccessToken():
 		if not dataprovider.isDataProviderConnected():
 			dataprovider.initialize(None,{configapi.IDIRECT_SESSION_TOKEN_NAME:session.get("chartSessionKey","")})
 		(userId,sessionKey) = dataprovider.getDataProviderToken({})
+		dataprovider.registerFeedCallback(feedData)
 		session["chartSessionKey"] = sessionKey
 		print("response received:" + userId+" : " + sessionKey)
 	except Exception as e:
@@ -396,15 +411,15 @@ def getCustomerDetails():
 	print("printing customer details")
 	print(customerDetailsJsonDict)
 	if (customerDetailsJsonDict["Success"] != None):
-		userId = customerDetailsJsonDict["Success"]["idirect_userid"]
-		userName = customerDetailsJsonDict["Success"]["idirect_user_name"]
-		lastLogin = customerDetailsJsonDict["Success"]["idirect_lastlogin_time"]
+		userId = customerDetailsJsonDict["Success"]["userid"]
+		userName = customerDetailsJsonDict["Success"]["user_name"]
+		broker = customerDetailsJsonDict["Success"]["broker"]
 	else:
 		userId = customerDetailsJsonDict["Error"]
 		userName = ""
-		lastLogin = ""
+		broker = ""
 	version = brokerapi.getApiVersion()
-	customerDetails = userId + "-" + userName + "-last login: " + lastLogin + " (" + version + ")"
+	customerDetails = userId + "-" + userName + "-" + broker + " (" + version + ")"
 	print(customerDetails)
 	return customerDetails
 
@@ -529,19 +544,19 @@ def getBrokerages():
 	return (brokerageDict,200, {'Content-Type': 'application/json'})
 
 def subscribeQuotesFeed(token,interval):
-	subscriptionStatus = brokerapi.subscribeQuotesFeed(token,interval)
+	subscriptionStatus = dataprovider.subscribeQuotesFeed(token,interval)
 	return (subscriptionStatus,200, {'Content-Type': 'application/json'})
 
 def unsubscribeQuotesFeed(token,interval):
-	unsubscriptionStatus = brokerapi.unsubscribeQuotesFeed(token,interval)
+	unsubscriptionStatus = dataprovider.unsubscribeQuotesFeed(token,interval)
 	return (unsubscriptionStatus,200, {'Content-Type': 'application/json'})
 
 def subscribeMarketDepth(token):
-	subscriptionStatus = brokerapi.subscribeMarketDepth(token)
+	subscriptionStatus = dataprovider.subscribeMarketDepth(token)
 	return (subscriptionStatus,200, {'Content-Type': 'application/json'})
 
 def unsubscribeMarketDepth(token):
-	unsubscriptionStatus = brokerapi.unsubscribeMarketDepth(token)
+	unsubscriptionStatus = dataprovider.unsubscribeMarketDepth(token)
 	return (unsubscriptionStatus,200, {'Content-Type': 'application/json'})
 
 def feedData(eventName,data):
@@ -554,8 +569,10 @@ def feedData(eventName,data):
 if __name__ == '__main__':
 	#context = ('local.crt', 'local.key')#certificate and key files
 	#app.run(debug=True, ssl_context=context)
+	initApp()
 	app.run(debug=True)
 	socketio.run(app, debug = True)
+	
 
 
 	

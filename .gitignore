@@ -3,5 +3,7 @@
 **/__pycache__/
 /dataprovidersessiontokens
 /dataprovidersessiontokens/**
+/kitesessiontokens
+/kitesessiontokens/**
 .vscode/settings.json
 /instruments/**

@@ -115,7 +115,7 @@ function makeOrderRecord(hiddenDivObj,orderId,orderTime,stock,action,qty,price,s
 	var orderStatusHover = orderStatusHover
 
 	modifyButton=""
-	if(orderStatus.toLowerCase() == "ordered" || orderStatus.toLowerCase() == "requested" ){
+	if(orderStatus.toLowerCase() == "ordered" || orderStatus.toLowerCase() == "requested" || orderStatus.toLowerCase() == "pending" ){
 		modifyButton = `<img id='modifyOrdBtn-${orderId}' onClick='populateModifyOrder(this,"${action}","${qty}","${price}","${stoploss}")' src='/static/images/modify.png' width='20' height='20' />`
 	}
 	if(orderStatus.toLowerCase() != "executed"){
@@ -268,6 +268,7 @@ function populateOpenPositions(){
 					
 					console.log("subscribing to token:"+token)
 					subscribeApiTickData(token, apiLtpListener)
+					//subscribeDirectOHLCV(token,"1SEC",{},apiLtpListener)
 				}
 			if (openPositionsJsonArr[openPositionIndex]["token"] != undefined
 				 && openPositionsJsonArr[openPositionIndex]["token"]!= "" ){
@@ -923,7 +924,7 @@ function squareoffStock(stockToSell,hiddenDivId,qty){
 	bgColor = "red"
 	$("#orderAction").closest("td").css("background-color",bgColor)
 	//$($("#orderAction")[0]).css("color","red")
-	let token = $('#'+hiddenDivId).get()[0].dataset.token
+	let token = $("[id='" + hiddenDivId + "']").get()[0].dataset.token
 	let ltp = $('#'+token+'-price')[0].innerText
 	if($("input:radio[name='orderType']:checked").first().val()=="market"){
 		ltp = "0"
@@ -1123,7 +1124,8 @@ function subscribeMarketDepth(token){
 
 function unsubscribeMarketDepth(token){
 	//alert("subscribing to quotes feed for token: "+token)
-	response = socket.emit('unsubscribeMarketDepth', this.token)
+	//console.log("calling websocket to unsubscribe MD for token " + token)
+	response = socket.emit('unsubscribeMarketDepth', token)
 }
 
 function handleOrderTypeChange(obj){
@@ -1155,7 +1157,7 @@ function getBrokerages(){
 	if(hiddenDivId == ""){
 		return
 	}
-	hiddenDivObj = $("#"+hiddenDivId)[0];
+	hiddenDivObj = $("[id='" + hiddenDivId + "']")[0];
 	
 	let quantity = $('#orderQty')[0].value;
 	let action = $('#orderAction')[0].innerText.toLowerCase();
@@ -1194,7 +1196,7 @@ function calculateMargin(){
 	if(hiddenDivId == ""){
 		return
 	}
-	hiddenDivObj = $("#"+hiddenDivId)[0];
+	hiddenDivObj = $("[id='" + hiddenDivId + "']")[0];
 	
 	let quantity = $('#orderQty')[0].value;
 	let action = $('#orderAction')[0].innerText.toLowerCase();
