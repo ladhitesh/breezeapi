@@ -11,7 +11,7 @@
                 obj.broker = "{{ broker }}"
                 obj.loginMessage = "{{ loginMessage }}"
                 obj.error = "{{ error }}"
-                window.opener.postMessage(obj,"http://127.0.0.1:5000")
+                window.opener.postMessage(obj,"*")
                 console.log("message posted to opener")
             }
             setTimeout(returnToOpener, 5000)

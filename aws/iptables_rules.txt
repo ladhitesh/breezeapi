@@ -1,0 +1,46 @@
+ubuntu@ip-10-0-1-77:~$ sudo ip -6 addr show scope global
+2: ens5: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 9001 state UP qlen 1000
+    inet6 2406:da1a:11ba:bb00:311d:3e2:5194:8745/128 scope global dynamic noprefixroute 
+       valid_lft 432sec preferred_lft 122sec
+3: wg0: <POINTOPOINT,NOARP,UP,LOWER_UP> mtu 8921 state UNKNOWN qlen 1000
+    inet6 fddd:2c4:2c4:2c4::1/64 scope global 
+       valid_lft forever preferred_lft forever
+
+
+
+
+3: wlp2s0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 state UP qlen 1000
+    inet6 2405:201:4:38ac:78c9:cf84:452f:e9c5/64 scope global temporary dynamic 
+       valid_lft 3495sec preferred_lft 3495sec
+    inet6 2405:201:4:38ac:804a:72b4:6af1:9b/64 scope global dynamic mngtmpaddr noprefixroute 
+       valid_lft 3495sec preferred_lft 3495sec
+4: wg0: <POINTOPOINT,NOARP,UP,LOWER_UP> mtu 1420 state UNKNOWN qlen 1000
+    inet6 fddd:2c4:2c4:2c4::2/64 scope global 
+       valid_lft forever preferred_lft forever
+
+
+# Forward incoming traffic from Port 80/443 to the Backend Server (10.0.0.2)
+PostUp = ip6tables -A FORWARD -i eth0 -o wg0 -p tcp --syn --dport 5000 -m conntrack --ctstate NEW -j ACCEPT
+PostUp = ip6tables -t nat -A PREROUTING -i eth0 -p tcp --dport 5000 -j DNAT --to-destination :5000
+PostUp = ip6tables -t nat -A POSTROUTING -o wg0 -p tcp --dport 5000 -d fddd:2c4:2c4:2c4::2 -j SNAT --to-source fddd:2c4:2c4:2c4::1
+
+# Clean up rules when shutting down
+PostDown = ip6tables -t nat -D PREROUTING -i eth0 -p tcp --dport 5000 -j DNAT --to-destination fddd:2c4:2c4:2c4::2:5000
+
+
+ip6tables -A FORWARD -i ens5 -o wg0 -p tcp --syn -d fddd:2c4:2c4:2c4::2 --dport 5000  -m conntrack --ctstate NEW -j ACCEPT
+ip6tables -t nat -A PREROUTING -i ens5 -p tcp --dport 80 -j DNAT --to-destination [fddd:2c4:2c4:2c4::2]:5000
+ip6tables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+
+
+
+
+
+
+sudo ip -6 route add 2406:da1a:11ba:bb00:311d:3e2:5194:8745 dev wlp2s0
+
+verify
+ip -6 route get 2406:da1a:11ba:bb00:311d:3e2:5194:8745
+
+
+

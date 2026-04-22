@@ -26,9 +26,47 @@ if sys.version_info >= (3, 8):
 else:
     from importlib_metadata import metadata
 
+import socket
+from urllib3.util import connection
+import inspect
+
+connection.HAS_IPV6 = True # force enable ipv6 support in urllib3
+'''
+def allowed_gai_family():
+	family = socket.AF_INET
+	if connection.HAS_IPV6:
+		family = socket.AF_INET6 # force ipv6 only if it is available
+	return family
+
+connection.allowed_gai_family = allowed_gai_family
+'''
+
+# Save the original getaddrinfo
+orig_getaddrinfo = socket.getaddrinfo
+
+'''
+def get_caller_name():
+    # stack()[1] is the frame of the function that called get_caller_name
+    caller_frame = inspect.stack()[2]
+    return caller_frame.filename + "." +caller_frame.function
+'''   
+
+def ipv6_first_getaddrinfo(*args, **kwargs):
+	#print(f"Called by: {get_caller_name()}")
+	responses = orig_getaddrinfo(*args, **kwargs)
+	# Sort to put AF_INET6 (IPv6) before AF_INET (IPv4)
+	sortedResponses = sorted(responses, key=lambda x: x[0] != socket.AF_INET6)
+	#print(*args)
+	#print(inspect.getsource(connection.allowed_gai_family))
+	#print(connection.allowed_gai_family())
+	#print(*sortedResponses, sep="\n")
+	return sortedResponses
+
+# Apply the patch
+socket.getaddrinfo = ipv6_first_getaddrinfo
 
 app = Flask(__name__)
-socketio = SocketIO(app,logger=False, engineio_logger=False)
+socketio = SocketIO(app,logger=False, engineio_logger=False,cors_allowed_origins="*")
 
 cors = CORS(app)
 app.secret_key = "thisisasecretkeyfortheflasksession"
@@ -195,6 +233,14 @@ DO NOT CHANGE. BE CAREFUL
 @app.route('/authorize', methods=['GET', 'POST'])
 def authorize():
 	print("inside authorize")
+	#queryParams = request.args.to_dict()
+	#print(queryParams)
+	return redirect(url_for('connectApi',**request.args))
+
+#special handling for icicidirect due to url limitation in redirect form
+@app.route('/auth', methods=['GET', 'POST'])
+def auth():
+	print("inside auth")
 	#queryParams = request.args.to_dict()
 	#print(queryParams)
 	return redirect(url_for('connectApi',**request.args))
@@ -570,9 +616,5 @@ if __name__ == '__main__':
 	#context = ('local.crt', 'local.key')#certificate and key files
 	#app.run(debug=True, ssl_context=context)
 	initApp()
-	app.run(debug=True)
+	app.run(debug=True,host="::", port=5000,ssl_context=('cert.pem', 'key.pem'))
 	socketio.run(app, debug = True)
-	
-
-
-	

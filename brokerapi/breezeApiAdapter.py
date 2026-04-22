@@ -65,7 +65,7 @@ class  BreezeApiAdapter(BrokerApiAdapter):
 		with ZipFile("securityMaster.zip") as securityMasterZipFile:
 			self.securityMasterZipFile = securityMasterZipFile
 			self.nseFile = self.securityMasterZipFile.open(config.ISEC_NSE_CODE_MAP_FILE.get("nse"))
-			self.foNseFile = self.securityMasterZipFile.open(config.ISEC_NSE_CODE_MAP_FILE.get("fonse"))
+			self.foNseFile = self.securityMasterZipFile.open(config.ISEC_NSE_CODE_MAP_FILE.get("nfo"))
 			self.bseFile = self.securityMasterZipFile.open(config.ISEC_NSE_CODE_MAP_FILE.get("bse"))
 		#self.stockScriptdf = pd.read_csv(
 		#	config.STOCK_SCRIPT_CSV_URL ,

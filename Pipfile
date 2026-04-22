@@ -39,6 +39,8 @@ werkzeug = "==2.3.7"
 wsproto = "==1.2.0"
 kiteconnect = "*"
 upstox-python-sdk = "*"
+pyarrow = "*"
+pyopenssl = "*"
 
 [dev-packages]
 

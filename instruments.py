@@ -3,7 +3,20 @@ import urllib.request
 import os, zipfile, gzip, shutil
 from datetime import datetime
 import pandas as pd
+import fnmatch
 
+import socket
+import urllib.request
+
+# Save the original getaddrinfo
+orig_getaddrinfo = socket.getaddrinfo
+
+def ipv4_getaddrinfo(host, port, family=0, type=0, proto=0, flags=0):
+    # Force the family to IPv4 (AF_INET)
+    return orig_getaddrinfo(host, port, socket.AF_INET, type, proto, flags)
+
+# Apply the patch
+socket.getaddrinfo = ipv4_getaddrinfo
 
 
 directory_path = "./instruments"
@@ -39,13 +52,16 @@ def clearOldFiles():
         print(e)
         #raise e
     
-def unzipFiles():
+def unzipFiles(broker=None):
     """Unzips all zip files in the given directory."""
     directory = directory_path
-    print("Unzipping files in " + directory)
-    for filename in os.listdir(directory):
+    print("Unzipping " + broker + " files in " + directory)
+    allZipFiles = [f for f in os.listdir(directory) if fnmatch.fnmatch(f, broker + '*.zip') or fnmatch.fnmatch(f, broker + '*.gz')]
+    #allZipFiles = fnmatch.filter(os.listdir(directory), broker + "*.zip " + broker + "*.gz")
+    print("zip files found: " + str(allZipFiles))
+    for filename in allZipFiles:
+        filepath = os.path.join(directory, filename)
         if filename.endswith(".zip") :
-            filepath = os.path.join(directory, filename)
             print("unzipping " + filepath)
             with zipfile.ZipFile(filepath, 'r') as zip_ref:               
                 try:
@@ -133,7 +149,7 @@ def readFiles():
 
         print("Reading upstox unzippped files")
         selectedColumns_upstox = ['instrument_key','exchange_token','trading_symbol','segment','underlying_type','name']
-        df = pd.read_json(directory_path + '/upstox-complete.json')
+        df = pd.read_json(directory_path + '/upstox-nse.json')
         df = df[selectedColumns_upstox]
         df = df.rename(columns={'instrument_key':'upstox_id','segment': 'usegment','exchange_token':'uexchange_token','name':'uname'})
         indexOnly = (df["usegment"].str.contains("NSE_FO") & df["underlying_type"].str.contains("INDEX"))
@@ -145,7 +161,7 @@ def readFiles():
 
         print("Reading upstox unzippped files for equities ")
         selectedColumns_upstox_equities = ['instrument_key','exchange_token','trading_symbol','segment','instrument_type','name','lot_size']
-        df = pd.read_json(directory_path + '/upstox-complete.json')
+        df = pd.read_json(directory_path + '/upstox-nse.json')
         df = df[selectedColumns_upstox_equities]
         df = df.rename(columns={'instrument_key':'upstox_id','segment': 'usegment','exchange_token':'uexchange_token','name':'uname'})
         equitiesOnly = ((df["usegment"].str.contains("NSE_EQ")) & (df["instrument_type"].str.contains("EQ") | df["instrument_type"].str.contains("BE")))
@@ -185,11 +201,14 @@ if __name__ == '__main__':
     downloadFile(idirectInstruments1,"./instruments/idirect-securitymaster.zip")
     downloadFile(idirectInstruments2,"./instruments/idirect-stockscriptnew.csv")
     print("Fetching instruments(upstox)")
-    upstoxInstruments = "https://assets.upstox.com/market-quote/instruments/exchange/complete.json.gz"
-    downloadFile(upstoxInstruments, "./instruments/upstox-complete.json.gz")
+    upstoxInstruments = "https://assets.upstox.com/market-quote/instruments/exchange/NSE.json.gz"
+    downloadFile(upstoxInstruments, "./instruments/upstox-nse.json.gz")
     print("Fetching instruments(zerodha)")
     zerodhaInstruments = "https://api.kite.trade/instruments"
     downloadFile(zerodhaInstruments, "./instruments/zerodha-instruments.csv")
 
-    unzipFiles()
+    unzipFiles("idirect")
+    unzipFiles("upstox")
+    unzipFiles("zerodha")
+    #unzipFiles("*")
     readFiles()

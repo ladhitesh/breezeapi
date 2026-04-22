@@ -1,5 +1,6 @@
 
 # Import Libraries
+from http.client import responses
 import logging
 from kiteconnect import KiteConnect
 from kiteconnect import KiteTicker
@@ -26,6 +27,7 @@ if sys.version_info >= (3, 8):
 else:
     from importlib_metadata import metadata
 
+#logging.basicConfig(level=logging.DEBUG)
 
 class RightType(Enum):
     call = "CE"
@@ -72,7 +74,7 @@ class  KiteApiAdapter(BrokerApiAdapter):
 
 	def __init__(self):
 		#global api, securityMasterResponse, securityMasterZipFile, nseFile, foNseFile, bseFile, stockScriptdf
-		self.api:KiteConnect = KiteConnect(configapi.KITE_API_KEY)
+		self.api:KiteConnect = KiteConnect(configapi.KITE_API_KEY,debug=False)
 		self.isConnected = False
 		self.stockScriptdf = pd.read_csv('./instruments/instruments-final.csv' ,sep=',',encoding='utf-8')
 		connectBroker:bool = True
@@ -229,7 +231,7 @@ class  KiteApiAdapter(BrokerApiAdapter):
 		if not reConnect :
 			try:
 				#token = self.loginapi.token("2", code=sessionToken, client_id=configapi.UPSTOX_API_KEY, client_secret=configapi.UPSTOX_SECRET_KEY, redirect_uri=configapi.UPSTOX_REDIRECT_URL, grant_type="authorization_code")
-				self.api : KiteConnect = KiteConnect(api_key=configapi.KITE_API_KEY)
+				self.api : KiteConnect = KiteConnect(api_key=configapi.KITE_API_KEY,debug=False)
 				token = self.api.generate_session(request_token=sessionToken,api_secret=configapi.KITE_SECRET_KEY)
 				print("token obtained after generate session api call")
 				print(token)
