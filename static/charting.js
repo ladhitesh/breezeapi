@@ -355,7 +355,7 @@ function loadReferenceChart(refChartVisible){
 		let product = selectedRefChartOption.getAttribute("product")
 		let expiry = selectedRefChartOption.getAttribute("expiry")
 		//console.log("expiry: " + expiry)
-		let expiryFormatted = ""
+		let expiryFormatted = "",expiryFormattedForOHLCVSubs=""
 		if(expiry != null && expiry != ""){
 			expiryFormattedForOHLCVSubs = moment(expiry,"YYYY-MM-DD").format("DD-MMM-YYYY")
 			expiryFormatted = expiry+"T00:00:00.000Z"
