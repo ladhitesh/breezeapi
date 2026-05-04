@@ -171,6 +171,7 @@ def readFiles():
         df_filtered_upstox_equities.to_csv(directory_path + '/upstox-filtered_equities.csv', index=False)
         print(df_filtered_upstox_equities.head())
 
+        print("Merging all files and creating instruments-final.csv")
         #df_consolidated = pd.concat([df_filtered_idirect,df_filtered_zerodha],axis=1)
         #df_consolidated.to_csv(directory_path + '/instruments-consolidated.csv', index=False)
 
@@ -178,10 +179,11 @@ def readFiles():
         df_i_i = df_filtered_idirect
         df_i_z = df_i_i.merge(df_filtered_zerodha, how='inner',left_on='idirect_id', right_on='zexchange_token')
         df_final = df_i_z.merge(df_filtered_upstox, how='inner',left_on='idirect_id', right_on='uexchange_token')
-        df_final['ExpiryDate'] = pd.to_datetime(df_final['ExpiryDate'])
+        df_final['ExpiryDate'] = pd.to_datetime(df_final['ExpiryDate'],format="mixed", dayfirst=True)
         df_final = df_final.sort_values(by=['Series','ShortName','ExpiryDate','StrikePrice'])
         df_final.to_csv(directory_path + '/instruments-final.csv', index=False)
 
+        print("Merging all files and creating instruments-final_equities.csv")
         df_i_i_e = df_filtered_idirect_equities
         df_i_z_e = df_i_i_e.merge(df_filtered_zerodha_equities, how='inner',left_on='idirect_id', right_on='zexchange_token')
         df_final_equities = df_i_z_e.merge(df_filtered_upstox_equities, how='inner',left_on='idirect_id', right_on='uexchange_token')
