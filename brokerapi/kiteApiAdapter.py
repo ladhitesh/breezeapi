@@ -172,7 +172,7 @@ class  KiteApiAdapter(BrokerApiAdapter):
 
 	def getSessionTokenFromFile(self):
 		sessionToken = ""
-		file_path = './kitesessiontokens/access_token'
+		file_path = './kitesessiontokens'
 		files = sorted(glob.iglob(file_path), key=os.path.getctime, reverse=True)
 		with open(file_path, 'r') as file:
 			sessionToken = file.read()
@@ -219,7 +219,7 @@ class  KiteApiAdapter(BrokerApiAdapter):
 				reConnect = True
 		else:
 			try:
-				file_path = './kitesessiontokens/'+sessionToken
+				file_path = './kitesessiontokens/access_token'
 				#os.makedirs(os.path.dirname(file_path), exist_ok=True)
 				# create file
 				#with open(file_path, 'x') as fp:

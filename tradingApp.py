@@ -20,6 +20,7 @@ import pandas as pd
 import configapi
 import sys
 import traceback
+import logging
 
 if sys.version_info >= (3, 8):
     from importlib import metadata
@@ -64,6 +65,13 @@ def ipv6_first_getaddrinfo(*args, **kwargs):
 
 # Apply the patch
 socket.getaddrinfo = ipv6_first_getaddrinfo
+
+# Configure the logger
+logging.basicConfig(
+#    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s'
+)
+#logging.getLogger('werkzeug').setLevel(logging.INFO)
 
 app = Flask(__name__)
 socketio = SocketIO(app,logger=False, engineio_logger=False,cors_allowed_origins="*")
@@ -198,11 +206,11 @@ def login():
 	session["mode"] = mode
 	
 	app.logger.info("login to %s api: %s",mode,newBroker)
-	app.logger.info("ChartSessionKey:%s",session.get("chartSessionKey",""))
+	app.logger.info("ChartSessionKey:%s",str(session.get("chartSessionKey","")))
 	#check whether this is chart dataprovider login request or broker login request
 	if mode == "chart":
 		#skip login if already connected
-		if (dataprovider.isDataProviderConnected() or session.get("chartSessionKey","") != ""):
+		if (dataprovider.isDataProviderConnected() or str(session.get("chartSessionKey","")) != ""):
 			return redirect(url_for('getDataProviderAccessToken',**request.args))
 		#fetch login url for redirect
 		newdataprovider = dataproviderConnect.DataProviderConnect(configapi.DATAPROVIDER_IDIRECT)
@@ -215,7 +223,7 @@ def login():
 			print(f"  {key}: {value}")
 		#skip login if already connected
 		if session.get(newBrokerApi.getSessionTokenName(),"") != "":
-			print("Not redirecting to login screen as session exist for new broker: " + newBroker + ",token: " + session.get(newBrokerApi.getSessionTokenName()))
+			print("Not redirecting to login screen as session exist for new broker: " + str(newBroker) + ",token: " + str(session.get(newBrokerApi.getSessionTokenName())))
 			session["newbroker"] = newBrokerApi.BROKER
 			return redirect(url_for('connectApi',**request.args))
 		#fetch login url for redirect
@@ -400,7 +408,7 @@ def getDataProviderAccessToken():
 		(userId,sessionKey) = dataprovider.getDataProviderToken({})
 		dataprovider.registerFeedCallback(feedData)
 		session["chartSessionKey"] = sessionKey
-		print("response received:" + userId+" : " + sessionKey)
+		print("response received:" + str(userId) + " : " + sessionKey)
 	except Exception as e:
 		app.logger.error(e)
 		#traceback.print_stack()

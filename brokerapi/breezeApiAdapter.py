@@ -207,7 +207,11 @@ class  BreezeApiAdapter(BrokerApiAdapter):
 		return "breeze_connect " + metadata.version('breeze_connect')
 	
 	def getCustomerDetails(self):
-		userDetails = self.api.get_customer_details(self.session_token)
+		try:
+			userDetails = self.api.get_customer_details(self.session_token)
+		except Exception as e:
+			print("Error while fetching customer details from icicidirect.")
+			print(e)
 		print(userDetails)
 		customerDetails = { "Success":{}}
 		user = {}

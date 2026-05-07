@@ -46,7 +46,7 @@ class BreezeDataProvider(DataProvider):
             #self.session_token = self.dp.session_key
             self.isConnected = True
             return self.dp
-        print("Initializing Dataprovider using params")
+        print("Initializing Dataprovider using params:"+str(params))
         sessionToken = params.get(configapi.IDIRECT_SESSION_TOKEN_NAME,"no-breezeapi-session")
         if sessionToken == "no-breezeapi-session":
             sessionToken = self.getSessionTokenFromFile()
@@ -54,7 +54,8 @@ class BreezeDataProvider(DataProvider):
                 raise Exception("No valid sessionToken exist")
         else:
             try:
-                file_path = './dataprovidersessiontokens/'+sessionToken
+                print("session token obtained from params:" + str(sessionToken))					
+                file_path = './dataprovidersessiontokens/' + str(sessionToken)
                 os.makedirs(os.path.dirname(file_path), exist_ok=True)
                 # create file
                 with open(file_path, 'x') as fp:
@@ -66,7 +67,7 @@ class BreezeDataProvider(DataProvider):
         self.dp.ws_connect()
 		# Assign the callbacks.
         self.dp.on_ticks = self.on_ticks
-        print("USERID-->" + self.dp.user_id)
+        print("USERID-->" + str(self.dp.user_id))
         self.user_id = self.dp.user_id
         self.session_key = self.dp.session_key
         self.session_token = sessionToken

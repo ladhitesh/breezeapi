@@ -1,5 +1,5 @@
 $(document).ready(function() {
-	socket = io('wss://[::1]:5000',{
+	socket = io('wss://[2406:da1a:11ba:bb00:311d:3e2:5194:8745]:5000',{
 		autoConnect: true,
 		transports: ['websocket'],
 		extraHeaders: { 'User-Agent': 'node-socketio[client]/socket' },
