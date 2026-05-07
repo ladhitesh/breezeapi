@@ -4,10 +4,11 @@ chart = null;
 $(document).ready(function() {
 
 	const chartOptions = { height:450, 
-			layout: { textColor: 'black', background: { type: 'solid', color: 'white' } }, 
+			layout: { fontSize:8, textColor: 'black', background: { type: 'solid', color: 'white' } }, 
 			timeScale: { rightOffset: 10,visible: true,timeVisible: true,secondsVisible: false,shiftVisibleRangeOnNewBar: true,
 									 ticksVisible: true },
-			rightPriceScale: { visible: true }, leftPriceScale: { visible: true, ticksVisible: true }, crosshair: {mode : LightweightCharts.CrosshairMode.Normal}
+			rightPriceScale: { visible: true }, leftPriceScale: { visible: true, ticksVisible: true }, crosshair: {mode : LightweightCharts.CrosshairMode.Normal},
+			grid: { vertLines: { color: '#44444454', visible: true,},horzLines: {color: '#44444454', visible: true,},},
 			};
 	chart = LightweightCharts.createChart(document.getElementById('chart'), chartOptions);
 	const myTickMarkFormatter = (time, tickMarkType, locale) => {
@@ -52,10 +53,10 @@ $(document).ready(function() {
 				var H = optionPrice.high
 				var L = optionPrice.low
 				var C = optionPrice.close
-				optionPriceFormatted = `O<div style="display:inline-block;width:60px;">${O}</div> `
-				optionPriceFormatted = optionPriceFormatted + `H<div style="display:inline-block;width:60px;">${H}</div> `
-				optionPriceFormatted = optionPriceFormatted + `L<div style="display:inline-block;width:60px;">${L}</div> `
-				optionPriceFormatted = optionPriceFormatted + `C<div style="display:inline-block;width:60px;">${C}</div>` 
+				optionPriceFormatted = `O<div style="display:inline-block;width:45px;">${O}</div> `
+				optionPriceFormatted = optionPriceFormatted + `H<div style="display:inline-block;width:45px;">${H}</div> `
+				optionPriceFormatted = optionPriceFormatted + `L<div style="display:inline-block;width:45px;">${L}</div> `
+				optionPriceFormatted = optionPriceFormatted + `C<div style="display:inline-block;width:45px;">${C}</div>` 
 			}
 				
 
@@ -65,10 +66,10 @@ $(document).ready(function() {
 				var H = futurePrice.high
 				var L = futurePrice.low
 				var C = futurePrice.close
-				futurePriceFormatted = `O<div style="display:inline-block;width:60px;">${O}</div> `
-				futurePriceFormatted = futurePriceFormatted + `H<div style="display:inline-block;width:60px;">${H}</div> `
-				futurePriceFormatted = futurePriceFormatted + `L<div style="display:inline-block;width:60px;">${L}</div> `
-				futurePriceFormatted = futurePriceFormatted + `C<div style="display:inline-block;width:60px;">${C}</div>` 
+				futurePriceFormatted = `O<div style="display:inline-block;width:45px;">${O}</div> `
+				futurePriceFormatted = futurePriceFormatted + `H<div style="display:inline-block;width:45px;">${H}</div> `
+				futurePriceFormatted = futurePriceFormatted + `L<div style="display:inline-block;width:45px;">${L}</div> `
+				futurePriceFormatted = futurePriceFormatted + `C<div style="display:inline-block;width:45px;">${C}</div>` 
 			}
 		}
 		firstRowStockOHLCVDiv.innerHTML = optionPriceFormatted;
@@ -247,10 +248,10 @@ function drawChartLegend(chartContainer){
 	const firstRow = document.createElement('div');
 	firstRow.style.textAlign = 'left';
 	
-	let firstRowStockNameDivHtml = `<div id='optionsChartStockName' style='color:black;text-align:left;display:inline-block;font-weight:bold;font-size:12px;background-color:#fcfcde;width:230px;padding-left:3px'>${optionsStockName}</div>`
+	let firstRowStockNameDivHtml = `<div id='optionsChartStockName' style='color:black;text-align:left;display:inline-block;font-weight:bold;font-size:12px;background-color:#fcfcde;width:180px;padding-left:3px'>${optionsStockName}</div>`
 	const firstRowStockNameDiv = new DOMParser().parseFromString(firstRowStockNameDivHtml, 'text/html').querySelector("div");
 
-	let firstRowStockLtpDivHtml = "<div id='' style='text-align:left;display:inline-block;color:blue;width:67px;margin-left:10px'></div>"
+	let firstRowStockLtpDivHtml = "<div id='' style='text-align:left;display:inline-block;color:blue;width:47px;margin-left:10px'></div>"
 	const firstRowStockLtpDiv = new DOMParser().parseFromString(firstRowStockLtpDivHtml, 'text/html').querySelector("div");
 
 	let firstRowStockOHLCVDivHtml = "<div style='color:black;text-align:left;display:inline;font-size:12px'></div>"
@@ -266,7 +267,7 @@ function drawChartLegend(chartContainer){
 	secondRow.style.textAlign = 'left';
 	
 	let secondRowStockNameSelect = getRefChartStockSelectHTMLElement()
-	let secondRowStockLtpDivHtml = "<div id='NIFTY BANK-price' style='text-align:left;display:inline-block;color:blue;width:70px;margin-left:10px'></div>"
+	let secondRowStockLtpDivHtml = "<div id='NIFTY BANK-price' style='text-align:left;display:inline-block;color:blue;width:50px;margin-left:10px'></div>"
 	const secondRowStockLtpDiv = new DOMParser().parseFromString(secondRowStockLtpDivHtml, 'text/html').querySelector("div");
 
 	let secondRowStockOHLCVDivHtml = "<div style='color:black;text-align:left;display:inline;font-size:12px'></div>"
@@ -282,7 +283,7 @@ function drawChartLegend(chartContainer){
 }
 
 function getRefChartStockSelectHTMLElement(){
-	let secondRowStockNameSelectHtml = "<select id='refChart' style='color:black;background-color:#fcfcde;text-align:left;display:inline-block;width:230px;font-size:12px;padding:0px;margin:0px;border:0px;font-weight:bold' onchange='updateReferenceChart();'>"
+	let secondRowStockNameSelectHtml = "<select id='refChart' style='color:black;background-color:#fcfcde;text-align:left;display:inline-block;width:180px;font-family:Inter:font-size:11px;padding:0px;margin:0px;border:0px;font-weight:bold' onchange='updateReferenceChart();'>"
 	const secondRowStockNameSelect = new DOMParser().parseFromString(secondRowStockNameSelectHtml, 'text/html').querySelector("select");
 
 	let secondRowOption1Html = "<option value='CNXBAN' token='NIFTY BANK' exchangeCode='NSE' product='' expiry='' selected>BANKNIFTY</option>";

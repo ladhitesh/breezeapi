@@ -20,12 +20,13 @@
 <link rel="stylesheet" type="text/css" href="/static/tooltipster/dist/css/tooltipster.bundle.min.css" />
 <link rel="stylesheet" type="text/css" href="/static/tooltipster/dist/css/plugins/tooltipster/sideTip/themes/tooltipster-sideTip-shadow.min.css" />
 <link href="data:image/x-icon;base64,AAABAAEAEBAAAAEAIABoBAAAFgAAACgAAAAQAAAAIAAAAAEAIAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAD///////////////////////////jy7v/15dL/9efU//bn1f/36tX//fv2//////////////////////////////////////////////////3//v/qzav/6Zku/+yfNv/qoTf/76pB//rr0v/////////////////////////////////+/v7/9vb2//b29v/19fX/5cWu/+CBQP/igkH/44RC/+GGQ//x28r/9/b2//b29v/5+fn/////////////////9PT0/+Dh3//g4d//4eDe/+Ph3//k4OD/4Mq2/+TXy//k4eH/5OLh/+Ti4f/j4uD/4+Pi//z8/P////////////Lz8//axrP/1bWa/9m6nf/fv6D/3bya/+G+mP/kwp3/4MKh/+HDoP/gwJ7/5cek/+TVwf/8/Pz////////////w8vL/zp90/4xWTP+lg5X/y4RI/8ifff/fl03/3plO/9+XTv/emEv/17SP/+mrVP/oxZT/+/v7////////////8PLx/8qbcf82LJz/VVzm/3xiUf89rnz/jrF4/7FvOf/KlW3/tH46/3WugP+/uXH/6sWW//v7+/////////////Dy8f/LmnH/NCqd/1hc5/9uYFX/N7yJ/4CzgP88NZb/T1Le/4JwU/86voj/oc6U/+jHlf/7+/v////////////x8vL/06F0/0Ayof9ZX+j/cWBS/zi8h/99soH/MzGh/1Vd5f96bFj/Or2K/6LQlf/ox5T/+/v7////////////8vLz/9qpef+9hGb/v6So/4xuP/83vYb/griF/zk4o/9XXub/e2xV/zm/iv+h0JX/58eU//v7+/////////////Lz8//Qn3b/enmI/8WVbf+XeED/N72H/5HEkP+aeYD/opS9/5F6TP87v4r/odCU/+nIlv/8/Pz////////////19vb/xry3/0eW4v9OkNH/r6iW/4bLsv+pw6//k5md/9/Kt/+yron/U8eb/63atv/n17///f39//////////////////v8+v/W6Pb/Sprn/0+f5f/P4e7/bafj/z6U5v+IvOv/8fb4/+bs7//8/Pv//f39/////////////////////////////P79/9fp9v9Lm+b/QpPl/0KX5/94tu7/PZTl/1Kd5v/Z7Pn//v/////////////////////////////////////////9/v3/1+j3/1Cf5v+82/b/9fn6/1mg5f8/k+f/v934//3///////////////////////////////////////////////7+/v/y+Pv//f7+//n8+//i7/n/yeL4/9/u+f/+//7/////////////////AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==" rel="icon" type="image/x-icon">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
 
 <script type="text/javascript" src="/static/tooltipster/dist/js/tooltipster.bundle.min.js"></script>
 <script type='text/javascript' src="/static/dynatable-docs-assets/js/jquery.dynatable.js"></script>
 	
 <!-- Tradingview Lightweight Charts -->
-<script type='text/javascript' src="https://unpkg.com/lightweight-charts@5.0.2/dist/lightweight-charts.standalone.production.js"></script>
+<script type='text/javascript' src="https://unpkg.com/lightweight-charts@5.2.0/dist/lightweight-charts.standalone.production.js"></script>
 
 <!-- Axios -->
 <script type="text/javascript" src="https://unpkg.com/axios/dist/axios.min.js"></script>
@@ -45,8 +46,11 @@
 
 
 <style>
-body, div, select, caption {
-	font-size:14px;
+:root {
+  --bs-body-font-family: 'Inter', sans-serif;
+}
+body, div, select, option, caption {
+	font-size:11px;
 }
 caption {
 	font-weight:bold;
@@ -102,6 +106,11 @@ caption {
 #index_ticker div:nth-child(2)>div {display:inline;padding-right:0px;border:solid 0px;color:brown}
 #index_ticker div:nth-child(3) {display:inline-block;width:130px}
 #index_ticker div:nth-child(3)>div {display:inline;color:brown}
+#index_ticker div {font-family: Inter, sans-serif;font-size:11px}
+#index_ticker button {font-family: Inter, sans-serif;font-size:11px}
+
+#chart {font-family: Inter, sans-serif;font-size:11px}
+#chart select {font-family: Inter, sans-serif;font-size:11px}
 
 #info_panel tr:nth-child(1) {background-color:#f9f9f9;border:solid 1px #777}
 #info_panel tr:nth-child(2) {background-color:#f9f9f9;border:solid 1px #777}
@@ -119,7 +128,17 @@ caption {
 #info_panel #realisedPnl {width:60px;color:gray;font-weight:bold;size:12px}
 #info_panel #realisedPnlWithTaxes_text {color:purple;font-weight:bold;size:14px}
 #info_panel #realisedPnlWithTaxes {width:60px;color:gray;font-weight:bold;size:12px}
-	
+
+#info_panel td{font-family: "Inter", sans-serif;font-size:11px !important}
+#openPositions  th, #openPositions td{font-family: "Inter", sans-serif;font-size:11px }
+#watchList  th, #watchList td{font-family: "Inter", sans-serif;font-size:11px }
+#orderList  th, #orderList td{font-family: "Inter", sans-serif;font-size:11px }
+#searchStockType {font-family: "Inter", sans-serif;font-size:11px }
+#searchStock {font-family: "Inter", sans-serif;font-size:11px }
+#stock-selection {font-family: "Inter", sans-serif;font-size:11px }
+#userDetails {font-family: "JetBrains Mono", sans-serif;font-size:11px;color:red;position:fixed;top:10;right:10}
+#variousStatus {font-family: "Arial", sans-serif;font-size:11px;font-weight:700;} 
+
 input[type=number]::-webkit-inner-spin-button, 
 input[type=number]::-webkit-outer-spin-button {
   opacity: 1;
@@ -293,10 +312,10 @@ function updateUserDetails(newBroker){
 	<body>
 		<div id="connectStatus" width="100%" style="background-color:red;height:5px">&nbsp;</div>
 		<div id="variousStatus" width="100%" style="background-color:yellow;height:20px">
-			<span id="chartStatus" style="margin-left: 10px;margin-right: 50px; background-color:rgb(255, 191, 180);">&nbsp;<a onclick="openLoginPopup('chart','IDIRECT')">Chart</a>&nbsp;</span>
-			<span id="idirect" style="margin-left: 10px;margin-right: 50px; background-color:rgb(255, 191, 180);"><a onclick="openLoginPopup('broker','IDIRECT')">IDIRECT</a></span>
-			<span id="zerodha" style="margin-left: 10px;margin-right: 50px; background-color:rgb(255, 191, 180);"><a onclick="openLoginPopup('broker','KITE')">ZERODHA</a></span>
-			<span id="upstox" style="margin-left: 10px;margin-right: 50px; background-color:rgb(255, 191, 180);"><a onclick="openLoginPopup('broker','UPSTOX')">UPSTOX</a></span>
+			<span id="chartStatus" style="margin-left: 10px;margin-right: 50px; background-color:rgb(255, 191, 180);">&nbsp;&nbsp;<a onclick="openLoginPopup('chart','IDIRECT')">Chart</a>&nbsp;&nbsp;</span>
+			<span id="idirect" style="margin-left: 10px;margin-right: 50px; background-color:rgb(255, 191, 180);">&nbsp;&nbsp;<a onclick="openLoginPopup('broker','IDIRECT')">IDIRECT</a>&nbsp;&nbsp;</span>
+			<span id="zerodha" style="margin-left: 10px;margin-right: 50px; background-color:rgb(255, 191, 180);">&nbsp;&nbsp;<a onclick="openLoginPopup('broker','KITE')">ZERODHA</a>&nbsp;&nbsp;</span>
+			<span id="upstox" style="margin-left: 10px;margin-right: 50px; background-color:rgb(255, 191, 180);">&nbsp;&nbsp;<a onclick="openLoginPopup('broker','UPSTOX')">UPSTOX</a>&nbsp;&nbsp;</span>
 		</div>
 		
 		
@@ -311,7 +330,7 @@ function updateUserDetails(newBroker){
 						{% endautoescape %}
 					{% endblock %}
 				</div>
-				<div id="userDetails" style="font-weight:bold;color:red;font-size:14;position:fixed;top:10;right:10">
+				<div id="userDetails">
 				</div>
 				<script type="text/javascript">
 					/*if(document.getElementById("userDetails").innerHTML.trim().includes("Not logged in")){
@@ -377,7 +396,7 @@ function updateUserDetails(newBroker){
 			</td>
 		</tr>
 		<tr>
-		<td width="50%" valign="top" >
+		<td width="70%" valign="top" >
 			<div id="chart" align="center"></div>
 		</td>
 		<td valign="top">
