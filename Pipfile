@@ -41,6 +41,9 @@ kiteconnect = "*"
 upstox-python-sdk = "*"
 pyarrow = "*"
 pyopenssl = "*"
+python-dotenv = "*"
+marshmallow = "*"
+flask-limiter = "*"
 
 [dev-packages]
 

@@ -1,0 +1,26 @@
+[project]
+name = "breezeapi"
+version = "0.1.0"
+description = "Refactored Multi-broker trading API"
+requires-python = ">=3.10"
+dependencies = [
+    "flask==2.3.3",
+    "flask-cors==4.0.0",
+    "flask-socketio==5.3.6",
+    "pandas==2.1.1",
+    "requests==2.31.0",
+    "python-dotenv==1.0.0",
+    "breeze-connect==1.0.43",
+    "kiteconnect==3.11.3",
+    "upstox-python-sdk==2.0.0",
+    "marshmallow==3.20.1",
+    "flask-limiter==3.5.0"
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-cov>=4.1.0",
+    "black>=23.9.0",
+    "flake8>=6.1.0"
+]
