@@ -7,3 +7,4 @@
 /kitesessiontokens/**
 .vscode/settings.json
 /instruments/**
+/.prod

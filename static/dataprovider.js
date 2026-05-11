@@ -287,13 +287,15 @@ function parseTicks(ticks){
 }
 
 
-function loginForChartData(myuserId,mysessionKey){
+function loginForChartData(myuserId,mysessionKey,broker){
 	console.log("******************************login credentials for chart**********************")
 	console.log(myuserId)
 	console.log(mysessionKey)
 	sio.auth.user = myuserId;
 	sio.auth.token = mysessionKey;
 	sio.connect();
+	// Tell the backend Socket.IO to plug in the data provider!
+   socket.emit('init_dataprovider', { broker: broker });
 }
 
 

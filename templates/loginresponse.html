@@ -4,14 +4,14 @@
 
             function returnToOpener(){
                 console.log("posting message to opener")
-                obj = new Object()
-                obj.sessionKey = "{{ sessionKey }}"
-                obj.userId = "{{ userId }}"
-                obj.mode = "{{ mode }}"
-                obj.broker = "{{ broker }}"
-                obj.loginMessage = "{{ loginMessage }}"
-                obj.error = "{{ error }}"
-                window.opener.postMessage(obj,"*")
+                loginResponse = new Object()
+                loginResponse.sessionKey = "{{ sessionKey }}"
+                loginResponse.userId = "{{ userId }}"
+                loginResponse.mode = "{{ mode }}"
+                loginResponse.broker = "{{ broker }}"
+                loginResponse.loginMessage = "{{ loginMessage }}"
+                loginResponse.error = "{{ error }}"
+                window.opener.postMessage(loginResponse,"*")
                 console.log("message posted to opener")
             }
             setTimeout(returnToOpener, 5000)

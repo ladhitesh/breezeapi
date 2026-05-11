@@ -11,10 +11,12 @@ class Config:
     # Flask
     SECRET_KEY = os.environ.get("FLASK_SECRET_KEY", "fallback-dev-key")
     DEBUG = os.environ.get("FLASK_DEBUG", "False").lower() == "true"
-    
+
     # Server
-    HOST = os.environ.get("HOST", "127.0.0.1")
+    HOST = os.environ.get("HOST", "::")
     PORT = int(os.environ.get("PORT", 5000))
+    SOCKETIO_HOST = os.environ.get("SOCKETIO_HOST", "::")
+    SOCKETIO_PORT = int(os.environ.get("SOCKETIO_PORT", 5000))
     ALLOWED_CORS_ORIGINS = os.environ.get("ALLOWED_CORS_ORIGINS", "*").split(",")
 
     #Defaults
@@ -47,7 +49,7 @@ class Config:
     # Path Resolution
     SESSION_DIR = BASE_DIR / "idirectsessiontokens"
     LOG_DIR = BASE_DIR / "logs"
-    INSTRUMENTS_PATH = BASE_DIR / "instruments-final.csv" # Adjust to your actual CSV name
+    INSTRUMENTS_PATH = BASE_DIR / "instruments" / "instruments-final.csv"
 
     @classmethod
     def validate(cls):

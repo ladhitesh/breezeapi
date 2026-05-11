@@ -169,7 +169,7 @@ input[type=number]::-webkit-outer-spin-button {
 	</script>
 	
 <script type="text/javascript">	
-	 var baseServerUrl = "https://[::]:5000"
+	 var baseServerUrl = "https://[2406:da1a:11ba:bb00:311d:3e2:5194:8745]:5000"
     moment().format();
 </script>
 <script>
@@ -292,7 +292,7 @@ function updateUserDetails(newBroker){
 				console.log("chart login done")
 				chartSessionKey = data.sessionKey
 				chartUserId = data.userId
-				loginForChartData(chartUserId,chartSessionKey);
+				loginForChartData(chartUserId,chartSessionKey,data.broker);
 			}else if (mode == "broker"){
 				console.log("broker login done")
 				//used for dataprovider
