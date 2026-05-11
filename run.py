@@ -16,6 +16,7 @@ if __name__ == "__main__":
         ssl_args['ssl_context'] = ('cert.pem', 'key.pem')
     else:
         logger.warning("No SSL certificates found. Starting with HTTP.")
+
    
     # Run the server
     socketio.run(
