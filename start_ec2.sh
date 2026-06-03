@@ -1,37 +1,48 @@
 #!/bin/bash
 
 # --- CONFIGURATION ---
-# Replace with the actual Instance ID
 INSTANCE_ID="i-020b6ffa22e32cd83"
 
 echo "-----------------------------------------------"
 echo "Step 1: Verifying AWS Authentication..."
-# Checks if the CLI is currently configured with valid credentials
 aws sts get-caller-identity > /dev/null 2>&1
 
 if [ $? -eq 0 ]; then
     echo "Successfully authenticated."
 else
-    echo "Error: Not authenticated. Run 'aws configure' to set up credentials."
+    echo "Error: Not authenticated. Run 'aws configure'."
     exit 1
 fi
 
 echo "-----------------------------------------------"
 echo "Step 2: Starting EC2 Instance ($INSTANCE_ID)..."
-aws ec2 start-instances --instance-ids "$INSTANCE_ID" --output json
+# Displaying start status in a clean table format
+aws ec2 start-instances --instance-ids "$INSTANCE_ID" --query "StartingInstances[*].{ID:InstanceId, CurrentState:PreviousState.Name, TargetState:CurrentState.Name}" --output table
 
 if [ $? -ne 0 ]; then
-    echo "Error: Failed to send start command. Verify Instance ID and Permissions."
+    echo "Error: Failed to send start command."
     exit 1
 fi
 
 echo "-----------------------------------------------"
-echo "Step 3: Waiting for instance to reach 'running' state..."
-echo "This process may take a short period..."
-
-# This command pauses the script until the instance state is 'running'
+echo "Step 3: Waiting for instance to be ready..."
 aws ec2 wait instance-running --instance-ids "$INSTANCE_ID"
 
 echo "-----------------------------------------------"
-echo "Success: Instance $INSTANCE_ID is now running."
+echo "Final Status Report:"
+printf "%-20s %-15s %-15s %-30s\n" "INSTANCE_ID" "STATE" "IPV4_ADDRESS" "IPV6_ADDRESS"
+echo "----------------------------------------------------------------------------------------"
+
+# Integrated status check from previous logic
+aws ec2 describe-instances \
+    --instance-ids "$INSTANCE_ID" \
+    --query "Reservations[*].Instances[*].[InstanceId, State.Name, PublicIpAddress, NetworkInterfaces[0].Ipv6Addresses[0].Ipv6Address]" \
+    --output text | while read -r id state ipv4 ipv6
+do
+    [ "$ipv4" == "None" ] && ipv4="N/A"
+    [ "$ipv6" == "None" ] && ipv6="N/A"
+    printf "%-20s %-15s %-15s %-30s\n" "$id" "$state" "$ipv4" "$ipv6"
+done
+
+echo "----------------------------------------------------------------------------------------"
 echo "Script execution complete."
