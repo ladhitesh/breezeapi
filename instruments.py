@@ -7,6 +7,7 @@ import fnmatch
 
 import socket
 import urllib.request
+from rich import print
 
 # Save the original getaddrinfo
 orig_getaddrinfo = socket.getaddrinfo
@@ -26,7 +27,7 @@ def __init__(self, broker):
 
 def downloadFile(url, filename):
     if not os.path.isfile(filename):
-        print("Downloading from " + url + " to " + filename)
+        print("[yellow]Downloading from " + url + " to " + filename)
         urllib.request.urlretrieve(url, filename)
     else:
         print("File with similar name exists. Skipping file download: " + filename)
@@ -55,7 +56,7 @@ def clearOldFiles():
 def unzipFiles(broker=None):
     """Unzips all zip files in the given directory."""
     directory = directory_path
-    print("Unzipping " + broker + " files in " + directory)
+    print("[yellow]Unzipping " + broker + " files in " + directory)
     allZipFiles = [f for f in os.listdir(directory) if fnmatch.fnmatch(f, broker + '*.zip') or fnmatch.fnmatch(f, broker + '*.gz')]
     #allZipFiles = fnmatch.filter(os.listdir(directory), broker + "*.zip " + broker + "*.gz")
     print("zip files found: " + str(allZipFiles))
@@ -87,7 +88,7 @@ def readFiles():
     try:
         
 
-        print("Reading idirect unzippped file-FONSEScripMaster.txt")
+        print("[yellow]Reading idirect unzippped file-FONSEScripMaster.txt")
         selectedColumns_idirect = ['Token','InstrumentName','ShortName','Series','ExpiryDate',
             'StrikePrice','OptionType','LotSize','CompanyName','ExchangeCode','ExAllowed']
         df = pd.read_csv(directory_path + '/FONSEScripMaster.txt',header=0,usecols=selectedColumns_idirect)
@@ -99,7 +100,7 @@ def readFiles():
         df_filtered_idirect.to_csv(directory_path + '/idirect-filtered.csv', index=False)
         print(df_filtered_idirect.head()) 
 
-        print("Reading idirect unzippped file-NSEScripMaster.txt")
+        print("[yellow]Reading idirect unzippped file-NSEScripMaster.txt")
         selectedColumns_idirect_equities = ['Token','ShortName','Series','CompanyName','FaceValue','ISINCode','52WeeksHigh','ExchangeCode']
         df = pd.read_csv(directory_path + '/NSEScripMaster.txt',header=0,skipinitialspace=True,sep=',',usecols=lambda x: x in selectedColumns_idirect_equities,engine='python')
         df = df.rename(columns={'Token':'idirect_id'})
@@ -126,7 +127,7 @@ def readFiles():
         print(df_filtered_idirect_orig.head()) 
         '''
 
-        print("Reading zerodha unzippped files")
+        print("[yellow]Reading zerodha unzippped files")
         selectedColumns_zerodha = ['instrument_token','exchange_token','tradingsymbol','segment']
         df = pd.read_csv(directory_path + '/zerodha-instruments.csv',header=0,usecols=selectedColumns_zerodha)
         df = df.rename(columns={'instrument_token':'zerodha_id','segment': 'zsegment','exchange_token':'zexchange_token'})
@@ -136,7 +137,7 @@ def readFiles():
         df_filtered_zerodha.to_csv(directory_path + '/zerodha-filtered.csv', index=False)
         print(df_filtered_zerodha.head())
 
-        print("Reading zerodha unzippped files for equities")
+        print("[yellow]Reading zerodha unzippped files for equities")
         selectedColumns_zerodha_equities = ['instrument_token','exchange_token','tradingsymbol','segment','lot_size','name']
         df = pd.read_csv(directory_path + '/zerodha-instruments.csv',header=0,usecols=selectedColumns_zerodha_equities)
         df = df.rename(columns={'instrument_token':'zerodha_id','segment': 'zsegment','exchange_token':'zexchange_token'})
@@ -147,7 +148,7 @@ def readFiles():
         df_filtered_zerodha_equities.to_csv(directory_path + '/zerodha-filtered_equities.csv', index=False)
         print(df_filtered_zerodha_equities.head())
 
-        print("Reading upstox unzippped files")
+        print("[yellow]Reading upstox unzippped files")
         selectedColumns_upstox = ['instrument_key','exchange_token','trading_symbol','segment','underlying_type','name']
         df = pd.read_json(directory_path + '/upstox-nse.json')
         df = df[selectedColumns_upstox]
@@ -159,7 +160,7 @@ def readFiles():
         df_filtered_upstox.to_csv(directory_path + '/upstox-filtered.csv', index=False)
         print(df_filtered_upstox.head())
 
-        print("Reading upstox unzippped files for equities ")
+        print("[yellow]Reading upstox unzippped files for equities ")
         selectedColumns_upstox_equities = ['instrument_key','exchange_token','trading_symbol','segment','instrument_type','name','lot_size']
         df = pd.read_json(directory_path + '/upstox-nse.json')
         df = df[selectedColumns_upstox_equities]
@@ -171,7 +172,7 @@ def readFiles():
         df_filtered_upstox_equities.to_csv(directory_path + '/upstox-filtered_equities.csv', index=False)
         print(df_filtered_upstox_equities.head())
 
-        print("Merging all files and creating instruments-final.csv")
+        print("[yellow]Merging all files and creating instruments-final.csv")
         #df_consolidated = pd.concat([df_filtered_idirect,df_filtered_zerodha],axis=1)
         #df_consolidated.to_csv(directory_path + '/instruments-consolidated.csv', index=False)
 
@@ -183,7 +184,7 @@ def readFiles():
         df_final = df_final.sort_values(by=['Series','ShortName','ExpiryDate','StrikePrice'])
         df_final.to_csv(directory_path + '/instruments-final.csv', index=False)
 
-        print("Merging all files and creating instruments-final_equities.csv")
+        print("[yellow]Merging all files and creating instruments-final_equities.csv")
         df_i_i_e = df_filtered_idirect_equities
         df_i_z_e = df_i_i_e.merge(df_filtered_zerodha_equities, how='inner',left_on='idirect_id', right_on='zexchange_token')
         df_final_equities = df_i_z_e.merge(df_filtered_upstox_equities, how='inner',left_on='idirect_id', right_on='uexchange_token')
@@ -197,15 +198,15 @@ def readFiles():
 
 if __name__ == '__main__':
     clearOldFiles()
-    print("Fetching instruments(iDirect)")
+    print("[yellow]Fetching instruments(iDirect)")
     idirectInstruments1 = "https://directlink.icicidirect.com/NewSecurityMaster/SecurityMaster.zip"
     idirectInstruments2 = "https://traderweb.icicidirect.com/Content/File/txtFile/ScripFile/StockScriptNew.csv"
     downloadFile(idirectInstruments1,"./instruments/idirect-securitymaster.zip")
     downloadFile(idirectInstruments2,"./instruments/idirect-stockscriptnew.csv")
-    print("Fetching instruments(upstox)")
+    print("[yellow]Fetching instruments(upstox)")
     upstoxInstruments = "https://assets.upstox.com/market-quote/instruments/exchange/NSE.json.gz"
     downloadFile(upstoxInstruments, "./instruments/upstox-nse.json.gz")
-    print("Fetching instruments(zerodha)")
+    print("[yellow]Fetching instruments(zerodha)")
     zerodhaInstruments = "https://api.kite.trade/instruments"
     downloadFile(zerodhaInstruments, "./instruments/zerodha-instruments.csv")
 

@@ -41,6 +41,7 @@ kiteconnect = "*"
 upstox-python-sdk = "*"
 pyarrow = "*"
 pyopenssl = "*"
+rich = "*"
 
 [dev-packages]
 
