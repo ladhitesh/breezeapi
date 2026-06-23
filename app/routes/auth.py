@@ -51,19 +51,23 @@ def authorize():
 @auth_bp.route('/connect', methods=['GET', 'POST'])
 def connect_api():
     query_params = request.args.to_dict()
-    # 1. SMART DETECTION: Identify the broker based on unique callback parameters
-    if "code" in query_params:
-        broker_name = "UPSTOX"
-    elif "request_token" in query_params:
-        broker_name = "KITE"
-    elif "apisession" in query_params:
-        broker_name = "IDIRECT"
+
+    if "broker" not in query_params:
+        # 1. SMART DETECTION: Identify the broker based on unique callback parameters
+        if "code" in query_params:
+            broker_name = "UPSTOX"
+        elif "request_token" in query_params:
+            broker_name = "KITE"
+        elif "apisession" in query_params:
+            broker_name = "IDIRECT"
+        else:
+            # Fallback to session if no recognizable parameters are found
+            broker_name = session.get("newbroker", session.get("broker", "IDIRECT"))
     else:
-        # Fallback to session if no recognizable parameters are found
-        broker_name = session.get("newbroker", session.get("broker", "IDIRECT"))
-        
+        broker_name = query_params.get("broker")
     broker_name = broker_name.upper()
     current_mode = session.get("login_mode", "broker")
+    logger.info(f"Connecting to broker {broker_name} ")
     
     try:
         adapter = get_broker_adapter(broker_name)
@@ -106,7 +110,7 @@ def connect_api():
             # We pass the error to the template. The template's JS will 
             # send this message back to index.html to be displayed.
             return render_template(
-                "loginresponse.html", 
+                "index.html", 
                 error=f"Connected, but API Heartbeat failed: {error_msg}", 
                 mode=current_mode, 
                 broker=broker_name,
@@ -116,7 +120,7 @@ def connect_api():
     except Exception as e:
         logger.error(f"Critical connection error: {e}")
         return render_template(
-            "loginresponse.html", 
+            "index.html", 
             error=f"Connection Error: {str(e)}", 
             mode=current_mode, 
             broker=broker_name,

@@ -2,10 +2,10 @@ $(document).ready(function() {
 	
 	//direct websocket datafeed
 	//global variable
-	sio = io('wss://breezeapi.icicidirect.com', {
+	sio = io('https://breezeapi.icicidirect.com', {
 		autoConnect: false,
 		path: '/ohlcvstream/',
-		transports: ['websocket'],
+		transports: ['websocket','polling'],
 		auth: { user: userId, token: sessionKey },
 		extraHeaders: { 'User-Agent': 'node-socketio[client]/socket' },
 		upgrade: true,
@@ -18,7 +18,7 @@ $(document).ready(function() {
 			$('#chartStatus').css("background-color",'rgb(255, 191, 180)');
 			$('#output')[0].innerHTML = "<span style='color:red'>error connecting to direct data feed: " + errorMessage + "</span>"
 			console.log(`error connecting directly to breezeapi: ${errorMessage}`)
-			console.log(err)
+			console.error(err)
 			if(err.data && err.data.content)
 				console.log(err.data.content)
 		}catch(e){console.log(e)}

@@ -10,9 +10,9 @@ def home_page():
     broker_name = session.get("broker")
     
     # 1. If no broker is in session, redirect to login as usual
-    if not broker_name:
-        logger.info("No broker in session. Redirecting to login.")
-        return redirect("/login", code=302)
+    #if not broker_name:
+    #    logger.info("No broker in session. Redirecting to login.")
+    #    return redirect("/login", code=302)
         
     # Default values for the template in case of failure
     user_id = ""
@@ -47,8 +47,9 @@ def home_page():
         else:
             # If we are on the homepage and the heartbeat fails, 
             # kill the session so we don't keep trying a dead connection.
-            adapter._session_manager.invalidate_session(broker_name)
-            return redirect("/login?force=true")
+            #adapter._session_manager.invalidate_session(broker_name)
+            #return redirect("/login?force=true")
+            return
 
     except Exception as e:
         # 4. Catch-all for unexpected crashes: Pass the error to the UI instead of a raw JSON screen

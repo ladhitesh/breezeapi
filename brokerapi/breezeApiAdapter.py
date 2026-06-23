@@ -63,7 +63,7 @@ class BreezeApiAdapter(BaseApiAdapter):
         self.api.ws_connect()
         self.api.on_ticks = self._parse_and_emit_tick
         self.api.subscribe_feeds(get_order_notification=True)
-        return token
+        return self.api.session_key
 
     def getLoginUrl(self):
         import urllib.parse
